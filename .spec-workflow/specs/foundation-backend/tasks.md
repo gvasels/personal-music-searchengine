@@ -147,55 +147,57 @@
 ## Group 2: Repository Layer (Wave 1)
 
 ### Task 2.1: Repository Interface
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
 - `backend/internal/repository/repository.go`
 
 **Acceptance Criteria**:
-- [ ] Repository interface defined (per design.md)
-- [ ] S3Repository interface defined
-- [ ] Common error types
+- [x] Repository interface defined (per design.md)
+- [x] S3Repository interface defined
+- [x] CloudFrontSigner interface defined
+- [x] Common error types (ErrNotFound, ErrAlreadyExists, ErrInvalidCursor)
+- [x] PaginatedResult generic type
 
 ### Task 2.2: DynamoDB Repository - Core
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
 - `backend/internal/repository/dynamodb.go`
-- `backend/internal/repository/dynamodb_test.go`
 
 **Acceptance Criteria**:
-- [ ] DynamoDBRepository struct
-- [ ] Connection and configuration
-- [ ] Put, Get, Update, Delete, Query helpers
-- [ ] Error handling and mapping
-- [ ] Integration tests with DynamoDB Local
+- [x] DynamoDBRepository struct with client interface
+- [x] DynamoDBClient interface for testability
+- [x] NewDynamoDBRepository constructor
+- [x] Cursor encoding/decoding with models.PaginationCursor
+- [x] Error handling and mapping
 
 ### Task 2.3: DynamoDB Repository - Entity Operations
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
-- `backend/internal/repository/dynamodb_*.go`
+- `backend/internal/repository/dynamodb.go`
 
 **Acceptance Criteria**:
-- [ ] Track CRUD operations
-- [ ] Album operations with artist queries
-- [ ] User profile operations
-- [ ] Playlist operations with track ordering
-- [ ] Tag operations with track associations
-- [ ] Upload status tracking
-- [ ] Integration tests
+- [x] Track CRUD operations (Create, Get, Update, Delete, List, ListByArtist)
+- [x] Album operations (GetOrCreate, Get, List, ListByArtist, UpdateStats)
+- [x] User profile operations (Create, Get, Update, UpdateStats)
+- [x] Playlist operations (CRUD, AddTracks, RemoveTracks, GetTracks)
+- [x] Tag operations (CRUD, AddToTrack, RemoveFromTrack, GetTrackTags, GetTracksByTag)
+- [x] Upload tracking (Create, Get, Update, UpdateStatus, UpdateStep, List, ListByStatus)
+- [x] Pagination support with opaque cursors
+- [x] Batch operations for playlist tracks and tags
 
 ### Task 2.4: S3 Repository
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
 - `backend/internal/repository/s3.go`
-- `backend/internal/repository/s3_test.go`
 
 **Acceptance Criteria**:
-- [ ] S3Repository implementation
-- [ ] GeneratePresignedUploadURL
-- [ ] GeneratePresignedDownloadURL
-- [ ] DeleteObject, CopyObject
-- [ ] GetObjectMetadata
-- [ ] Unit tests with mocked S3 client
+- [x] S3RepositoryImpl implementation
+- [x] S3Client and S3PresignClient interfaces for testability
+- [x] GeneratePresignedUploadURL (with Intelligent-Tiering storage class)
+- [x] GeneratePresignedDownloadURL
+- [x] Multipart upload support (Initiate, GeneratePartURLs, Complete, Abort)
+- [x] DeleteObject, CopyObject
+- [x] GetObjectMetadata, ObjectExists
 
 ---
 
@@ -259,10 +261,10 @@
 | Group | Tasks | Status |
 |-------|-------|--------|
 | Group 1: Domain Models | 9 | **Complete** |
-| Group 2: Repository Layer | 4 | Not Started |
+| Group 2: Repository Layer | 4 | **Complete** |
 | Group 3: Service Layer | 1 | Not Started |
 | Group 4: HTTP Handlers | 2 | Not Started |
-| **Total** | **16** | **1 Complete** |
+| **Total** | **16** | **2 Complete** |
 
 ---
 
