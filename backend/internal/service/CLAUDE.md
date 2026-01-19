@@ -16,6 +16,8 @@ Business logic layer implementing domain operations for the Personal Music Searc
 | `tag.go` | TagService - tag management and track associations |
 | `upload.go` | UploadService - upload workflow and presigned URLs |
 | `stream.go` | StreamService - streaming and download URL generation |
+| `search.go` | SearchService - Nixiesearch integration for full-text search |
+| `search_test.go` | Unit tests for SearchService |
 
 ## Service Interfaces
 
@@ -70,6 +72,13 @@ Business logic layer implementing domain operations for the Personal Music Searc
 - `GetStreamURL` - Get CloudFront signed URL for streaming
 - `GetDownloadURL` - Get signed URL for download
 - `GetCoverArtURL` - Get signed URL for cover art
+
+### SearchService
+- `Search` - Execute full-text search with filters and pagination
+- `Autocomplete` - Provide search suggestions
+- `IndexTrack` - Index a track in the search engine
+- `RemoveTrack` - Remove a track from the search index
+- `RebuildIndex` - Rebuild the entire search index for a user
 
 ## Dependencies
 
