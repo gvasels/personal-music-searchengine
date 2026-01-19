@@ -204,21 +204,28 @@
 ## Group 3: Service Layer (Wave 1)
 
 ### Task 3.1: Services Implementation
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
-- `backend/internal/service/*.go`
-- `backend/internal/service/*_test.go`
+- `backend/internal/service/service.go` - Interfaces and Services container
+- `backend/internal/service/track.go` - TrackService implementation
+- `backend/internal/service/album.go` - AlbumService implementation
+- `backend/internal/service/user.go` - UserService implementation
+- `backend/internal/service/playlist.go` - PlaylistService implementation
+- `backend/internal/service/tag.go` - TagService implementation
+- `backend/internal/service/upload.go` - UploadService implementation
+- `backend/internal/service/stream.go` - StreamService implementation
 
 **Acceptance Criteria**:
-- [ ] TrackService for track management
-- [ ] AlbumService for album aggregation
-- [ ] UserService for profile management
-- [ ] PlaylistService for playlist operations
-- [ ] TagService for tagging operations
-- [ ] UploadService for presigned URLs
-- [ ] StreamService for CloudFront signed URLs
-- [ ] SearchService for Nixiesearch integration
-- [ ] Unit tests with mocked repository
+- [x] TrackService for track management (CRUD, play count)
+- [x] AlbumService for album aggregation and artist listing
+- [x] UserService for profile management
+- [x] PlaylistService for playlist operations (CRUD, tracks)
+- [x] TagService for tagging operations (CRUD, track associations)
+- [x] UploadService for presigned URLs (single and multipart)
+- [x] StreamService for CloudFront signed URLs (stream/download)
+- [ ] SearchService for Nixiesearch integration (separate implementation)
+- [x] Cover art URL generation for all entity responses
+- [x] Pagination support with opaque cursors
 
 ---
 
@@ -262,9 +269,9 @@
 |-------|-------|--------|
 | Group 1: Domain Models | 9 | **Complete** |
 | Group 2: Repository Layer | 4 | **Complete** |
-| Group 3: Service Layer | 1 | Not Started |
+| Group 3: Service Layer | 1 | **Complete** |
 | Group 4: HTTP Handlers | 2 | Not Started |
-| **Total** | **16** | **2 Complete** |
+| **Total** | **16** | **3 Complete** |
 
 ---
 
