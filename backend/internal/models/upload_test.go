@@ -272,3 +272,200 @@ func TestUploadMetadataFields(t *testing.T) {
 	assert.Equal(t, "Test comment", metadata.Comment)
 	assert.Equal(t, "Test lyrics", metadata.Lyrics)
 }
+
+// TestUploadStepTrackingFields verifies step tracking fields
+func TestUploadStepTrackingFields(t *testing.T) {
+	upload := Upload{
+		ID:                "upload-123",
+		UserID:            "user-456",
+		Status:            UploadStatusProcessing,
+		MetadataExtracted: true,
+		CoverArtExtracted: true,
+		TrackCreated:      false,
+		Indexed:           false,
+		FileMoved:         false,
+	}
+
+	assert.True(t, upload.MetadataExtracted)
+	assert.True(t, upload.CoverArtExtracted)
+	assert.False(t, upload.TrackCreated)
+	assert.False(t, upload.Indexed)
+	assert.False(t, upload.FileMoved)
+}
+
+// TestUploadMultipartFields verifies multipart upload tracking
+func TestUploadMultipartFields(t *testing.T) {
+	upload := Upload{
+		ID:            "upload-123",
+		UserID:        "user-456",
+		IsMultipart:   true,
+		MultipartID:   "multipart-abc123",
+		PartsUploaded: 5,
+		TotalParts:    10,
+	}
+
+	assert.True(t, upload.IsMultipart)
+	assert.Equal(t, "multipart-abc123", upload.MultipartID)
+	assert.Equal(t, 5, upload.PartsUploaded)
+	assert.Equal(t, 10, upload.TotalParts)
+}
+
+// TestUploadToResponseIncludesSteps verifies step tracking in response
+func TestUploadToResponseIncludesSteps(t *testing.T) {
+	upload := Upload{
+		ID:                "upload-123",
+		UserID:            "user-456",
+		FileName:          "song.mp3",
+		FileSize:          5242880,
+		ContentType:       "audio/mpeg",
+		Status:            UploadStatusProcessing,
+		MetadataExtracted: true,
+		CoverArtExtracted: true,
+		TrackCreated:      false,
+		Indexed:           false,
+		FileMoved:         false,
+	}
+	upload.CreatedAt = time.Now()
+
+	response := upload.ToResponse()
+
+	assert.True(t, response.Steps.MetadataExtracted)
+	assert.True(t, response.Steps.CoverArtExtracted)
+	assert.False(t, response.Steps.TrackCreated)
+	assert.False(t, response.Steps.Indexed)
+	assert.False(t, response.Steps.FileMoved)
+}
+
+// TestProcessingStepConstants verifies processing step constants
+func TestProcessingStepConstants(t *testing.T) {
+	tests := []struct {
+		name     string
+		step     ProcessingStep
+		expected string
+	}{
+		{"StepExtractMetadata", StepExtractMetadata, "extract_metadata"},
+		{"StepExtractCover", StepExtractCover, "extract_cover"},
+		{"StepCreateTrack", StepCreateTrack, "create_track"},
+		{"StepIndex", StepIndex, "index"},
+		{"StepMoveFile", StepMoveFile, "move_file"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, string(tt.step))
+		})
+	}
+}
+
+// TestReprocessUploadRequestFields verifies reprocess request
+func TestReprocessUploadRequestFields(t *testing.T) {
+	req := ReprocessUploadRequest{
+		FromStep: StepCreateTrack,
+	}
+
+	assert.Equal(t, StepCreateTrack, req.FromStep)
+}
+
+// TestCoverArtUploadRequestFields verifies cover art upload request
+func TestCoverArtUploadRequestFields(t *testing.T) {
+	req := CoverArtUploadRequest{
+		FileName:    "cover.jpg",
+		FileSize:    1048576, // 1MB
+		ContentType: "image/jpeg",
+	}
+
+	assert.Equal(t, "cover.jpg", req.FileName)
+	assert.Equal(t, int64(1048576), req.FileSize)
+	assert.Equal(t, "image/jpeg", req.ContentType)
+}
+
+// TestCoverArtUploadResponseFields verifies cover art upload response
+func TestCoverArtUploadResponseFields(t *testing.T) {
+	expiresAt := time.Now().Add(15 * time.Minute)
+	response := CoverArtUploadResponse{
+		TrackID:     "track-123",
+		UploadURL:   "https://s3.amazonaws.com/bucket/cover?signature=...",
+		ExpiresAt:   expiresAt,
+		MaxFileSize: 10485760, // 10MB
+	}
+
+	assert.Equal(t, "track-123", response.TrackID)
+	assert.Contains(t, response.UploadURL, "s3.amazonaws.com")
+	assert.Equal(t, expiresAt, response.ExpiresAt)
+	assert.Equal(t, int64(10485760), response.MaxFileSize)
+}
+
+// TestMultipartUploadPartURLFields verifies multipart part URL
+func TestMultipartUploadPartURLFields(t *testing.T) {
+	expiresAt := time.Now().Add(1 * time.Hour)
+	partURL := MultipartUploadPartURL{
+		PartNumber: 1,
+		UploadURL:  "https://s3.amazonaws.com/bucket/key?partNumber=1&uploadId=abc",
+		ExpiresAt:  expiresAt,
+	}
+
+	assert.Equal(t, 1, partURL.PartNumber)
+	assert.Contains(t, partURL.UploadURL, "partNumber=1")
+	assert.Equal(t, expiresAt, partURL.ExpiresAt)
+}
+
+// TestPresignedUploadResponseMultipartFields verifies multipart response
+func TestPresignedUploadResponseMultipartFields(t *testing.T) {
+	expiresAt := time.Now().Add(1 * time.Hour)
+	response := PresignedUploadResponse{
+		UploadID:    "upload-123",
+		IsMultipart: true,
+		MultipartID: "multipart-abc",
+		PartURLs: []MultipartUploadPartURL{
+			{PartNumber: 1, UploadURL: "https://example.com/part1", ExpiresAt: expiresAt},
+			{PartNumber: 2, UploadURL: "https://example.com/part2", ExpiresAt: expiresAt},
+		},
+	}
+
+	assert.True(t, response.IsMultipart)
+	assert.Equal(t, "multipart-abc", response.MultipartID)
+	assert.Len(t, response.PartURLs, 2)
+	assert.Equal(t, 1, response.PartURLs[0].PartNumber)
+	assert.Equal(t, 2, response.PartURLs[1].PartNumber)
+}
+
+// TestCompleteMultipartUploadRequestFields verifies complete multipart request
+func TestCompleteMultipartUploadRequestFields(t *testing.T) {
+	req := CompleteMultipartUploadRequest{
+		UploadID: "upload-123",
+		Parts: []CompletedPartInfo{
+			{PartNumber: 1, ETag: "etag1"},
+			{PartNumber: 2, ETag: "etag2"},
+		},
+	}
+
+	assert.Equal(t, "upload-123", req.UploadID)
+	assert.Len(t, req.Parts, 2)
+	assert.Equal(t, 1, req.Parts[0].PartNumber)
+	assert.Equal(t, "etag1", req.Parts[0].ETag)
+}
+
+// TestCompletedPartInfoFields verifies completed part info
+func TestCompletedPartInfoFields(t *testing.T) {
+	part := CompletedPartInfo{
+		PartNumber: 5,
+		ETag:       "\"abc123def456\"",
+	}
+
+	assert.Equal(t, 5, part.PartNumber)
+	assert.Equal(t, "\"abc123def456\"", part.ETag)
+}
+
+// TestPresignedUploadRequestMaxFileSize verifies 1GB max file size
+func TestPresignedUploadRequestMaxFileSize(t *testing.T) {
+	// Max file size should be 1GB = 1073741824 bytes
+	req := PresignedUploadRequest{
+		FileName:    "large-file.flac",
+		FileSize:    1073741824, // 1GB - should be valid
+		ContentType: "audio/flac",
+		IsMultipart: true,
+	}
+
+	assert.Equal(t, int64(1073741824), req.FileSize)
+	assert.True(t, req.IsMultipart)
+}

@@ -6,7 +6,7 @@ type SearchRequest struct {
 	Filters SearchFilters `json:"filters,omitempty"`
 	Sort    SearchSort    `json:"sort,omitempty"`
 	Limit   int           `json:"limit,omitempty" validate:"omitempty,min=1,max=100"`
-	Offset  int           `json:"offset,omitempty" validate:"omitempty,min=0"`
+	Cursor  string        `json:"cursor,omitempty"` // Opaque base64-encoded pagination cursor
 }
 
 // SearchFilters represents filters for search
@@ -27,14 +27,15 @@ type SearchSort struct {
 
 // SearchResponse represents search results
 type SearchResponse struct {
-	Query        string         `json:"query"`
-	TotalResults int            `json:"totalResults"`
+	Query        string          `json:"query"`
+	TotalResults int             `json:"totalResults"`
 	Tracks       []TrackResponse `json:"tracks"`
 	Albums       []AlbumResponse `json:"albums,omitempty"`
 	Artists      []ArtistSummary `json:"artists,omitempty"`
-	Facets       SearchFacets   `json:"facets,omitempty"`
-	Limit        int            `json:"limit"`
-	Offset       int            `json:"offset"`
+	Facets       SearchFacets    `json:"facets,omitempty"`
+	Limit        int             `json:"limit"`
+	NextCursor   string          `json:"nextCursor,omitempty"` // Next page cursor (empty if no more results)
+	HasMore      bool            `json:"hasMore"`
 }
 
 // SearchFacets represents aggregated facets for filtering
@@ -88,12 +89,12 @@ type NixieIndexDocument struct {
 
 // NixieSearchQuery represents a query to Nixiesearch
 type NixieSearchQuery struct {
-	Query  string            `json:"query"`
-	Fields []string          `json:"fields,omitempty"`
-	Filter map[string]any    `json:"filter,omitempty"`
-	Sort   []NixieSortField  `json:"sort,omitempty"`
-	From   int               `json:"from,omitempty"`
-	Size   int               `json:"size,omitempty"`
+	Query       string           `json:"query"`
+	Fields      []string         `json:"fields,omitempty"`
+	Filter      map[string]any   `json:"filter,omitempty"`
+	Sort        []NixieSortField `json:"sort,omitempty"`
+	Size        int              `json:"size,omitempty"`
+	SearchAfter []any            `json:"search_after,omitempty"` // Cursor-based pagination for Nixiesearch
 }
 
 // NixieSortField represents a sort field in Nixiesearch

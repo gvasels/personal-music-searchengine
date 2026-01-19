@@ -70,6 +70,18 @@ type DynamoDBItem struct {
 }
 ```
 
+### Pagination Cursor (`common.go`)
+```go
+// PaginationCursor represents the internal structure of a pagination cursor
+// Encoded to base64 for opaque client-side handling
+type PaginationCursor struct {
+    PK     string `json:"pk"`
+    SK     string `json:"sk"`
+    GSI1PK string `json:"gsi1pk,omitempty"`
+    GSI1SK string `json:"gsi1sk,omitempty"`
+}
+```
+
 ### Track (`track.go`)
 ```go
 type Track struct {
@@ -97,17 +109,51 @@ type Upload struct {
     ID          string       `json:"id"`
     UserID      string       `json:"userId"`
     FileName    string       `json:"fileName"`
-    FileSize    int64        `json:"fileSize"`
+    FileSize    int64        `json:"fileSize"`         // Max 1GB
     ContentType string       `json:"contentType"`
     S3Key       string       `json:"s3Key"`
     Status      UploadStatus `json:"status"`
     ErrorMsg    string       `json:"errorMsg,omitempty"`
     TrackID     string       `json:"trackId,omitempty"`
     Timestamps
+    CompletedAt *time.Time `json:"completedAt,omitempty"`
+
+    // Step tracking for partial success recovery
+    MetadataExtracted bool
+    CoverArtExtracted bool
+    TrackCreated      bool
+    Indexed           bool
+    FileMoved         bool
+
+    // Multipart upload tracking
+    IsMultipart   bool
+    MultipartID   string
+    PartsUploaded int
+    TotalParts    int
 }
 ```
 
+### Processing Steps (`upload.go`)
+```go
+type ProcessingStep string
+const (
+    StepExtractMetadata ProcessingStep = "extract_metadata"
+    StepExtractCover    ProcessingStep = "extract_cover"
+    StepCreateTrack     ProcessingStep = "create_track"
+    StepIndex           ProcessingStep = "index"
+    StepMoveFile        ProcessingStep = "move_file"
+)
+```
+
 ## Functions
+
+### Common Functions (`common.go`)
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `EncodeCursor` | `(cursor PaginationCursor) string` | Encodes cursor to base64 string |
+| `DecodeCursor` | `(encoded string) (PaginationCursor, error)` | Decodes base64 string to cursor |
+| `NewPaginationCursor` | `(pk, sk string) PaginationCursor` | Creates cursor with PK/SK |
+| `NewPaginationCursorWithGSI` | `(pk, sk, gsi1pk, gsi1sk string) PaginationCursor` | Creates cursor with GSI keys |
 
 ### Track Functions (`track.go`)
 | Function | Signature | Description |
@@ -120,8 +166,16 @@ type Upload struct {
 ### Upload Functions (`upload.go`)
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `NewUploadItem` | `(upload Upload) UploadItem` | Creates DynamoDB item |
-| `ToResponse` | `(u *Upload) UploadResponse` | Converts to API response |
+| `NewUploadItem` | `(upload Upload) UploadItem` | Creates DynamoDB item with status GSI |
+| `ToResponse` | `(u *Upload) UploadResponse` | Converts to API response with step tracking |
+
+### Error Functions (`errors.go`)
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `NewAPIError` | `(code, message string, statusCode int) *APIError` | Creates custom API error |
+| `NewValidationError` | `(details any) *APIError` | Creates validation error with details |
+| `NewNotFoundError` | `(resource, id string) *APIError` | Creates not found error for resource |
+| `NewConflictError` | `(message string) *APIError` | Creates conflict error |
 
 ## Dependencies
 

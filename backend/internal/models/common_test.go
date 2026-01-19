@@ -173,3 +173,151 @@ func TestPaginatedResponse(t *testing.T) {
 	assert.Equal(t, 3, len(response.Items))
 	assert.Equal(t, 10, response.Pagination.Limit)
 }
+
+// TestPaginationCursorFields verifies PaginationCursor struct fields
+func TestPaginationCursorFields(t *testing.T) {
+	cursor := PaginationCursor{
+		PK:     "USER#123",
+		SK:     "TRACK#456",
+		GSI1PK: "USER#123#ARTIST#Test",
+		GSI1SK: "TRACK#456",
+	}
+
+	assert.Equal(t, "USER#123", cursor.PK)
+	assert.Equal(t, "TRACK#456", cursor.SK)
+	assert.Equal(t, "USER#123#ARTIST#Test", cursor.GSI1PK)
+	assert.Equal(t, "TRACK#456", cursor.GSI1SK)
+}
+
+// TestEncodeCursor verifies cursor encoding to base64
+func TestEncodeCursor(t *testing.T) {
+	tests := []struct {
+		name     string
+		cursor   PaginationCursor
+		isEmpty  bool
+	}{
+		{
+			name:    "empty cursor returns empty string",
+			cursor:  PaginationCursor{},
+			isEmpty: true,
+		},
+		{
+			name: "cursor with only PK/SK",
+			cursor: PaginationCursor{
+				PK: "USER#123",
+				SK: "TRACK#456",
+			},
+			isEmpty: false,
+		},
+		{
+			name: "cursor with GSI keys",
+			cursor: PaginationCursor{
+				PK:     "USER#123",
+				SK:     "TRACK#456",
+				GSI1PK: "USER#123#ARTIST#Test",
+				GSI1SK: "TRACK#456",
+			},
+			isEmpty: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded := EncodeCursor(tt.cursor)
+			if tt.isEmpty {
+				assert.Empty(t, encoded)
+			} else {
+				assert.NotEmpty(t, encoded)
+				// Verify it's valid base64 by decoding
+				decoded, err := DecodeCursor(encoded)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.cursor.PK, decoded.PK)
+				assert.Equal(t, tt.cursor.SK, decoded.SK)
+			}
+		})
+	}
+}
+
+// TestDecodeCursor verifies cursor decoding from base64
+func TestDecodeCursor(t *testing.T) {
+	tests := []struct {
+		name        string
+		encoded     string
+		expectError bool
+		expectedPK  string
+		expectedSK  string
+	}{
+		{
+			name:        "empty string returns empty cursor",
+			encoded:     "",
+			expectError: false,
+			expectedPK:  "",
+			expectedSK:  "",
+		},
+		{
+			name:        "invalid base64 returns error",
+			encoded:     "not-valid-base64!!!",
+			expectError: true,
+		},
+		{
+			name:        "invalid JSON returns error",
+			encoded:     "bm90LWpzb24=", // base64 of "not-json"
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			decoded, err := DecodeCursor(tt.encoded)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedPK, decoded.PK)
+				assert.Equal(t, tt.expectedSK, decoded.SK)
+			}
+		})
+	}
+}
+
+// TestEncodeCursorRoundTrip verifies encode/decode round trip
+func TestEncodeCursorRoundTrip(t *testing.T) {
+	original := PaginationCursor{
+		PK:     "USER#user-123",
+		SK:     "TRACK#track-456",
+		GSI1PK: "USER#user-123#ARTIST#Test Artist",
+		GSI1SK: "TRACK#track-456",
+	}
+
+	encoded := EncodeCursor(original)
+	assert.NotEmpty(t, encoded)
+
+	decoded, err := DecodeCursor(encoded)
+	assert.NoError(t, err)
+	assert.Equal(t, original, decoded)
+}
+
+// TestNewPaginationCursor verifies cursor creation helper
+func TestNewPaginationCursor(t *testing.T) {
+	cursor := NewPaginationCursor("USER#123", "TRACK#456")
+
+	assert.Equal(t, "USER#123", cursor.PK)
+	assert.Equal(t, "TRACK#456", cursor.SK)
+	assert.Empty(t, cursor.GSI1PK)
+	assert.Empty(t, cursor.GSI1SK)
+}
+
+// TestNewPaginationCursorWithGSI verifies GSI cursor creation helper
+func TestNewPaginationCursorWithGSI(t *testing.T) {
+	cursor := NewPaginationCursorWithGSI(
+		"USER#123",
+		"TRACK#456",
+		"USER#123#ARTIST#Test",
+		"TRACK#456",
+	)
+
+	assert.Equal(t, "USER#123", cursor.PK)
+	assert.Equal(t, "TRACK#456", cursor.SK)
+	assert.Equal(t, "USER#123#ARTIST#Test", cursor.GSI1PK)
+	assert.Equal(t, "TRACK#456", cursor.GSI1SK)
+}

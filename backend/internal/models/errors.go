@@ -72,6 +72,37 @@ var (
 		Message:    "Your storage limit has been exceeded",
 		StatusCode: http.StatusPaymentRequired,
 	}
+
+	// Upload-specific errors
+	ErrUploadExpired = &APIError{
+		Code:       "UPLOAD_EXPIRED",
+		Message:    "The upload session has expired",
+		StatusCode: http.StatusGone,
+	}
+
+	ErrUploadNotFound = &APIError{
+		Code:       "UPLOAD_NOT_FOUND",
+		Message:    "The upload session was not found",
+		StatusCode: http.StatusNotFound,
+	}
+
+	ErrMultipartUploadFailed = &APIError{
+		Code:       "MULTIPART_UPLOAD_FAILED",
+		Message:    "One or more parts of the multipart upload failed",
+		StatusCode: http.StatusBadRequest,
+	}
+
+	ErrUploadProcessingFailed = &APIError{
+		Code:       "UPLOAD_PROCESSING_FAILED",
+		Message:    "Upload processing failed",
+		StatusCode: http.StatusInternalServerError,
+	}
+
+	ErrInvalidCursor = &APIError{
+		Code:       "INVALID_CURSOR",
+		Message:    "The pagination cursor is invalid or expired",
+		StatusCode: http.StatusBadRequest,
+	}
 )
 
 // NewAPIError creates a new API error

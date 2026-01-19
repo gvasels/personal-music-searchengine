@@ -18,6 +18,19 @@ type Upload struct {
 	TrackID     string       `json:"trackId,omitempty" dynamodbav:"trackId,omitempty"` // Set after successful processing
 	Timestamps
 	CompletedAt *time.Time `json:"completedAt,omitempty" dynamodbav:"completedAt,omitempty"`
+
+	// Step tracking for partial success recovery
+	MetadataExtracted bool `json:"metadataExtracted" dynamodbav:"metadataExtracted"`
+	CoverArtExtracted bool `json:"coverArtExtracted" dynamodbav:"coverArtExtracted"`
+	TrackCreated      bool `json:"trackCreated" dynamodbav:"trackCreated"`
+	Indexed           bool `json:"indexed" dynamodbav:"indexed"`
+	FileMoved         bool `json:"fileMoved" dynamodbav:"fileMoved"`
+
+	// Multipart upload tracking
+	IsMultipart   bool   `json:"isMultipart,omitempty" dynamodbav:"isMultipart,omitempty"`
+	MultipartID   string `json:"multipartId,omitempty" dynamodbav:"multipartId,omitempty"`
+	PartsUploaded int    `json:"partsUploaded,omitempty" dynamodbav:"partsUploaded,omitempty"`
+	TotalParts    int    `json:"totalParts,omitempty" dynamodbav:"totalParts,omitempty"`
 }
 
 // UploadItem represents an Upload in DynamoDB single-table design
@@ -43,8 +56,9 @@ func NewUploadItem(upload Upload) UploadItem {
 // PresignedUploadRequest represents a request to get a presigned URL for uploading
 type PresignedUploadRequest struct {
 	FileName    string `json:"fileName" validate:"required,min=1,max=500"`
-	FileSize    int64  `json:"fileSize" validate:"required,min=1,max=524288000"` // max 500MB
+	FileSize    int64  `json:"fileSize" validate:"required,min=1,max=1073741824"` // max 1GB
 	ContentType string `json:"contentType" validate:"required,oneof=audio/mpeg audio/flac audio/wav audio/aac audio/ogg audio/x-flac"`
+	IsMultipart bool   `json:"isMultipart,omitempty"` // Request multipart upload for large files
 }
 
 // PresignedUploadResponse represents a response with presigned URL for uploading
@@ -54,6 +68,18 @@ type PresignedUploadResponse struct {
 	Fields       map[string]string `json:"fields,omitempty"` // For POST uploads
 	ExpiresAt    time.Time         `json:"expiresAt"`
 	MaxFileSize  int64             `json:"maxFileSize"`
+
+	// Multipart upload fields
+	IsMultipart bool                     `json:"isMultipart,omitempty"`
+	MultipartID string                   `json:"multipartId,omitempty"`
+	PartURLs    []MultipartUploadPartURL `json:"partUrls,omitempty"` // Presigned URLs for each part
+}
+
+// MultipartUploadPartURL represents a presigned URL for a single multipart upload part
+type MultipartUploadPartURL struct {
+	PartNumber int       `json:"partNumber"`
+	UploadURL  string    `json:"uploadUrl"`
+	ExpiresAt  time.Time `json:"expiresAt"`
 }
 
 // ConfirmUploadRequest represents a request to confirm an upload
@@ -80,6 +106,18 @@ type UploadResponse struct {
 	TrackID     string       `json:"trackId,omitempty"`
 	CreatedAt   time.Time    `json:"createdAt"`
 	CompletedAt *time.Time   `json:"completedAt,omitempty"`
+
+	// Step tracking for partial success
+	Steps UploadSteps `json:"steps"`
+}
+
+// UploadSteps represents the completion status of each processing step
+type UploadSteps struct {
+	MetadataExtracted bool `json:"metadataExtracted"`
+	CoverArtExtracted bool `json:"coverArtExtracted"`
+	TrackCreated      bool `json:"trackCreated"`
+	Indexed           bool `json:"indexed"`
+	FileMoved         bool `json:"fileMoved"`
 }
 
 // ToResponse converts an Upload to an UploadResponse
@@ -95,6 +133,13 @@ func (u *Upload) ToResponse() UploadResponse {
 		TrackID:     u.TrackID,
 		CreatedAt:   u.CreatedAt,
 		CompletedAt: u.CompletedAt,
+		Steps: UploadSteps{
+			MetadataExtracted: u.MetadataExtracted,
+			CoverArtExtracted: u.CoverArtExtracted,
+			TrackCreated:      u.TrackCreated,
+			Indexed:           u.Indexed,
+			FileMoved:         u.FileMoved,
+		},
 	}
 }
 
@@ -126,4 +171,47 @@ type UploadMetadata struct {
 	Composer    string `json:"composer,omitempty"`
 	Comment     string `json:"comment,omitempty"`
 	Lyrics      string `json:"lyrics,omitempty"`
+}
+
+// ProcessingStep represents a step in the upload processing pipeline
+type ProcessingStep string
+
+const (
+	StepExtractMetadata ProcessingStep = "extract_metadata"
+	StepExtractCover    ProcessingStep = "extract_cover"
+	StepCreateTrack     ProcessingStep = "create_track"
+	StepIndex           ProcessingStep = "index"
+	StepMoveFile        ProcessingStep = "move_file"
+)
+
+// ReprocessUploadRequest represents a request to reprocess a failed upload
+type ReprocessUploadRequest struct {
+	FromStep ProcessingStep `json:"fromStep,omitempty" validate:"omitempty,oneof=extract_metadata extract_cover create_track index move_file"`
+}
+
+// CoverArtUploadRequest represents a request to upload cover art for a track
+type CoverArtUploadRequest struct {
+	FileName    string `json:"fileName" validate:"required,min=1,max=500"`
+	FileSize    int64  `json:"fileSize" validate:"required,min=1,max=10485760"` // max 10MB
+	ContentType string `json:"contentType" validate:"required,oneof=image/jpeg image/png image/webp"`
+}
+
+// CoverArtUploadResponse represents a response with presigned URL for cover art upload
+type CoverArtUploadResponse struct {
+	TrackID     string    `json:"trackId"`
+	UploadURL   string    `json:"uploadUrl"`
+	ExpiresAt   time.Time `json:"expiresAt"`
+	MaxFileSize int64     `json:"maxFileSize"`
+}
+
+// CompleteMultipartUploadRequest represents a request to complete a multipart upload
+type CompleteMultipartUploadRequest struct {
+	UploadID string               `json:"uploadId" validate:"required,uuid"`
+	Parts    []CompletedPartInfo `json:"parts" validate:"required,min=1"`
+}
+
+// CompletedPartInfo represents information about a completed multipart upload part
+type CompletedPartInfo struct {
+	PartNumber int    `json:"partNumber" validate:"required,min=1"`
+	ETag       string `json:"etag" validate:"required"`
 }

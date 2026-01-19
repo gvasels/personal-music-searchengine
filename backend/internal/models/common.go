@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"encoding/base64"
+	"encoding/json"
+	"time"
+)
 
 // EntityType represents the type of entity in the single-table design
 type EntityType string
@@ -64,4 +68,57 @@ type Pagination struct {
 type PaginatedResponse[T any] struct {
 	Items      []T        `json:"items"`
 	Pagination Pagination `json:"pagination"`
+}
+
+// PaginationCursor represents the internal structure of a pagination cursor
+// This is encoded to base64 and passed to clients as an opaque string
+type PaginationCursor struct {
+	PK     string `json:"pk"`
+	SK     string `json:"sk"`
+	GSI1PK string `json:"gsi1pk,omitempty"`
+	GSI1SK string `json:"gsi1sk,omitempty"`
+}
+
+// EncodeCursor encodes a PaginationCursor to an opaque base64 string
+func EncodeCursor(cursor PaginationCursor) string {
+	if cursor.PK == "" && cursor.SK == "" {
+		return ""
+	}
+	data, err := json.Marshal(cursor)
+	if err != nil {
+		return ""
+	}
+	return base64.URLEncoding.EncodeToString(data)
+}
+
+// DecodeCursor decodes an opaque base64 cursor string to a PaginationCursor
+func DecodeCursor(encoded string) (PaginationCursor, error) {
+	var cursor PaginationCursor
+	if encoded == "" {
+		return cursor, nil
+	}
+	data, err := base64.URLEncoding.DecodeString(encoded)
+	if err != nil {
+		return cursor, err
+	}
+	err = json.Unmarshal(data, &cursor)
+	return cursor, err
+}
+
+// NewPaginationCursor creates a new cursor from DynamoDB key components
+func NewPaginationCursor(pk, sk string) PaginationCursor {
+	return PaginationCursor{
+		PK: pk,
+		SK: sk,
+	}
+}
+
+// NewPaginationCursorWithGSI creates a new cursor with GSI key components
+func NewPaginationCursorWithGSI(pk, sk, gsi1pk, gsi1sk string) PaginationCursor {
+	return PaginationCursor{
+		PK:     pk,
+		SK:     sk,
+		GSI1PK: gsi1pk,
+		GSI1SK: gsi1sk,
+	}
 }

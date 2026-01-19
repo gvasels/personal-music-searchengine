@@ -9,108 +9,138 @@
 ## Group 1: Domain Models (Wave 0)
 
 ### Task 1.1: Common Types and Constants
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
 - `backend/internal/models/common.go`
 - `backend/internal/models/common_test.go`
 
 **Acceptance Criteria**:
-- [ ] EntityType constants defined
-- [ ] UploadStatus constants defined
-- [ ] AudioFormat constants defined
-- [ ] Timestamps embed struct
-- [ ] DynamoDBItem base struct
-- [ ] Pagination helpers
-- [ ] Duration and file size formatters
-- [ ] Unit tests passing
+- [x] EntityType constants defined
+- [x] UploadStatus constants defined
+- [x] AudioFormat constants defined
+- [x] Timestamps embed struct
+- [x] DynamoDBItem base struct
+- [x] Pagination helpers
+- [x] PaginationCursor with encode/decode (base64 opaque cursor per design)
+- [x] Duration and file size formatters
+- [x] Unit tests passing
 
 ### Task 1.2: Track Model
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
 - `backend/internal/models/track.go`
 - `backend/internal/models/track_test.go`
 
 **Acceptance Criteria**:
-- [ ] Track struct with JSON tags
-- [ ] TrackItem with DynamoDB keys
-- [ ] NewTrackItem() function with GSI1 for artist queries
-- [ ] ToResponse() conversion
-- [ ] TrackFilter for queries
-- [ ] UpdateTrackRequest
-- [ ] Unit tests passing
+- [x] Track struct with JSON tags
+- [x] TrackItem with DynamoDB keys
+- [x] NewTrackItem() function with GSI1 for artist queries
+- [x] ToResponse() conversion
+- [x] TrackFilter for queries
+- [x] UpdateTrackRequest
+- [x] Unit tests passing
 
 ### Task 1.3: Album Model
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
 - `backend/internal/models/album.go`
 - `backend/internal/models/album_test.go`
 
 **Acceptance Criteria**:
-- [ ] Album struct with JSON tags
-- [ ] AlbumItem with DynamoDB keys
-- [ ] NewAlbumItem() with GSI1 for artist queries
-- [ ] ToResponse() conversion
-- [ ] ArtistSummary for aggregation
-- [ ] AlbumFilter for queries
-- [ ] Unit tests passing
+- [x] Album struct with JSON tags
+- [x] AlbumItem with DynamoDB keys
+- [x] NewAlbumItem() with GSI1 for artist queries
+- [x] ToResponse() conversion
+- [x] ArtistSummary for aggregation
+- [x] AlbumFilter for queries
+- [x] Unit tests passing
 
 ### Task 1.4: User Model
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
 - `backend/internal/models/user.go`
 - `backend/internal/models/user_test.go`
 
 **Acceptance Criteria**:
-- [ ] User struct with storage tracking
-- [ ] UserItem with DynamoDB keys
-- [ ] NewUserItem() function
-- [ ] ToResponse() conversion
-- [ ] UpdateUserRequest
-- [ ] Unit tests passing
+- [x] User struct with storage tracking
+- [x] UserItem with DynamoDB keys
+- [x] NewUserItem() function
+- [x] ToResponse() conversion
+- [x] UpdateUserRequest
+- [x] Unit tests passing
 
 ### Task 1.5: Playlist Model
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
 - `backend/internal/models/playlist.go`
 - `backend/internal/models/playlist_test.go`
 
 **Acceptance Criteria**:
-- [ ] Playlist struct
-- [ ] PlaylistTrack for ordering
-- [ ] PlaylistItem and PlaylistTrackItem
-- [ ] Position zero-padding for sort order
-- [ ] ToResponse() conversion
-- [ ] CRUD request types
-- [ ] Unit tests passing
+- [x] Playlist struct
+- [x] PlaylistTrack for ordering
+- [x] PlaylistItem and PlaylistTrackItem
+- [x] Position zero-padding for sort order
+- [x] ToResponse() conversion
+- [x] CRUD request types
+- [x] Unit tests passing
 
 ### Task 1.6: Tag Model
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
 - `backend/internal/models/tag.go`
 - `backend/internal/models/tag_test.go`
 
 **Acceptance Criteria**:
-- [ ] Tag struct
-- [ ] TrackTag for associations
-- [ ] TagItem and TrackTagItem
-- [ ] GSI1 for tag-based track lookup
-- [ ] ToResponse() conversion
-- [ ] Unit tests passing
+- [x] Tag struct
+- [x] TrackTag for associations
+- [x] TagItem and TrackTagItem
+- [x] GSI1 for tag-based track lookup
+- [x] ToResponse() conversion
+- [x] Unit tests passing
 
 ### Task 1.7: Upload Model
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
 - `backend/internal/models/upload.go`
 - `backend/internal/models/upload_test.go`
 
 **Acceptance Criteria**:
-- [ ] Upload struct with status tracking
-- [ ] UploadItem with status GSI
-- [ ] PresignedUploadRequest/Response
-- [ ] ConfirmUploadRequest/Response
-- [ ] UploadMetadata for extracted data
-- [ ] ToResponse() conversion
-- [ ] Unit tests passing
+- [x] Upload struct with status tracking
+- [x] UploadItem with status GSI
+- [x] PresignedUploadRequest/Response (1GB max, multipart support)
+- [x] ConfirmUploadRequest/Response
+- [x] UploadMetadata for extracted data
+- [x] ToResponse() conversion
+- [x] Step tracking for partial success recovery (per design)
+- [x] Multipart upload tracking fields
+- [x] ReprocessUploadRequest for retry from specific step
+- [x] CoverArtUploadRequest/Response
+- [x] CompleteMultipartUploadRequest
+- [x] Unit tests passing
+
+### Task 1.8: Search Models
+**Status**: [x] Complete
+**Files**:
+- `backend/internal/models/search.go`
+
+**Acceptance Criteria**:
+- [x] SearchRequest with cursor-based pagination (per design)
+- [x] SearchResponse with nextCursor and hasMore
+- [x] NixieSearchQuery with search_after for pagination
+- [x] SearchFilters and SearchSort
+- [x] SearchFacets for filtering UI
+
+### Task 1.9: Error Models
+**Status**: [x] Complete
+**Files**:
+- `backend/internal/models/errors.go`
+
+**Acceptance Criteria**:
+- [x] APIError base struct
+- [x] Common errors (NotFound, Unauthorized, etc.)
+- [x] Upload-specific errors (UploadExpired, UploadNotFound, etc.)
+- [x] ErrInvalidCursor for pagination errors
+- [x] NewValidationError, NewNotFoundError, NewConflictError helpers
 
 ---
 
@@ -228,19 +258,21 @@
 
 | Group | Tasks | Status |
 |-------|-------|--------|
-| Group 1: Domain Models | 7 | Not Started |
+| Group 1: Domain Models | 9 | **Complete** |
 | Group 2: Repository Layer | 4 | Not Started |
 | Group 3: Service Layer | 1 | Not Started |
 | Group 4: HTTP Handlers | 2 | Not Started |
-| **Total** | **14** | **Not Started** |
+| **Total** | **16** | **1 Complete** |
 
 ---
 
-## Design Questions to Resolve
+## Design Questions Resolved
 
-Before implementation, clarify:
-1. S3 storage class (Intelligent-Tiering vs Standard?)
-2. Caching strategy (CloudFront? DynamoDB DAX? In-memory?)
-3. Search indexing approach (real-time vs batch?)
-4. Error handling patterns
-5. Pagination cursor format
+All design questions have been resolved in `design.md`:
+1. S3 storage class → **Intelligent-Tiering** (auto-moves between tiers based on access)
+2. Caching strategy → **CloudFront only** (cache static assets and API responses at edge)
+3. Search indexing approach → **Hybrid** (real-time for new tracks, weekly batch re-index)
+4. Pagination cursor format → **Opaque base64** (encode lastEvaluatedKey as base64)
+5. Retry strategy → **AWS SDK defaults** (3 retries with exponential backoff)
+6. Upload failures → **Partial success** (continue even if some steps fail, allow re-processing)
+7. Max file size → **1 GB** (requires multipart upload handling)
