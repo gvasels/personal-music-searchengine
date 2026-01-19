@@ -1,5 +1,19 @@
 # Design - Foundation Backend
 
+## Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **S3 Storage Class** | Intelligent-Tiering | Auto-moves between tiers based on access patterns. No retrieval fees. Best for unpredictable access. |
+| **Caching** | CloudFront only | Cache static assets and API responses at edge. Simple, no extra infrastructure needed. |
+| **Search Indexing** | Hybrid | Real-time indexing for new tracks (DynamoDB Streams → Lambda), weekly batch re-index for consistency. |
+| **Pagination** | Opaque base64 cursor | Encode `lastEvaluatedKey` as base64. Client treats as black box. Prevents cursor tampering. |
+| **Retries** | AWS SDK defaults | 3 retries with exponential backoff. Handles transient failures well. |
+| **Upload Failures** | Partial success | Continue processing even if some steps fail (e.g., cover art). Track what succeeded. Allow re-processing. |
+| **Max File Size** | 1 GB | Supports uncompressed WAV and large FLAC. Requires multipart upload handling. |
+
+---
+
 ## Architecture
 
 ```
@@ -147,6 +161,8 @@ type UploadService interface {
     ConfirmUpload(ctx context.Context, userID string, req models.ConfirmUploadRequest) (*models.ConfirmUploadResponse, error)
     GetUploadStatus(ctx context.Context, userID, uploadID string) (*models.UploadResponse, error)
     ListUploads(ctx context.Context, userID string, filter models.UploadFilter) (*models.PaginatedResult[models.UploadResponse], error)
+    ReprocessUpload(ctx context.Context, userID, uploadID string) (*models.UploadResponse, error)
+    UploadCoverArt(ctx context.Context, userID, trackID string, req models.CoverArtUploadRequest) (*models.TrackResponse, error)
 }
 ```
 
@@ -223,6 +239,8 @@ func NewHandlers(
 | POST | `/api/v1/upload/confirm` | ConfirmUpload | Trigger processing |
 | GET | `/api/v1/uploads` | ListUploads | List upload history |
 | GET | `/api/v1/uploads/:id` | GetUpload | Get upload status |
+| POST | `/api/v1/uploads/:id/reprocess` | ReprocessUpload | Retry failed processing steps |
+| PUT | `/api/v1/tracks/:id/cover` | UploadCoverArt | Manually upload cover art |
 
 ### Streaming Endpoints
 | Method | Path | Handler | Description |
@@ -284,6 +302,142 @@ const (
     ErrCodeStorageLimit   = "STORAGE_LIMIT_EXCEEDED"
 )
 ```
+
+## Upload Processing Pipeline
+
+### Step Functions Workflow
+
+```
+┌─────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│  Confirm    │───►│ Extract Metadata │───►│ Extract Cover   │
+│  Upload     │    │ (dhowden/tag)    │    │ Art (optional)  │
+└─────────────┘    └──────────────────┘    └────────┬────────┘
+                                                    │
+                   ┌──────────────────┐    ┌────────▼────────┐
+                   │  Index for       │◄───│  Create Track   │
+                   │  Search          │    │  in DynamoDB    │
+                   └────────┬─────────┘    └─────────────────┘
+                            │
+                   ┌────────▼─────────┐    ┌─────────────────┐
+                   │  Move to Media   │───►│  Update Status  │
+                   │  Bucket          │    │  (Complete)     │
+                   └──────────────────┘    └─────────────────┘
+```
+
+### Partial Success Handling
+
+Each step tracks its status independently:
+- `metadata_extracted`: true/false
+- `cover_art_extracted`: true/false (optional - continues if fails)
+- `track_created`: true/false
+- `indexed`: true/false
+- `file_moved`: true/false
+
+If cover art extraction fails, processing continues. User can manually upload cover art later.
+
+### Re-processing Support
+
+Failed or partially successful uploads can be re-processed:
+- `POST /api/v1/uploads/:id/reprocess` - Retry failed steps
+- `PUT /api/v1/tracks/:id/cover` - Manually upload cover art
+
+### Multipart Upload (for files > 100MB)
+
+S3 presigned URLs support multipart upload for files up to 1GB:
+1. Client requests presigned URL with `multipart: true`
+2. Service returns presigned URLs for each part (5MB chunks)
+3. Client uploads parts in parallel
+4. Client calls complete multipart upload
+
+---
+
+## S3 Bucket Structure
+
+```
+music-library-{account-id}/
+├── uploads/                    # Temporary upload location
+│   └── {userId}/
+│       └── {uploadId}/
+│           └── original.{ext}
+├── media/                      # Processed audio files
+│   └── {userId}/
+│       └── {trackId}/
+│           ├── audio.{ext}
+│           └── cover.{jpg|png}
+└── search-index/               # Nixiesearch index files
+    └── {timestamp}/
+        └── index.json
+```
+
+### Intelligent-Tiering Configuration
+
+- Objects automatically transition between access tiers
+- Archive Access tier after 90 days of no access
+- Deep Archive Access tier after 180 days
+- No minimum storage duration charges
+
+---
+
+## CloudFront Configuration
+
+### Cache Behaviors
+
+| Path Pattern | TTL | Origin | Notes |
+|--------------|-----|--------|-------|
+| `/api/*` | 0 | API Gateway | No caching for API calls |
+| `/media/*` | 86400 (1 day) | S3 media bucket | Signed URLs required |
+| `/*` | 31536000 (1 year) | S3 frontend | Static assets with versioning |
+
+### Signed URLs
+
+- Media files require CloudFront signed URLs
+- URL expiry: 4 hours for streaming, 24 hours for download
+- Key pair managed via AWS Secrets Manager
+
+---
+
+## Pagination Implementation
+
+### Cursor Format (Base64 Encoded)
+
+```go
+type PaginationCursor struct {
+    PK       string `json:"pk"`
+    SK       string `json:"sk"`
+    GSI1PK   string `json:"gsi1pk,omitempty"`
+    GSI1SK   string `json:"gsi1sk,omitempty"`
+}
+
+// Encode cursor for client
+func EncodeCursor(lastKey map[string]types.AttributeValue) string {
+    cursor := PaginationCursor{...}
+    json, _ := json.Marshal(cursor)
+    return base64.URLEncoding.EncodeToString(json)
+}
+
+// Decode cursor from client
+func DecodeCursor(encoded string) (map[string]types.AttributeValue, error) {
+    json, _ := base64.URLEncoding.DecodeString(encoded)
+    var cursor PaginationCursor
+    json.Unmarshal(json, &cursor)
+    return cursor.ToAttributeValue(), nil
+}
+```
+
+### Response Format
+
+```json
+{
+  "items": [...],
+  "pagination": {
+    "cursor": "eyJwayI6IlVTRVIjMTIzIiwic2siOiJUUkFDSyM0NTYifQ==",
+    "hasMore": true,
+    "limit": 20
+  }
+}
+```
+
+---
 
 ## Testing Strategy
 
