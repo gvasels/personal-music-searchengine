@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -20,17 +21,36 @@ const (
 	partSize           = 5 * 1024 * 1024   // 5 MB parts
 )
 
-// uploadService implements UploadService
-type uploadService struct {
+// StepFunctionsClient interface for starting executions
+type StepFunctionsClient interface {
+	StartExecution(ctx context.Context, input *StepFunctionsStartInput) (*StepFunctionsStartOutput, error)
+}
+
+// StepFunctionsStartInput represents input for starting a Step Functions execution
+type StepFunctionsStartInput struct {
+	StateMachineArn string
+	Name            string
+	Input           string
+}
+
+// StepFunctionsStartOutput represents output from starting a Step Functions execution
+type StepFunctionsStartOutput struct {
+	ExecutionArn string
+	StartDate    time.Time
+}
+
+// UploadServiceImpl implements UploadService (exported for type assertion)
+type UploadServiceImpl struct {
 	repo             repository.Repository
 	s3Repo           repository.S3Repository
 	mediaBucket      string
 	stepFunctionsARN string
+	sfnClient        StepFunctionsClient
 }
 
 // NewUploadService creates a new upload service
 func NewUploadService(repo repository.Repository, s3Repo repository.S3Repository, mediaBucket string, stepFunctionsARN string) UploadService {
-	return &uploadService{
+	return &UploadServiceImpl{
 		repo:             repo,
 		s3Repo:           s3Repo,
 		mediaBucket:      mediaBucket,
@@ -38,7 +58,12 @@ func NewUploadService(repo repository.Repository, s3Repo repository.S3Repository
 	}
 }
 
-func (s *uploadService) CreatePresignedUpload(ctx context.Context, userID string, req models.PresignedUploadRequest) (*models.PresignedUploadResponse, error) {
+// SetStepFunctionsClient sets the Step Functions client for triggering workflows
+func (s *UploadServiceImpl) SetStepFunctionsClient(client StepFunctionsClient) {
+	s.sfnClient = client
+}
+
+func (s *UploadServiceImpl) CreatePresignedUpload(ctx context.Context, userID string, req models.PresignedUploadRequest) (*models.PresignedUploadResponse, error) {
 	// Check user storage limit
 	user, err := s.repo.GetUser(ctx, userID)
 	if err != nil && err != repository.ErrNotFound {
@@ -114,7 +139,7 @@ func (s *uploadService) CreatePresignedUpload(ctx context.Context, userID string
 	return response, nil
 }
 
-func (s *uploadService) ConfirmUpload(ctx context.Context, userID string, req models.ConfirmUploadRequest) (*models.ConfirmUploadResponse, error) {
+func (s *UploadServiceImpl) ConfirmUpload(ctx context.Context, userID string, req models.ConfirmUploadRequest) (*models.ConfirmUploadResponse, error) {
 	upload, err := s.repo.GetUpload(ctx, userID, req.UploadID)
 	if err != nil {
 		if err == repository.ErrNotFound {
@@ -145,8 +170,31 @@ func (s *uploadService) ConfirmUpload(ctx context.Context, userID string, req mo
 		return nil, err
 	}
 
-	// TODO: Trigger Step Functions workflow for processing
-	// For now, return processing status
+	// Trigger Step Functions workflow for processing
+	if s.sfnClient != nil && s.stepFunctionsARN != "" {
+		input := map[string]interface{}{
+			"uploadId":   upload.ID,
+			"userId":     upload.UserID,
+			"s3Key":      upload.S3Key,
+			"fileName":   upload.FileName,
+			"bucketName": s.mediaBucket,
+		}
+		inputJSON, err := json.Marshal(input)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal Step Functions input: %w", err)
+		}
+
+		_, err = s.sfnClient.StartExecution(ctx, &StepFunctionsStartInput{
+			StateMachineArn: s.stepFunctionsARN,
+			Name:            fmt.Sprintf("upload-%s-%d", upload.ID, time.Now().Unix()),
+			Input:           string(inputJSON),
+		})
+		if err != nil {
+			// Log error but don't fail - upload is already marked as processing
+			// Status will be updated by Step Functions or timeout handler
+			fmt.Printf("Warning: failed to start Step Functions execution: %v\n", err)
+		}
+	}
 
 	return &models.ConfirmUploadResponse{
 		UploadID: req.UploadID,
@@ -155,7 +203,7 @@ func (s *uploadService) ConfirmUpload(ctx context.Context, userID string, req mo
 	}, nil
 }
 
-func (s *uploadService) CompleteMultipartUpload(ctx context.Context, userID string, req models.CompleteMultipartUploadRequest) (*models.ConfirmUploadResponse, error) {
+func (s *UploadServiceImpl) CompleteMultipartUpload(ctx context.Context, userID string, req models.CompleteMultipartUploadRequest) (*models.ConfirmUploadResponse, error) {
 	upload, err := s.repo.GetUpload(ctx, userID, req.UploadID)
 	if err != nil {
 		if err == repository.ErrNotFound {
@@ -185,7 +233,7 @@ func (s *uploadService) CompleteMultipartUpload(ctx context.Context, userID stri
 	return s.ConfirmUpload(ctx, userID, models.ConfirmUploadRequest{UploadID: req.UploadID})
 }
 
-func (s *uploadService) GetUploadStatus(ctx context.Context, userID, uploadID string) (*models.UploadResponse, error) {
+func (s *UploadServiceImpl) GetUploadStatus(ctx context.Context, userID, uploadID string) (*models.UploadResponse, error) {
 	upload, err := s.repo.GetUpload(ctx, userID, uploadID)
 	if err != nil {
 		if err == repository.ErrNotFound {
@@ -198,7 +246,7 @@ func (s *uploadService) GetUploadStatus(ctx context.Context, userID, uploadID st
 	return &response, nil
 }
 
-func (s *uploadService) ListUploads(ctx context.Context, userID string, filter models.UploadFilter) (*repository.PaginatedResult[models.UploadResponse], error) {
+func (s *UploadServiceImpl) ListUploads(ctx context.Context, userID string, filter models.UploadFilter) (*repository.PaginatedResult[models.UploadResponse], error) {
 	result, err := s.repo.ListUploads(ctx, userID, filter)
 	if err != nil {
 		return nil, err
@@ -216,7 +264,7 @@ func (s *uploadService) ListUploads(ctx context.Context, userID string, filter m
 	}, nil
 }
 
-func (s *uploadService) ReprocessUpload(ctx context.Context, userID, uploadID string, req models.ReprocessUploadRequest) (*models.UploadResponse, error) {
+func (s *UploadServiceImpl) ReprocessUpload(ctx context.Context, userID, uploadID string, req models.ReprocessUploadRequest) (*models.UploadResponse, error) {
 	upload, err := s.repo.GetUpload(ctx, userID, uploadID)
 	if err != nil {
 		if err == repository.ErrNotFound {
@@ -244,7 +292,7 @@ func (s *uploadService) ReprocessUpload(ctx context.Context, userID, uploadID st
 	return &response, nil
 }
 
-func (s *uploadService) UploadCoverArt(ctx context.Context, userID, trackID string, req models.CoverArtUploadRequest) (*models.CoverArtUploadResponse, error) {
+func (s *UploadServiceImpl) UploadCoverArt(ctx context.Context, userID, trackID string, req models.CoverArtUploadRequest) (*models.CoverArtUploadResponse, error) {
 	// Verify track exists
 	track, err := s.repo.GetTrack(ctx, userID, trackID)
 	if err != nil {

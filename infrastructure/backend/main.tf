@@ -78,17 +78,61 @@ locals {
 
 # Outputs
 output "step_functions_arn" {
-  value = aws_sfn_state_machine.upload_processor.arn
+  description = "Upload processor state machine ARN"
+  value       = aws_sfn_state_machine.upload_processor.arn
 }
 
 output "api_lambda_arn" {
-  value = aws_lambda_function.api.arn
+  description = "API Lambda function ARN"
+  value       = aws_lambda_function.api.arn
+}
+
+output "api_lambda_name" {
+  description = "API Lambda function name"
+  value       = aws_lambda_function.api.function_name
 }
 
 output "metadata_extractor_lambda_arn" {
-  value = aws_lambda_function.metadata_extractor.arn
+  description = "Metadata extractor Lambda ARN"
+  value       = aws_lambda_function.metadata_extractor.arn
+}
+
+output "cover_art_processor_lambda_arn" {
+  description = "Cover art processor Lambda ARN"
+  value       = aws_lambda_function.cover_art_processor.arn
+}
+
+output "track_creator_lambda_arn" {
+  description = "Track creator Lambda ARN"
+  value       = aws_lambda_function.track_creator.arn
+}
+
+output "file_mover_lambda_arn" {
+  description = "File mover Lambda ARN"
+  value       = aws_lambda_function.file_mover.arn
 }
 
 output "search_indexer_lambda_arn" {
-  value = aws_lambda_function.search_indexer.arn
+  description = "Search indexer Lambda ARN"
+  value       = aws_lambda_function.search_indexer.arn
+}
+
+output "upload_status_updater_lambda_arn" {
+  description = "Upload status updater Lambda ARN"
+  value       = aws_lambda_function.upload_status_updater.arn
+}
+
+output "api_gateway_id" {
+  description = "API Gateway HTTP API ID"
+  value       = aws_apigatewayv2_api.api.id
+}
+
+output "api_gateway_url" {
+  description = "API Gateway invoke URL"
+  value       = aws_apigatewayv2_stage.default.invoke_url
+}
+
+output "cognito_authorizer_id" {
+  description = "API Gateway Cognito authorizer ID"
+  value       = aws_apigatewayv2_authorizer.cognito.id
 }

@@ -7,6 +7,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+
+#### Epic 1: Foundation Backend
+- Go domain models (Track, Album, Artist, Playlist, User, Tag, Upload)
+- DynamoDB single-table design with repository layer
+- Service layer with business logic (TrackService, AlbumService, etc.)
+- HTTP handlers using Echo framework
+- OpenAPI specification for REST API
+
+#### Epic 2: Backend API
+- API Lambda entrypoint with dual mode (Lambda/HTTP)
+- Audio metadata extraction package (MP3, FLAC, WAV, OGG support)
+- Upload processing pipeline Lambdas:
+  - Metadata extractor Lambda
+  - Cover art processor Lambda
+  - Track creator Lambda
+  - File mover Lambda
+  - Search indexer stub Lambda
+  - Upload status updater Lambda
+- API Gateway HTTP API with Cognito JWT authorizer
+- Infrastructure for all Lambda functions (ARM64, provided.al2023)
+- LocalStack docker-compose for local development
+- Makefile for build and test commands
+
+#### Initial Setup
 - Initial project setup
 - SDLC workflow plugins (6 phases)
 - Specialized agents for development tasks
