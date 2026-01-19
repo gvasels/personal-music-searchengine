@@ -18,6 +18,8 @@ Business logic layer implementing domain operations for the Personal Music Searc
 | `stream.go` | StreamService - streaming and download URL generation |
 | `search.go` | SearchService - Nixiesearch integration for full-text search |
 | `search_test.go` | Unit tests for SearchService |
+| `transcode.go` | TranscodeService - MediaConvert HLS transcoding |
+| `transcode_test.go` | Unit tests for TranscodeService |
 
 ## Service Interfaces
 
@@ -79,6 +81,11 @@ Business logic layer implementing domain operations for the Personal Music Searc
 - `IndexTrack` - Index a track in the search engine
 - `RemoveTrack` - Remove a track from the search index
 - `RebuildIndex` - Rebuild the entire search index for a user
+
+### TranscodeService
+- `StartTranscode` - Create MediaConvert job for HLS transcoding
+- `GetTranscodeStatus` - Get status of a MediaConvert job
+- `buildJobSettings` - Build MediaConvert job settings for HLS output
 
 ## Dependencies
 
