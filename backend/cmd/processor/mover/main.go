@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -14,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
+	"github.com/gvasels/personal-music-searchengine/internal/validation"
 )
 
 // Event represents the input from Step Functions
@@ -55,6 +57,10 @@ func init() {
 }
 
 func handleRequest(ctx context.Context, event Event) (*Response, error) {
+	// Add timeout to context (5 seconds less than Lambda timeout)
+	ctx, cancel := context.WithTimeout(ctx, validation.ProcessorTimeoutSeconds*time.Second)
+	defer cancel()
+
 	if event.Track == nil || event.Track.TrackID == "" {
 		return nil, fmt.Errorf("track ID is required")
 	}

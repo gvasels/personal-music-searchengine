@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/gvasels/personal-music-searchengine/internal/metadata"
 	"github.com/gvasels/personal-music-searchengine/internal/models"
+	"github.com/gvasels/personal-music-searchengine/internal/validation"
 )
 
 // Event represents the input from Step Functions
@@ -41,6 +43,15 @@ func init() {
 }
 
 func handleRequest(ctx context.Context, event Event) (*Response, error) {
+	// Add timeout to context (5 seconds less than Lambda timeout)
+	ctx, cancel := context.WithTimeout(ctx, validation.ProcessorTimeoutSeconds*time.Second)
+	defer cancel()
+
+	// Validate file size before download to prevent OOM
+	if err := validation.ValidateFileSize(ctx, s3Client, event.BucketName, event.S3Key); err != nil {
+		return nil, fmt.Errorf("file validation failed: %w", err)
+	}
+
 	// Download file from S3
 	data, err := downloadFromS3(ctx, event.BucketName, event.S3Key)
 	if err != nil {
