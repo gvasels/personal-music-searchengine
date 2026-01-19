@@ -1,0 +1,15 @@
+# MCP Server Credentials
+export GITHUB_MCP_TOKEN="your-github-personal-access-token"
+export GOOGLE_OAUTH_CLIENT_ID="your-google-oauth-client-id"
+export GOOGLE_OAUTH_CLIENT_SECRET="your-google-oauth-client-secret"
+export CONTEXT7_API_KEY="your-context7-api-key"
+
+# AWS Settings (used by awslabs MCP servers)
+export AWS_PROFILE="oopo-management"
+export AWS_REGION="us-east-1"
+
+# memory server configurations - see https://github.com/RLabs-Inc/memory
+export MEMORY_RETRIEVAL_MODE="hybrid"
+
+#daisy UI LICENSE KEY
+export DAISY_UI_MCP_LICENSE="license-number"

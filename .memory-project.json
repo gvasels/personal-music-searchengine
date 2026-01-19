@@ -1,0 +1,12 @@
+{
+  "project_id": "oopo-dev-platform",
+  "description": "dev platform which powers oopo.io",
+  "memory_api_url": "http://localhost:8765",
+  "max_memories": 5,
+  "notes": {
+    "environment_setup_priority": {
+      "created": "2025-12-10",
+      "note": "Before code implementation, set up environment to leverage Claude Code features. Workflow goal: Create GitHub issue → @claude agent responds → agent calls necessary skills → skills passed into plugin → plugin applies to subagents as needed → MCP servers invoked as needed. This establishes the full automation chain from issue creation to implementation."
+    }
+  }
+}

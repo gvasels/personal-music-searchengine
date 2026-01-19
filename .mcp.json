@@ -1,0 +1,103 @@
+{
+  "mcpServers": {
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp", "--api-key", "${CONTEXT7_API_KEY}"]
+    },
+    "docs-mcp-server": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@arabold/docs-mcp-server@latest"]
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    },
+    "awslabs.aws-documentation-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.aws-documentation-mcp-server@latest"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR",
+        "AWS_DOCUMENTATION_PARTITION": "aws",
+        "MCP_USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "aws-knowledge-mcp-server": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["fastmcp", "run", "https://knowledge-mcp.global.api.aws"]
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_MCP_TOKEN}"
+      }
+    },
+    "awslabs.dynamodb-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.dynamodb-mcp-server@latest"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "awslabs.syntheticdata-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.syntheticdata-mcp-server"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR",
+        "AWS_PROFILE": "${AWS_PROFILE}",
+        "AWS_REGION": "us-east-1"
+      },
+      "autoApprove": [],
+      "disabled": false
+    },
+    "spec-workflow": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@pimzino/spec-workflow-mcp@latest", "/Users/gvasels/projects/personal/personal-music-searchengine"]
+    },
+    "awslabs.aws-api-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-api-mcp-server@latest"
+      ],
+      "env": {
+        "AWS_REGION": "us-east-1"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "awslabs.finch-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.finch-mcp-server@latest"],
+      "env": {
+        "AWS_PROFILE": "${AWS_PROFILE}",
+        "AWS_REGION": "${AWS_REGION}",
+        "FASTMCP_LOG_LEVEL": "INFO"
+      },
+      "transportType": "stdio",
+      "disabled": false,
+      "autoApprove": []
+    },
+    "opentofu": {
+      "command": "npx",
+      "args": ["-y", "@opentofu/opentofu-mcp-server"]
+    },
+    "daisyui-blueprint": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "daisyui-blueprint@latest"],
+        "env": {
+          "LICENSE": "${DAISY_UI_MCP_LICENSE}",
+          "EMAIL": "gvasels90@gmail.com"
+        }
+      }
+  }
+}
