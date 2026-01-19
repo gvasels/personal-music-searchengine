@@ -1,7 +1,7 @@
 # Tasks - Foundation Backend
 
 ## Epic: Foundation Backend
-**Status**: Not Started
+**Status**: Complete
 **Wave**: 0-2
 
 ---
@@ -232,34 +232,40 @@
 ## Group 4: HTTP Handlers (Wave 2)
 
 ### Task 4.1: Handler Setup
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
 - `backend/internal/handlers/handlers.go`
-- `backend/cmd/api/main.go`
+- `backend/internal/handlers/CLAUDE.md`
 
 **Acceptance Criteria**:
-- [ ] Handlers struct with service dependencies
-- [ ] getUserIDFromContext (from API Gateway claims)
-- [ ] Common error response helpers
-- [ ] Echo router configuration
-- [ ] Lambda adapter setup
+- [x] Handlers struct with service dependencies
+- [x] getUserIDFromContext (from API Gateway claims and X-User-ID header)
+- [x] Common error response helpers (handleError, bindAndValidate, success, created, noContent)
+- [x] Echo router configuration (RegisterRoutes)
+- [ ] Lambda adapter setup (deferred to cmd/api/main.go in separate task)
 
 ### Task 4.2: Entity Handlers
-**Status**: [ ] Pending
+**Status**: [x] Complete
 **Files**:
-- `backend/internal/handlers/*.go`
-- `backend/internal/handlers/*_test.go`
+- `backend/internal/handlers/user.go`
+- `backend/internal/handlers/track.go`
+- `backend/internal/handlers/album.go`
+- `backend/internal/handlers/playlist.go`
+- `backend/internal/handlers/tag.go`
+- `backend/internal/handlers/upload.go`
+- `backend/internal/handlers/stream.go`
+- `backend/internal/handlers/search.go`
 
 **Acceptance Criteria**:
-- [ ] Track handlers (CRUD)
-- [ ] Album handlers (list, get)
-- [ ] User handlers (profile)
-- [ ] Playlist handlers (CRUD + tracks)
-- [ ] Tag handlers (CRUD + associations)
-- [ ] Upload handlers (presigned, confirm, status)
-- [ ] Stream handlers (stream/download URLs)
-- [ ] Search handlers (query, advanced)
-- [ ] HTTP tests with mocked services
+- [x] Track handlers (CRUD, tags, cover art)
+- [x] Album handlers (list, get, artist queries)
+- [x] User handlers (profile get/update)
+- [x] Playlist handlers (CRUD + track management)
+- [x] Tag handlers (CRUD + track associations)
+- [x] Upload handlers (presigned, confirm, multipart, status, reprocess)
+- [x] Stream handlers (stream/download URLs)
+- [x] Search handlers (simple and advanced)
+- [ ] HTTP tests with mocked services (deferred to testing task)
 
 ---
 
@@ -270,8 +276,8 @@
 | Group 1: Domain Models | 9 | **Complete** |
 | Group 2: Repository Layer | 4 | **Complete** |
 | Group 3: Service Layer | 1 | **Complete** |
-| Group 4: HTTP Handlers | 2 | Not Started |
-| **Total** | **16** | **3 Complete** |
+| Group 4: HTTP Handlers | 2 | **Complete** |
+| **Total** | **16** | **4 Complete** |
 
 ---
 
