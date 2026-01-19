@@ -13,6 +13,7 @@ import (
 
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
+	"github.com/gvasels/personal-music-searchengine/internal/validation"
 )
 
 // Event represents the input from Step Functions
@@ -56,6 +57,18 @@ func init() {
 }
 
 func handleRequest(ctx context.Context, event Event) (*Response, error) {
+	// Add timeout to context (5 seconds less than Lambda timeout)
+	ctx, cancel := context.WithTimeout(ctx, validation.ProcessorTimeoutSeconds*time.Second)
+	defer cancel()
+
+	// Validate input UUIDs to prevent injection attacks
+	if err := validation.ValidateUUID(event.UserID, "userId"); err != nil {
+		return nil, err
+	}
+	if err := validation.ValidateUUID(event.UploadID, "uploadId"); err != nil {
+		return nil, err
+	}
+
 	trackID := uuid.New().String()
 	now := time.Now()
 
