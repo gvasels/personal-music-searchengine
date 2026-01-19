@@ -2,26 +2,14 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+    types: [opened, synchronize]
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
       id-token: write
 
@@ -29,16 +17,220 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.0"
+          tofu_wrapper: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install security tools
+        run: |
+          # Install gitleaks for secrets detection
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.0/gitleaks_8.18.0_linux_x64.tar.gz | tar -xz -C /usr/local/bin gitleaks
+          # Install checkov for IaC security
+          pip install checkov
+
+      - name: Run Go Tests
+        id: go-tests
+        continue-on-error: true
+        run: |
+          test_output=""
+          if [ -f "backend/go.mod" ]; then
+            echo "::group::Testing backend"
+            cd backend
+
+            # Run tests with coverage
+            if go test ./... -cover -json > test_output.json 2>&1; then
+              passed=$(grep -c '"Action":"pass"' test_output.json || echo "0")
+              failed=$(grep -c '"Action":"fail"' test_output.json || echo "0")
+              test_output="| backend | ${passed} | ${failed} | :white_check_mark: |"
+            else
+              test_output="| backend | - | - | :x: |"
+            fi
+
+            rm -f test_output.json
+            cd - > /dev/null
+            echo "::endgroup::"
+          fi
+
+          # Save test summary
+          echo "TEST_SUMMARY<<EOF" >> $GITHUB_OUTPUT
+          echo "| Service | Passed | Failed | Status |" >> $GITHUB_OUTPUT
+          echo "|---------|--------|--------|--------|" >> $GITHUB_OUTPUT
+          echo -e "$test_output" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Run Frontend Tests
+        id: frontend-tests
+        continue-on-error: true
+        run: |
+          if [ -f "frontend/package.json" ]; then
+            cd frontend
+            npm ci
+            npm test -- --run 2>&1 || true
+            cd - > /dev/null
+          fi
+
+      - name: Post Test Results
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const testSummary = `${{ steps.go-tests.outputs.TEST_SUMMARY }}`;
+            const body = `## :test_tube: Test Results
+
+            ${testSummary}
+
+            ---
+            *Automated test run from CI*`;
+
+            // Find existing test results comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.body.includes(':test_tube: Test Results')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
 
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
 
+            You are reviewing this PR for a personal music search engine project.
+
+            ## Get PR Changes
+
+            Use `gh pr diff ${{ github.event.pull_request.number }}` to get the changes.
+
+            ## Phase 5: Security Review
+
+            Run security scans on the changed files:
+
+            ### 5.1 Secrets Detection
+            ```bash
+            gitleaks detect --source . --verbose 2>/dev/null || echo "gitleaks not installed, manual review required"
+            ```
+
+            ### 5.2 SAST Checks (Manual Review)
+            Review code for OWASP Top 10:
+            - A01: Broken Access Control - Check authorization
+            - A02: Cryptographic Failures - Check encryption
+            - A03: Injection - Validate all inputs
+            - A05: Security Misconfiguration - Check configs
+            - A07: Auth Failures - Session/token handling
+
+            ### 5.3 Infrastructure Security (if OpenTofu files changed)
+            ```bash
+            checkov -d infrastructure/ --framework terraform 2>/dev/null || echo "checkov not installed, manual review required"
+            ```
+
+            ### 5.4 Dependency Vulnerabilities
+            Check for known CVEs in any new dependencies added.
+
+            ## Code Quality Review
+
+            ### Quality Checklist
+            1. **SOLID Principles** - Single responsibility, clean interfaces
+            2. **Naming** - Clear, descriptive variable/function names
+            3. **Function Size** - Functions < 50 lines preferred
+            4. **Error Handling** - All errors properly handled
+            5. **Performance** - No obvious N+1 queries, efficient algorithms
+
+            ## Phase 6: Documentation Verification
+
+            ### 6.1 CLAUDE.md Files (REQUIRED)
+            - [ ] CLAUDE.md exists in every NEW directory
+            - [ ] Existing CLAUDE.md updated if files added/modified
+            - Format: Overview, File table, Key functions with signatures
+
+            ### 6.2 Code Documentation
+            - [ ] GoDoc for public Go functions
+            - [ ] TSDoc for public TypeScript functions
+            - [ ] Complex logic has inline comments
+
+            ### 6.3 API Documentation
+            - [ ] OpenAPI spec updated for new endpoints
+            - [ ] README updated for new modules
+
+            ### 6.4 CHANGELOG
+            - [ ] CHANGELOG.md entry added for features/fixes
+
+            ## Project Standards
+
+            - OpenTofu (not Terraform) for infrastructure
+            - Go + Echo for backend services
+            - React + TypeScript + Vite for frontend
+            - DynamoDB single-table design
+            - Serverless-first architecture (Lambda)
+
+            ## Output Format
+
+            Post your review with this structure:
+
+            ```markdown
+            ## Code Review Summary
+
+            **Overall Rating**: X/5
+
+            ### Security Findings (Phase 5)
+            - [ ] Secrets scan: PASS/FAIL
+            - [ ] OWASP review: PASS/FAIL
+            - [ ] IaC security: PASS/FAIL/N/A
+            - Critical issues: (list any)
+
+            ### Code Quality
+            - (findings)
+
+            ### Documentation Check (Phase 6)
+            - [ ] CLAUDE.md present in new directories: YES/NO
+            - [ ] Code documentation: PASS/FAIL
+            - [ ] CHANGELOG updated: YES/NO
+
+            ### Critical Issues (must fix)
+            1. ...
+
+            ### Suggestions (nice to have)
+            1. ...
+
+            ### Verdict
+            APPROVE / REQUEST_CHANGES / COMMENT
+            ```
+
+            Use `gh pr comment ${{ github.event.pull_request.number }} --body "YOUR_REVIEW"` to post.
+
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gitleaks:*),Bash(checkov:*),Bash(semgrep:*),Read,Grep,Glob"'

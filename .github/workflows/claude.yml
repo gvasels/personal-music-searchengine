@@ -6,45 +6,305 @@ on:
   pull_request_review_comment:
     types: [created]
   issues:
-    types: [opened, assigned]
+    types: [opened]
   pull_request_review:
     types: [submitted]
 
+# Prevent duplicate runs on the same issue/PR
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.event.comment.id }}
+  cancel-in-progress: false
+
 jobs:
   claude:
+    # Filter out bot comments to prevent duplicate runs
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && github.event.comment.user.type != 'Bot') ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && github.event.comment.user.type != 'Bot') ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && github.event.review.user.type != 'Bot') ||
+      (github.event_name == 'issues' && github.event.action == 'opened' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.0"
+          tofu_wrapper: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python and uv
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv for MCP servers
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install security tools
+        run: |
+          # Install gitleaks for secrets detection
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.0/gitleaks_8.18.0_linux_x64.tar.gz | tar -xz -C /usr/local/bin gitleaks
+          # Install checkov for IaC security
+          pip install checkov
+          # Install golangci-lint
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v1.55.2
+
+      - name: Run Go Tests
+        id: go-tests
+        continue-on-error: true
+        run: |
+          test_output=""
+          if [ -f "backend/go.mod" ]; then
+            echo "::group::Testing backend"
+            cd backend
+
+            if go test ./... -cover -json > test_output.json 2>&1; then
+              passed=$(grep -c '"Action":"pass"' test_output.json || echo "0")
+              failed=$(grep -c '"Action":"fail"' test_output.json || echo "0")
+              test_output="| backend | ${passed} | ${failed} | :white_check_mark: |"
+            else
+              test_output="| backend | - | - | :x: |"
+            fi
+
+            rm -f test_output.json
+            cd - > /dev/null
+            echo "::endgroup::"
+          fi
+
+          echo "TEST_SUMMARY<<EOF" >> $GITHUB_OUTPUT
+          echo "| Service | Passed | Failed | Status |" >> $GITHUB_OUTPUT
+          echo "|---------|--------|--------|--------|" >> $GITHUB_OUTPUT
+          echo -e "$test_output" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post Test Results
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const testSummary = `${{ steps.go-tests.outputs.TEST_SUMMARY }}`;
+            const body = `## :test_tube: Test Results (Pre-Implementation)
+
+            ${testSummary}
+
+            ---
+            *Automated test run before Claude starts implementation*`;
+
+            const issueNumber = context.issue?.number || context.payload.issue?.number;
+            if (!issueNumber) {
+              console.log('No issue number found, skipping test results comment');
+              return;
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.body.includes(':test_tube: Test Results')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: body
+              });
+            }
+
+      - name: Create CI-specific MCP configuration
+        run: |
+          cat > .mcp.json << 'EOF'
+          {
+            "mcpServers": {
+              "spec-workflow": {
+                "type": "stdio",
+                "command": "npx",
+                "args": ["-y", "@pimzino/spec-workflow-mcp@latest", "${{ github.workspace }}"]
+              },
+              "opentofu": {
+                "type": "stdio",
+                "command": "npx",
+                "args": ["-y", "@opentofu/opentofu-mcp-server"]
+              },
+              "awslabs.aws-documentation-mcp-server": {
+                "type": "stdio",
+                "command": "uvx",
+                "args": ["awslabs.aws-documentation-mcp-server@latest"],
+                "env": {
+                  "FASTMCP_LOG_LEVEL": "ERROR"
+                }
+              },
+              "github": {
+                "type": "stdio",
+                "command": "npx",
+                "args": ["-y", "@modelcontextprotocol/server-github"],
+                "env": {
+                  "GITHUB_PERSONAL_ACCESS_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                }
+              }
+            }
+          }
+          EOF
 
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
+        env:
+          AWS_REGION: us-east-1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
-          # This is an optional setting that allows Claude to read CI results on PRs
+          claude_args: "--model claude-opus-4-5-20251101 --max-turns 100"
           additional_permissions: |
             actions: read
+          branch_prefix: "claude/issue-"
+          base_branch: "main"
+          track_progress: true
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
+          prompt: |
+            ## YOUR TASK
 
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr:*)'
+            You are an AI developer implementing features using a **5-Phase Development Workflow**.
+            Security review and code review happen automatically at PR level (CI) to save tokens.
 
+            ## DEVELOPMENT WORKFLOW (5 Phases)
+
+            ```
+            1.SPEC -> 2.TEST -> 3.CODE -> 4.BUILD -> 5.DOCS -> CREATE PR
+                                                              |
+                                                    +---------+---------+
+                                                    |  PR-Level (Auto)  |
+                                                    |  * Security Audit |
+                                                    |  * Code Review    |
+                                                    +-------------------+
+            ```
+
+            ### PHASE 1: SPECIFICATION (spec-workflow MCP)
+
+            Before any code:
+            1. Read the GitHub issue requirements
+            2. Check if spec exists in `.spec-workflow/specs/music-search-engine/`
+            3. If no spec exists, use spec-workflow MCP to create:
+               - `requirements.md` - User stories, acceptance criteria
+               - `design.md` - Data models, API contracts
+               - `tasks.md` - Implementation breakdown
+            4. Read existing specs: `design.md` for schemas, `tasks.md` for task details
+
+            ### PHASE 2: TESTING (test-engineer agent) - TDD RED PHASE
+
+            **MANDATORY**: Write failing tests BEFORE any implementation code.
+
+            ```
+            USE Task tool with subagent_type='test-engineer' to:
+            - Write unit tests for data models/validation
+            - Write integration tests for API endpoints
+            - Tests MUST fail initially (Red phase of TDD)
+            ```
+
+            ### PHASE 3: IMPLEMENTATION (implementation-agent) - TDD GREEN PHASE
+
+            **ONLY after tests exist and fail**, implement code to make them pass.
+
+            ```
+            USE Task tool with subagent_type='implementation-agent' to:
+            - Implement data models and validation
+            - Implement business logic
+            - Create API endpoints or infrastructure
+            - Make all tests pass (Green phase of TDD)
+            ```
+
+            ### PHASE 4: BUILD VERIFICATION
+
+            Run build verification commands directly:
+
+            ```bash
+            # For Go backend:
+            cd backend && go build ./... && go test ./... -v
+
+            # For OpenTofu:
+            cd infrastructure/[module] && tofu init && tofu validate
+
+            # For Frontend:
+            cd frontend && npm ci && npm run lint && npm test -- --run && npm run build
+            ```
+
+            **Quality Gates**: 0 errors, all tests pass
+
+            ### PHASE 5: DOCUMENTATION (documentation-generator agent)
+
+            ```
+            USE Task tool with subagent_type='documentation-generator' to:
+            - Create CLAUDE.md in new directories
+            - Add GoDoc/TSDoc comments to public functions
+            - **REQUIRED**: Update CHANGELOG.md with feature entry
+            ```
+
+            ### CREATE PR
+
+            After phases 1-5, create PR:
+            ```bash
+            gh pr create --title "Feature: [description]" --body "..."
+            ```
+
+            **Security and Code Review run automatically in CI on the PR.**
+
+            ## PHASE EXECUTION CHECKLIST
+
+            Use TodoWrite to track progress:
+            ```
+            [ ] Phase 1: Read specs / create if missing
+            [ ] Phase 2: Spawn test-engineer - write failing tests
+            [ ] Phase 3: Spawn implementation-agent - make tests pass
+            [ ] Phase 4: Run build verification commands
+            [ ] Phase 5: Spawn documentation-generator - docs + CHANGELOG
+            [ ] Create PR (CI handles security + code review)
+            ```
+
+            ## PROJECT CONTEXT
+
+            - **Infrastructure**: OpenTofu (NOT Terraform) in `infrastructure/` directory
+            - **Backend**: Go + Echo framework in `backend/`
+            - **Frontend**: React + TypeScript + Vite in `frontend/`
+            - **Database**: DynamoDB single-table design
+            - **Auth**: Cognito User Pool
+            - **Working Directory**: ${{ github.workspace }}
+            - **Specs Location**: `.spec-workflow/specs/music-search-engine/`
+
+            ## START NOW
+
+            1. Read the GitHub issue
+            2. Read CLAUDE.md and specs
+            3. Execute phases 1-5, then create PR
+            4. Do NOT skip the test-engineer phase - TDD is mandatory

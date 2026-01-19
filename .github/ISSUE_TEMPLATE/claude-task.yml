@@ -1,0 +1,114 @@
+name: "@claude Task"
+description: "Task for @claude to implement (wave-based execution)"
+title: "[Task] "
+labels: ["claude-task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Wave-Based Task for @claude
+
+        This template creates a task that @claude will implement. Tasks branch from and merge back to the specified base branch (typically a group branch for a feature).
+
+        **Workflow**: When this issue is opened with @claude mention, or when the "ready" label is added (dependencies met), @claude will automatically start working on it.
+
+  - type: input
+    id: base-branch
+    attributes:
+      label: Base Branch
+      description: "Branch to create task branch from (typically group-N/feature-name)"
+      placeholder: "group-1/upload-processing"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: wave
+    attributes:
+      label: Wave
+      description: "Which wave does this task belong to? Wave 0 is foundation (local only)."
+      options:
+        - "1"
+        - "2"
+        - "3"
+        - "4"
+        - "5"
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: "Issues that must be merged before this task can start. Leave empty if no dependencies."
+      placeholder: |
+        - #25 (Wave 0 foundation)
+        - #26 (Data models)
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Task Description
+      description: "Detailed description of what @claude should implement. Include file paths, contracts, and specific requirements."
+      placeholder: |
+        Implement the Track API endpoints including:
+        - Domain models in `backend/internal/models/`
+        - DynamoDB repository in `backend/internal/repository/`
+        - HTTP handlers in `backend/internal/handlers/`
+
+        Use the contracts defined in Wave 0:
+        ```go
+        type Track struct {
+            ID        string `json:"id"`
+            UserID    string `json:"user_id"`
+            // ...
+        }
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: files
+    attributes:
+      label: Files to Create/Modify
+      description: "List of files that will be created or modified"
+      placeholder: |
+        - `backend/internal/models/track.go` (create)
+        - `backend/internal/repository/track.go` (create)
+        - `backend/cmd/api/main.go` (modify)
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: "Checklist for verifying the task is complete"
+      placeholder: |
+        - [ ] All tests pass (`go test ./...`)
+        - [ ] Code builds without errors (`go build ./...`)
+        - [ ] No lint errors
+        - [ ] Follows existing patterns in the codebase
+        - [ ] CLAUDE.md updated for new directories
+    validations:
+      required: true
+
+  - type: textarea
+    id: contracts
+    attributes:
+      label: Contracts (from Wave 0)
+      description: "Type definitions, interfaces, or API contracts this task must conform to"
+      placeholder: |
+        ```go
+        // From Wave 0 foundation
+        type TrackRepository interface {
+            GetTrack(ctx context.Context, userID, trackID string) (*Track, error)
+            ListTracks(ctx context.Context, userID string, opts ListOptions) ([]Track, error)
+        }
+        ```
+
+  - type: checkboxes
+    id: claude-mention
+    attributes:
+      label: Trigger @claude
+      description: "Check to include @claude mention (triggers automatic implementation)"
+      options:
+        - label: "@claude implement this task following TDD"
+          required: false
