@@ -42,20 +42,36 @@ func (s *streamService) GetStreamURL(ctx context.Context, userID, trackID string
 		return nil, err
 	}
 
-	// Generate CloudFront signed URL for streaming
-	var streamURL string
+	var hlsURL, fallbackURL string
+
+	// Generate HLS URL if available
+	if track.HLSStatus == models.HLSStatusReady && track.HLSPlaylistKey != "" {
+		if s.cloudfront != nil {
+			hlsURL, err = s.cloudfront.GenerateSignedURL(ctx, track.HLSPlaylistKey, streamURLExpiry)
+			if err != nil {
+				// Log error but continue with fallback
+				fmt.Printf("Warning: failed to generate HLS URL: %v\n", err)
+			}
+		}
+	}
+
+	// Generate fallback URL (direct audio file)
 	if s.cloudfront != nil {
-		// Use CloudFront for streaming (preferred)
-		streamURL, err = s.cloudfront.GenerateSignedURL(ctx, track.S3Key, streamURLExpiry)
+		fallbackURL, err = s.cloudfront.GenerateSignedURL(ctx, track.S3Key, streamURLExpiry)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate stream URL: %w", err)
 		}
 	} else {
-		// Fallback to S3 presigned URL
-		streamURL, err = s.s3Repo.GeneratePresignedDownloadURL(ctx, track.S3Key, streamURLExpiry)
+		fallbackURL, err = s.s3Repo.GeneratePresignedDownloadURL(ctx, track.S3Key, streamURLExpiry)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate stream URL: %w", err)
 		}
+	}
+
+	// Use HLS URL as primary if available, otherwise fallback
+	streamURL := hlsURL
+	if streamURL == "" {
+		streamURL = fallbackURL
 	}
 
 	// Increment play count asynchronously (best effort)
@@ -68,11 +84,14 @@ func (s *streamService) GetStreamURL(ctx context.Context, userID, trackID string
 	}()
 
 	return &models.StreamResponse{
-		TrackID:   trackID,
-		StreamURL: streamURL,
-		ExpiresAt: time.Now().Add(streamURLExpiry),
-		Format:    string(track.Format),
-		Bitrate:   track.Bitrate,
+		TrackID:     trackID,
+		StreamURL:   streamURL,
+		HLSURL:      hlsURL,
+		FallbackURL: fallbackURL,
+		HLSReady:    track.HLSStatus == models.HLSStatusReady,
+		ExpiresAt:   time.Now().Add(streamURLExpiry),
+		Format:      string(track.Format),
+		Bitrate:     track.Bitrate,
 	}, nil
 }
 

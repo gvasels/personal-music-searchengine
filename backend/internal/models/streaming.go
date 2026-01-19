@@ -10,11 +10,14 @@ type StreamRequest struct {
 
 // StreamResponse represents a response with streaming URL
 type StreamResponse struct {
-	TrackID   string    `json:"trackId"`
-	StreamURL string    `json:"streamUrl"`
-	ExpiresAt time.Time `json:"expiresAt"`
-	Format    string    `json:"format"`
-	Bitrate   int       `json:"bitrate,omitempty"`
+	TrackID     string    `json:"trackId"`
+	StreamURL   string    `json:"streamUrl"`             // Primary URL (HLS if available, fallback otherwise)
+	HLSURL      string    `json:"hlsUrl,omitempty"`      // HLS adaptive streaming URL
+	FallbackURL string    `json:"fallbackUrl,omitempty"` // Direct audio file URL
+	HLSReady    bool      `json:"hlsReady"`              // Whether HLS is available
+	ExpiresAt   time.Time `json:"expiresAt"`
+	Format      string    `json:"format"`
+	Bitrate     int       `json:"bitrate,omitempty"`
 }
 
 // DownloadRequest represents a request for a download URL
