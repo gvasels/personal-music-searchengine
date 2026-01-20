@@ -758,3 +758,395 @@ func TestFormatDuration(t *testing.T) {
 		assert.Equal(t, test.expected, result, "formatDuration(%d)", test.seconds)
 	}
 }
+
+// =============================================================================
+// filterByTags Tests (Epic 4)
+// =============================================================================
+
+// MockFilterTagsRepository provides mockable GetTag and GetTracksByTag for filterByTags tests
+type MockFilterTagsRepository struct {
+	mock.Mock
+}
+
+func (m *MockFilterTagsRepository) GetTag(ctx context.Context, userID, tagName string) (*models.Tag, error) {
+	args := m.Called(ctx, userID, tagName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Tag), args.Error(1)
+}
+
+func (m *MockFilterTagsRepository) GetTracksByTag(ctx context.Context, userID, tagName string) ([]models.Track, error) {
+	args := m.Called(ctx, userID, tagName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.Track), args.Error(1)
+}
+
+// Stub implementations for Repository interface (required but not used in filterByTags tests)
+func (m *MockFilterTagsRepository) CreateTrack(ctx context.Context, track models.Track) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) GetTrack(ctx context.Context, userID, trackID string) (*models.Track, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) UpdateTrack(ctx context.Context, track models.Track) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) DeleteTrack(ctx context.Context, userID, trackID string) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) ListTracks(ctx context.Context, userID string, filter models.TrackFilter) (*repository.PaginatedResult[models.Track], error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) ListTracksByArtist(ctx context.Context, userID, artist string) ([]models.Track, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) GetOrCreateAlbum(ctx context.Context, userID, albumName, artist string) (*models.Album, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) GetAlbum(ctx context.Context, userID, albumID string) (*models.Album, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) ListAlbums(ctx context.Context, userID string, filter models.AlbumFilter) (*repository.PaginatedResult[models.Album], error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) ListAlbumsByArtist(ctx context.Context, userID, artist string) ([]models.Album, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) UpdateAlbumStats(ctx context.Context, userID, albumID string, trackCount, totalDuration int) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) CreateUser(ctx context.Context, user models.User) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) GetUser(ctx context.Context, userID string) (*models.User, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) UpdateUser(ctx context.Context, user models.User) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) UpdateUserStats(ctx context.Context, userID string, storageUsed int64, trackCount, albumCount, playlistCount int) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) CreatePlaylist(ctx context.Context, playlist models.Playlist) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) GetPlaylist(ctx context.Context, userID, playlistID string) (*models.Playlist, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) UpdatePlaylist(ctx context.Context, playlist models.Playlist) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) DeletePlaylist(ctx context.Context, userID, playlistID string) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) ListPlaylists(ctx context.Context, userID string, filter models.PlaylistFilter) (*repository.PaginatedResult[models.Playlist], error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) AddTracksToPlaylist(ctx context.Context, playlistID string, trackIDs []string, position int) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) RemoveTracksFromPlaylist(ctx context.Context, playlistID string, trackIDs []string) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) GetPlaylistTracks(ctx context.Context, playlistID string) ([]models.PlaylistTrack, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) CreateTag(ctx context.Context, tag models.Tag) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) UpdateTag(ctx context.Context, tag models.Tag) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) DeleteTag(ctx context.Context, userID, tagName string) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) ListTags(ctx context.Context, userID string) ([]models.Tag, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) AddTagsToTrack(ctx context.Context, userID, trackID string, tagNames []string) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) RemoveTagFromTrack(ctx context.Context, userID, trackID, tagName string) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) GetTrackTags(ctx context.Context, userID, trackID string) ([]string, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) CreateUpload(ctx context.Context, upload models.Upload) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) GetUpload(ctx context.Context, userID, uploadID string) (*models.Upload, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) UpdateUpload(ctx context.Context, upload models.Upload) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) UpdateUploadStatus(ctx context.Context, userID, uploadID string, status models.UploadStatus, errorMsg string, trackID string) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) UpdateUploadStep(ctx context.Context, userID, uploadID string, step models.ProcessingStep, success bool) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) ListUploads(ctx context.Context, userID string, filter models.UploadFilter) (*repository.PaginatedResult[models.Upload], error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) ListUploadsByStatus(ctx context.Context, status models.UploadStatus) ([]models.Upload, error) {
+	return nil, nil
+}
+
+// TestFilterByTags_EmptyTags verifies that empty tags array returns all results unchanged
+func TestFilterByTags_EmptyTags(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockFilterTagsRepository)
+
+	svc := &searchServiceImpl{
+		client: nil,
+		repo:   mockRepo,
+		s3Repo: nil,
+	}
+
+	results := []search.SearchResult{
+		{ID: "track-1", Title: "Track One"},
+		{ID: "track-2", Title: "Track Two"},
+	}
+
+	filtered, err := svc.filterByTags(ctx, "user-123", results, []string{})
+
+	assert.NoError(t, err)
+	assert.Len(t, filtered, 2)
+	assert.Equal(t, "track-1", filtered[0].ID)
+	assert.Equal(t, "track-2", filtered[1].ID)
+}
+
+// TestFilterByTags_TagNotFound verifies NotFoundError when tag doesn't exist
+func TestFilterByTags_TagNotFound(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockFilterTagsRepository)
+
+	svc := &searchServiceImpl{
+		client: nil,
+		repo:   mockRepo,
+		s3Repo: nil,
+	}
+
+	results := []search.SearchResult{
+		{ID: "track-1", Title: "Track One"},
+	}
+
+	// Tag doesn't exist
+	mockRepo.On("GetTag", ctx, "user-123", "nonexistent").Return(nil, repository.ErrNotFound)
+
+	filtered, err := svc.filterByTags(ctx, "user-123", results, []string{"nonexistent"})
+
+	assert.Error(t, err)
+	assert.Nil(t, filtered)
+
+	// Verify it's a NotFoundError
+	var apiErr *models.APIError
+	if errors.As(err, &apiErr) {
+		assert.Equal(t, "NOT_FOUND", apiErr.Code)
+		assert.Contains(t, apiErr.Message, "nonexistent")
+	}
+	mockRepo.AssertExpectations(t)
+}
+
+// TestFilterByTags_SingleTag_Success verifies single tag filters correctly
+func TestFilterByTags_SingleTag_Success(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockFilterTagsRepository)
+
+	svc := &searchServiceImpl{
+		client: nil,
+		repo:   mockRepo,
+		s3Repo: nil,
+	}
+
+	results := []search.SearchResult{
+		{ID: "track-1", Title: "Track One"},
+		{ID: "track-2", Title: "Track Two"},
+		{ID: "track-3", Title: "Track Three"},
+	}
+
+	// Tag exists
+	mockRepo.On("GetTag", ctx, "user-123", "favorites").Return(&models.Tag{
+		UserID: "user-123",
+		Name:   "favorites",
+	}, nil)
+
+	// Only track-1 and track-3 have the tag
+	mockRepo.On("GetTracksByTag", ctx, "user-123", "favorites").Return([]models.Track{
+		{ID: "track-1"},
+		{ID: "track-3"},
+	}, nil)
+
+	filtered, err := svc.filterByTags(ctx, "user-123", results, []string{"favorites"})
+
+	assert.NoError(t, err)
+	assert.Len(t, filtered, 2)
+	assert.Equal(t, "track-1", filtered[0].ID)
+	assert.Equal(t, "track-3", filtered[1].ID)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestFilterByTags_MultipleTags_ANDLogic verifies multiple tags use AND logic
+func TestFilterByTags_MultipleTags_ANDLogic(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockFilterTagsRepository)
+
+	svc := &searchServiceImpl{
+		client: nil,
+		repo:   mockRepo,
+		s3Repo: nil,
+	}
+
+	results := []search.SearchResult{
+		{ID: "track-1", Title: "Track One"},
+		{ID: "track-2", Title: "Track Two"},
+		{ID: "track-3", Title: "Track Three"},
+	}
+
+	// Both tags exist
+	mockRepo.On("GetTag", ctx, "user-123", "favorites").Return(&models.Tag{UserID: "user-123", Name: "favorites"}, nil)
+	mockRepo.On("GetTag", ctx, "user-123", "rock").Return(&models.Tag{UserID: "user-123", Name: "rock"}, nil)
+
+	// track-1 and track-2 have "favorites"
+	mockRepo.On("GetTracksByTag", ctx, "user-123", "favorites").Return([]models.Track{
+		{ID: "track-1"},
+		{ID: "track-2"},
+	}, nil)
+
+	// track-1 and track-3 have "rock"
+	mockRepo.On("GetTracksByTag", ctx, "user-123", "rock").Return([]models.Track{
+		{ID: "track-1"},
+		{ID: "track-3"},
+	}, nil)
+
+	filtered, err := svc.filterByTags(ctx, "user-123", results, []string{"favorites", "rock"})
+
+	assert.NoError(t, err)
+	// Only track-1 has BOTH tags
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, "track-1", filtered[0].ID)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestFilterByTags_SecondTagNotFound verifies error on second tag returns NotFoundError
+func TestFilterByTags_SecondTagNotFound(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockFilterTagsRepository)
+
+	svc := &searchServiceImpl{
+		client: nil,
+		repo:   mockRepo,
+		s3Repo: nil,
+	}
+
+	results := []search.SearchResult{
+		{ID: "track-1", Title: "Track One"},
+	}
+
+	// First tag exists
+	mockRepo.On("GetTag", ctx, "user-123", "favorites").Return(&models.Tag{UserID: "user-123", Name: "favorites"}, nil)
+	// Second tag doesn't exist
+	mockRepo.On("GetTag", ctx, "user-123", "nonexistent").Return(nil, repository.ErrNotFound)
+
+	filtered, err := svc.filterByTags(ctx, "user-123", results, []string{"favorites", "nonexistent"})
+
+	assert.Error(t, err)
+	assert.Nil(t, filtered)
+
+	var apiErr *models.APIError
+	if errors.As(err, &apiErr) {
+		assert.Equal(t, "NOT_FOUND", apiErr.Code)
+		assert.Contains(t, apiErr.Message, "nonexistent")
+	}
+	mockRepo.AssertExpectations(t)
+}
+
+// TestFilterByTags_NoMatchingTracks verifies empty array when no tracks match
+func TestFilterByTags_NoMatchingTracks(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockFilterTagsRepository)
+
+	svc := &searchServiceImpl{
+		client: nil,
+		repo:   mockRepo,
+		s3Repo: nil,
+	}
+
+	results := []search.SearchResult{
+		{ID: "track-1", Title: "Track One"},
+		{ID: "track-2", Title: "Track Two"},
+	}
+
+	// Tag exists but has no tracks
+	mockRepo.On("GetTag", ctx, "user-123", "empty-tag").Return(&models.Tag{UserID: "user-123", Name: "empty-tag"}, nil)
+	mockRepo.On("GetTracksByTag", ctx, "user-123", "empty-tag").Return([]models.Track{}, nil)
+
+	filtered, err := svc.filterByTags(ctx, "user-123", results, []string{"empty-tag"})
+
+	assert.NoError(t, err)
+	assert.Len(t, filtered, 0)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestFilterByTags_DeduplicatesTags verifies duplicate tags are deduplicated silently
+func TestFilterByTags_DeduplicatesTags(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockFilterTagsRepository)
+
+	svc := &searchServiceImpl{
+		client: nil,
+		repo:   mockRepo,
+		s3Repo: nil,
+	}
+
+	results := []search.SearchResult{
+		{ID: "track-1", Title: "Track One"},
+	}
+
+	// Tag exists - should only be called ONCE despite duplicates in input
+	mockRepo.On("GetTag", ctx, "user-123", "rock").Return(&models.Tag{UserID: "user-123", Name: "rock"}, nil).Once()
+	mockRepo.On("GetTracksByTag", ctx, "user-123", "rock").Return([]models.Track{
+		{ID: "track-1"},
+	}, nil).Once()
+
+	// Input has duplicate tags
+	filtered, err := svc.filterByTags(ctx, "user-123", results, []string{"rock", "rock", "rock"})
+
+	assert.NoError(t, err)
+	assert.Len(t, filtered, 1)
+	mockRepo.AssertExpectations(t)
+}
+
+// TestFilterByTags_NormalizesCase verifies tags are normalized to lowercase
+func TestFilterByTags_NormalizesCase(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockFilterTagsRepository)
+
+	svc := &searchServiceImpl{
+		client: nil,
+		repo:   mockRepo,
+		s3Repo: nil,
+	}
+
+	results := []search.SearchResult{
+		{ID: "track-1", Title: "Track One"},
+	}
+
+	// Tag stored as lowercase - lookup should also be lowercase
+	mockRepo.On("GetTag", ctx, "user-123", "rock").Return(&models.Tag{UserID: "user-123", Name: "rock"}, nil)
+	mockRepo.On("GetTracksByTag", ctx, "user-123", "rock").Return([]models.Track{
+		{ID: "track-1"},
+	}, nil)
+
+	// Input is uppercase - should be normalized to lowercase
+	filtered, err := svc.filterByTags(ctx, "user-123", results, []string{"ROCK"})
+
+	assert.NoError(t, err)
+	assert.Len(t, filtered, 1)
+	mockRepo.AssertExpectations(t)
+}
