@@ -72,9 +72,18 @@ func (s *searchServiceImpl) Search(ctx context.Context, userID string, req model
 		return nil, fmt.Errorf("search failed: %w", err)
 	}
 
+	// Apply tag filtering if tags specified (post-filtering since tags are in DynamoDB)
+	results := resp.Results
+	if len(req.Filters.Tags) > 0 {
+		results, err = s.filterByTags(ctx, userID, results, req.Filters.Tags)
+		if err != nil {
+			return nil, fmt.Errorf("tag filtering failed: %w", err)
+		}
+	}
+
 	// Convert to API response
-	tracks := make([]models.TrackResponse, 0, len(resp.Results))
-	for _, result := range resp.Results {
+	tracks := make([]models.TrackResponse, 0, len(results))
+	for _, result := range results {
 		track := s.searchResultToTrackResponse(result)
 		tracks = append(tracks, track)
 	}
@@ -82,13 +91,23 @@ func (s *searchServiceImpl) Search(ctx context.Context, userID string, req model
 	// Enrich with cover art URLs
 	s.enrichTracksWithCoverArt(ctx, userID, tracks)
 
+	// Determine total count (filtered count when tags applied)
+	totalResults := resp.Total
+	hasMore := resp.NextCursor != ""
+	if len(req.Filters.Tags) > 0 {
+		// When tag filtering, the total is the filtered count
+		// Note: pagination becomes approximate with tag filtering
+		totalResults = len(tracks)
+		hasMore = false // Can't reliably paginate with post-filtering
+	}
+
 	return &models.SearchResponse{
 		Query:        req.Query,
-		TotalResults: resp.Total,
+		TotalResults: totalResults,
 		Tracks:       tracks,
 		Limit:        limit,
 		NextCursor:   resp.NextCursor,
-		HasMore:      resp.NextCursor != "",
+		HasMore:      hasMore,
 	}, nil
 }
 
@@ -299,7 +318,62 @@ func (s *searchServiceImpl) convertFilters(filters models.SearchFilters) search.
 		result.YearTo = maxYear
 	}
 
+	// Pass through tags for post-filtering
+	if len(filters.Tags) > 0 {
+		result.Tags = filters.Tags
+	}
+
 	return result
+}
+
+// filterByTags filters search results to only include tracks that have ALL specified tags.
+func (s *searchServiceImpl) filterByTags(ctx context.Context, userID string, results []search.SearchResult, tags []string) ([]search.SearchResult, error) {
+	if len(tags) == 0 {
+		return results, nil
+	}
+
+	// Build a set of track IDs that have ALL the specified tags
+	// Start with tracks from the first tag, then intersect with subsequent tags
+	var validTrackIDs map[string]bool
+
+	for i, tagName := range tags {
+		taggedTracks, err := s.repo.GetTracksByTag(ctx, userID, tagName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get tracks for tag %s: %w", tagName, err)
+		}
+
+		tagTrackIDs := make(map[string]bool, len(taggedTracks))
+		for _, track := range taggedTracks {
+			tagTrackIDs[track.ID] = true
+		}
+
+		if i == 0 {
+			// First tag: initialize valid track IDs
+			validTrackIDs = tagTrackIDs
+		} else {
+			// Subsequent tags: intersect with existing valid IDs
+			for id := range validTrackIDs {
+				if !tagTrackIDs[id] {
+					delete(validTrackIDs, id)
+				}
+			}
+		}
+
+		// Early exit if no tracks match
+		if len(validTrackIDs) == 0 {
+			return []search.SearchResult{}, nil
+		}
+	}
+
+	// Filter results to only include tracks with all tags
+	filtered := make([]search.SearchResult, 0, len(results))
+	for _, result := range results {
+		if validTrackIDs[result.ID] {
+			filtered = append(filtered, result)
+		}
+	}
+
+	return filtered, nil
 }
 
 // searchResultToTrackResponse converts a search result to a track response.

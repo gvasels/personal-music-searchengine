@@ -28,12 +28,13 @@ type SearchQuery struct {
 
 // SearchFilters represents optional filters for search.
 type SearchFilters struct {
-	UserID   string `json:"userId,omitempty"`   // Required - scopes search to user
-	Artist   string `json:"artist,omitempty"`
-	Album    string `json:"album,omitempty"`
-	Genre    string `json:"genre,omitempty"`
-	YearFrom int    `json:"yearFrom,omitempty"`
-	YearTo   int    `json:"yearTo,omitempty"`
+	UserID   string   `json:"userId,omitempty"`   // Required - scopes search to user
+	Artist   string   `json:"artist,omitempty"`
+	Album    string   `json:"album,omitempty"`
+	Genre    string   `json:"genre,omitempty"`
+	YearFrom int      `json:"yearFrom,omitempty"`
+	YearTo   int      `json:"yearTo,omitempty"`
+	Tags     []string `json:"tags,omitempty"` // Filter by tags (AND logic)
 }
 
 // SortOption represents sorting configuration.

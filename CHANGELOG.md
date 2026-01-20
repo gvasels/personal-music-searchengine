@@ -55,6 +55,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Daily search index rebuild (3 AM UTC)
 - ECR repository for Nixiesearch container images
 
+#### Epic 4: Tags & Playlists
+- Tag filtering in search
+  - Filter search results by multiple tags (AND logic)
+  - Tags stored in DynamoDB, filtered post-search
+- Tag service with full CRUD operations
+  - Create, read, update, delete tags
+  - Add/remove tags to/from tracks
+  - Auto-create tags when tagging tracks
+  - Get tracks by tag
+- Playlist service with full CRUD operations
+  - Create, read, update, delete playlists
+  - Add/remove tracks with position support
+  - Track count and duration stats
+- Unit tests for tag service (16 tests)
+- Unit tests for playlist service (14 tests)
+- API routes for tags and playlists registered
+
 ### Changed
 - CloudFront URL signing with expiration bounds validation (5 min to 7 days)
 - Search service with query length validation (max 500 characters)
