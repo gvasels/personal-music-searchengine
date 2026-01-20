@@ -42,7 +42,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Cold start index loading from S3
 - CloudFront distribution for media streaming
   - Signed URLs with RSA-SHA1 canned policy
-  - Expiration bounds validation (5 minutes to 7 days)
   - Origin Access Control (OAC) for S3 security
   - CORS configuration for web playback
 - HLS adaptive bitrate streaming via MediaConvert
@@ -54,10 +53,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Async transcoding via EventBridge completion events
 - EventBridge scheduled tasks
   - Daily search index rebuild (3 AM UTC)
-- Search service with query validation
-  - Empty query validation
-  - Query length validation (max 500 characters)
 - ECR repository for Nixiesearch container images
+
+### Changed
+- CloudFront URL signing with expiration bounds validation (5 min to 7 days)
+- Search service with query length validation (max 500 characters)
+- Updated specs for pure serverless architecture (removed VPC/EFS references)
+
+### Security
+- Input validation for all Lambda processor payloads
+- File size limits on uploads (500MB max)
+- Filename sanitization to prevent path traversal
+- Content type validation for audio files
+- Resource limits on metadata extraction
 
 #### Initial Setup
 - Initial project setup
