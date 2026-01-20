@@ -327,9 +327,21 @@ func (s *searchServiceImpl) convertFilters(filters models.SearchFilters) search.
 }
 
 // filterByTags filters search results to only include tracks that have ALL specified tags.
+// Returns an error if any tag does not exist.
 func (s *searchServiceImpl) filterByTags(ctx context.Context, userID string, results []search.SearchResult, tags []string) ([]search.SearchResult, error) {
 	if len(tags) == 0 {
 		return results, nil
+	}
+
+	// First, validate all tags exist
+	for _, tagName := range tags {
+		_, err := s.repo.GetTag(ctx, userID, tagName)
+		if err != nil {
+			if err == repository.ErrNotFound {
+				return nil, models.NewNotFoundError("Tag", tagName)
+			}
+			return nil, fmt.Errorf("failed to check tag %s: %w", tagName, err)
+		}
 	}
 
 	// Build a set of track IDs that have ALL the specified tags
