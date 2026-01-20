@@ -152,3 +152,46 @@ func TestGetDomain(t *testing.T) {
 
 	assert.Equal(t, "d123.cloudfront.net", signer.GetDomain())
 }
+
+func TestGenerateSignedURL_ExpirationTooShort(t *testing.T) {
+	ctx := context.Background()
+	privateKeyPEM := generateTestPrivateKey(t)
+	signer, err := NewSigner("d123.cloudfront.net", "KEYPAIRID123", privateKeyPEM)
+	require.NoError(t, err)
+
+	// Try with expiration less than minimum (5 minutes)
+	_, err = signer.GenerateSignedURL(ctx, "test.mp3", 4*time.Minute)
+
+	assert.Error(t, err)
+	assert.Equal(t, ErrExpirationTooShort, err)
+}
+
+func TestGenerateSignedURL_ExpirationTooLong(t *testing.T) {
+	ctx := context.Background()
+	privateKeyPEM := generateTestPrivateKey(t)
+	signer, err := NewSigner("d123.cloudfront.net", "KEYPAIRID123", privateKeyPEM)
+	require.NoError(t, err)
+
+	// Try with expiration more than maximum (7 days)
+	_, err = signer.GenerateSignedURL(ctx, "test.mp3", 8*24*time.Hour)
+
+	assert.Error(t, err)
+	assert.Equal(t, ErrExpirationTooLong, err)
+}
+
+func TestGenerateSignedURL_ExpirationAtBounds(t *testing.T) {
+	ctx := context.Background()
+	privateKeyPEM := generateTestPrivateKey(t)
+	signer, err := NewSigner("d123.cloudfront.net", "KEYPAIRID123", privateKeyPEM)
+	require.NoError(t, err)
+
+	// Test at minimum expiration (5 minutes)
+	url, err := signer.GenerateSignedURL(ctx, "test.mp3", MinExpiration)
+	require.NoError(t, err)
+	assert.Contains(t, url, "Expires=")
+
+	// Test at maximum expiration (7 days)
+	url, err = signer.GenerateSignedURL(ctx, "test.mp3", MaxExpiration)
+	require.NoError(t, err)
+	assert.Contains(t, url, "Expires=")
+}

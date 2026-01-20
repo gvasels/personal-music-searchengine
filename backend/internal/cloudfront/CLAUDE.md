@@ -79,6 +79,16 @@ https://d123.cloudfront.net/hls/{userId}/{trackId}/master.m3u8?Expires=...
 https://d123.cloudfront.net/audio/{userId}/{trackId}/original.mp3?Expires=...
 ```
 
+## Expiration Validation
+
+URL expiration is validated to be within secure bounds:
+- **Minimum**: 5 minutes (`MinExpiration`)
+- **Maximum**: 7 days (`MaxExpiration`)
+
+Attempting to create a URL outside these bounds returns:
+- `ErrExpirationTooShort` - Expiration less than 5 minutes
+- `ErrExpirationTooLong` - Expiration more than 7 days
+
 ## Security
 
 - RSA-SHA1 signature algorithm (CloudFront requirement)
@@ -88,6 +98,7 @@ https://d123.cloudfront.net/audio/{userId}/{trackId}/original.mp3?Expires=...
   - `=` → `_`
 - Private key should be stored in AWS Secrets Manager
 - Key pair ID is public and can be stored in environment variables
+- Expiration bounds prevent extremely short or long-lived URLs
 
 ## Dependencies
 

@@ -86,13 +86,20 @@ func main() {
 ## Architecture
 
 ```
-Client ──► Lambda.Invoke() ──► Nixiesearch Lambda ──► EFS Index
+Client ──► Lambda.Invoke() ──► Nixiesearch Lambda ──► S3 Index
+                                     │
+                                     └── Loads index from S3 on cold start
+                                     └── Saves index back to S3 after updates
 ```
 
 The client invokes a dedicated Nixiesearch Lambda function that:
 1. Receives JSON-encoded requests
-2. Performs operations on the search index (stored in EFS)
-3. Returns JSON-encoded responses
+2. Loads search index from S3 to /tmp on cold start
+3. Performs operations on the in-memory search index
+4. Saves updated index back to S3 after write operations
+5. Returns JSON-encoded responses
+
+This is a pure serverless architecture with no VPC or EFS required.
 
 ## Security
 

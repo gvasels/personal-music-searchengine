@@ -77,6 +77,8 @@ Business logic layer implementing domain operations for the Personal Music Searc
 
 ### SearchService
 - `Search` - Execute full-text search with filters and pagination
+  - Validates query is not empty
+  - Validates query length (max 500 characters via `MaxQueryLength`)
 - `Autocomplete` - Provide search suggestions
 - `IndexTrack` - Index a track in the search engine
 - `RemoveTrack` - Remove a track from the search index

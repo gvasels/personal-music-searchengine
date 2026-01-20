@@ -10,6 +10,11 @@ import (
 	"github.com/gvasels/personal-music-searchengine/internal/search"
 )
 
+// Search query validation limits
+const (
+	MaxQueryLength = 500 // Maximum characters in a search query
+)
+
 // searchServiceImpl implements SearchService using Nixiesearch.
 type searchServiceImpl struct {
 	client *search.Client
@@ -30,6 +35,9 @@ func NewSearchService(client *search.Client, repo repository.Repository, s3Repo 
 func (s *searchServiceImpl) Search(ctx context.Context, userID string, req models.SearchRequest) (*models.SearchResponse, error) {
 	if req.Query == "" {
 		return nil, models.NewValidationError("search query cannot be empty")
+	}
+	if len(req.Query) > MaxQueryLength {
+		return nil, models.NewValidationError(fmt.Sprintf("search query too long (maximum %d characters)", MaxQueryLength))
 	}
 
 	limit := req.Limit

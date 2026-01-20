@@ -10,10 +10,23 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 )
+
+// Expiration bounds for signed URLs
+const (
+	MinExpiration = 5 * time.Minute   // Minimum URL expiration
+	MaxExpiration = 7 * 24 * time.Hour // Maximum URL expiration (7 days)
+)
+
+// ErrExpirationTooShort is returned when the expiration duration is less than MinExpiration.
+var ErrExpirationTooShort = errors.New("expiration duration too short (minimum 5 minutes)")
+
+// ErrExpirationTooLong is returned when the expiration duration exceeds MaxExpiration.
+var ErrExpirationTooLong = errors.New("expiration duration too long (maximum 7 days)")
 
 // Signer provides CloudFront URL signing operations.
 type Signer struct {
@@ -66,7 +79,16 @@ func NewSigner(domain, keyPairID string, privateKeyPEM []byte) (*Signer, error) 
 }
 
 // GenerateSignedURL generates a CloudFront signed URL with a canned policy.
+// The expiry duration must be between MinExpiration (5 minutes) and MaxExpiration (7 days).
 func (s *Signer) GenerateSignedURL(ctx context.Context, key string, expiry time.Duration) (string, error) {
+	// Validate expiration bounds
+	if expiry < MinExpiration {
+		return "", ErrExpirationTooShort
+	}
+	if expiry > MaxExpiration {
+		return "", ErrExpirationTooLong
+	}
+
 	expiresAt := time.Now().Add(expiry).Unix()
 
 	// Build the URL

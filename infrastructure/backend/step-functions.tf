@@ -125,6 +125,36 @@ resource "aws_sfn_state_machine" "upload_processor" {
             Next        = "MarkUploadFailed"
           }
         ]
+        Next = "StartTranscode"
+      }
+
+      StartTranscode = {
+        Type     = "Task"
+        Resource = aws_lambda_function.transcode_start.arn
+        Parameters = {
+          "trackId.$"      = "$.track.trackId"
+          "userId.$"       = "$.userId"
+          "s3Key.$"        = "$.finalLocation.newKey"
+          "format.$"       = "$.metadata.format"
+          "bucketName"     = local.media_bucket_name
+          "tableName"      = local.dynamodb_table_name
+        }
+        ResultPath = "$.transcode"
+        Retry = [
+          {
+            ErrorEquals     = ["Lambda.ServiceException", "Lambda.AWSLambdaException"]
+            IntervalSeconds = 2
+            MaxAttempts     = 3
+            BackoffRate     = 2
+          }
+        ]
+        Catch = [
+          {
+            ErrorEquals = ["States.ALL"]
+            ResultPath  = "$.transcodeError"
+            Next        = "IndexForSearch"  # Continue even if transcode fails to start
+          }
+        ]
         Next = "IndexForSearch"
       }
 
@@ -233,6 +263,7 @@ resource "aws_iam_role_policy" "step_functions_lambda" {
           aws_lambda_function.cover_art_processor.arn,
           aws_lambda_function.track_creator.arn,
           aws_lambda_function.file_mover.arn,
+          aws_lambda_function.transcode_start.arn,
           aws_lambda_function.search_indexer.arn,
           aws_lambda_function.upload_status_updater.arn
         ]

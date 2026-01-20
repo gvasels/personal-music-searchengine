@@ -134,11 +134,4 @@ resource "aws_s3_bucket_public_access_block" "search_indexes" {
   restrict_public_buckets = true
 }
 
-# Output for search indexes bucket
-output "search_indexes_bucket_name" {
-  value = aws_s3_bucket.search_indexes.id
-}
-
-output "search_indexes_bucket_arn" {
-  value = aws_s3_bucket.search_indexes.arn
-}
+# Search indexes bucket outputs defined in main.tf

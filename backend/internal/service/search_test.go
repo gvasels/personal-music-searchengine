@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -251,6 +253,9 @@ func newTestSearchService(client SearchClient, repo repository.Repository, s3Rep
 func (s *testSearchService) Search(ctx context.Context, userID string, req models.SearchRequest) (*models.SearchResponse, error) {
 	if req.Query == "" {
 		return nil, models.NewValidationError("search query cannot be empty")
+	}
+	if len(req.Query) > MaxQueryLength {
+		return nil, models.NewValidationError(fmt.Sprintf("search query too long (maximum %d characters)", MaxQueryLength))
 	}
 
 	limit := req.Limit
@@ -524,6 +529,53 @@ func TestSearch_EmptyQuery(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, resp)
+}
+
+func TestSearch_QueryTooLong(t *testing.T) {
+	ctx := context.Background()
+	mockClient := new(MockSearchClient)
+	mockRepo := new(MockRepository)
+	mockS3 := new(MockS3Repository)
+
+	svc := newTestSearchService(mockClient, mockRepo, mockS3)
+
+	// Create a query that exceeds MaxQueryLength (500 characters)
+	longQuery := strings.Repeat("a", MaxQueryLength+1)
+	req := models.SearchRequest{Query: longQuery}
+	resp, err := svc.Search(ctx, "user-123", req)
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	// NewValidationError stores message in Details field; Error() returns Code: Message
+	assert.Contains(t, err.Error(), "VALIDATION_ERROR")
+	// Verify the details contain the actual message
+	apiErr, ok := err.(*models.APIError)
+	assert.True(t, ok, "error should be APIError")
+	if ok {
+		assert.Contains(t, apiErr.Details.(string), "too long")
+	}
+}
+
+func TestSearch_QueryAtMaxLength(t *testing.T) {
+	ctx := context.Background()
+	mockClient := new(MockSearchClient)
+	mockRepo := new(MockRepository)
+	mockS3 := new(MockS3Repository)
+
+	svc := newTestSearchService(mockClient, mockRepo, mockS3)
+
+	// Create a query exactly at MaxQueryLength (500 characters)
+	maxQuery := strings.Repeat("a", MaxQueryLength)
+
+	mockClient.On("Search", ctx, "user-123", mock.MatchedBy(func(q search.SearchQuery) bool {
+		return len(q.Query) == MaxQueryLength
+	})).Return(&search.SearchResponse{Results: []search.SearchResult{}, Total: 0}, nil)
+
+	req := models.SearchRequest{Query: maxQuery}
+	_, err := svc.Search(ctx, "user-123", req)
+
+	assert.NoError(t, err)
+	mockClient.AssertExpectations(t)
 }
 
 func TestSearch_LimitClamping(t *testing.T) {

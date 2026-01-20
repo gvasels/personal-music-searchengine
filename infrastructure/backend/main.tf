@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
 
   backend "s3" {
@@ -67,13 +71,15 @@ data "terraform_remote_state" "global" {
 }
 
 locals {
-  name_prefix          = "${var.project_name}-${var.environment}"
-  dynamodb_table_name  = data.terraform_remote_state.shared.outputs.dynamodb_table_name
-  dynamodb_table_arn   = data.terraform_remote_state.shared.outputs.dynamodb_table_arn
-  media_bucket_name    = data.terraform_remote_state.shared.outputs.media_bucket_name
-  media_bucket_arn     = data.terraform_remote_state.shared.outputs.media_bucket_arn
-  cognito_user_pool_id = data.terraform_remote_state.shared.outputs.cognito_user_pool_id
-  lambda_role_arn      = data.terraform_remote_state.global.outputs.lambda_execution_role_arn
+  name_prefix                = "${var.project_name}-${var.environment}"
+  dynamodb_table_name        = data.terraform_remote_state.shared.outputs.dynamodb_table_name
+  dynamodb_table_arn         = data.terraform_remote_state.shared.outputs.dynamodb_table_arn
+  media_bucket_name          = data.terraform_remote_state.shared.outputs.media_bucket_name
+  media_bucket_arn           = data.terraform_remote_state.shared.outputs.media_bucket_arn
+  search_indexes_bucket_name = data.terraform_remote_state.shared.outputs.search_indexes_bucket_name
+  search_indexes_bucket_arn  = data.terraform_remote_state.shared.outputs.search_indexes_bucket_arn
+  cognito_user_pool_id       = data.terraform_remote_state.shared.outputs.cognito_user_pool_id
+  lambda_role_arn            = data.terraform_remote_state.global.outputs.lambda_execution_role_arn
 }
 
 # Outputs
@@ -135,4 +141,14 @@ output "api_gateway_url" {
 output "cognito_authorizer_id" {
   description = "API Gateway Cognito authorizer ID"
   value       = aws_apigatewayv2_authorizer.cognito.id
+}
+
+output "nixiesearch_lambda_arn" {
+  description = "Nixiesearch Lambda function ARN"
+  value       = aws_lambda_function.nixiesearch.arn
+}
+
+output "nixiesearch_lambda_name" {
+  description = "Nixiesearch Lambda function name"
+  value       = aws_lambda_function.nixiesearch.function_name
 }

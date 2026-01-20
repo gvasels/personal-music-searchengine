@@ -30,6 +30,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - LocalStack docker-compose for local development
 - Makefile for build and test commands
 
+#### Epic 3: Search & Streaming
+- Nixiesearch integration with Lambda invocation client
+  - Full-text search across title, artist, album, filename
+  - Weighted scoring (title 3x, artist 2x, album 1.5x)
+  - Filter by artist, album, genre, year range
+  - Pagination with cursor support
+- Nixiesearch Lambda with S3-based index storage (pure serverless, no VPC)
+  - Container image (ECR) with embedded search engine
+  - Operations: search, index, delete, bulk_index
+  - Cold start index loading from S3
+- CloudFront distribution for media streaming
+  - Signed URLs with RSA-SHA1 canned policy
+  - Expiration bounds validation (5 minutes to 7 days)
+  - Origin Access Control (OAC) for S3 security
+  - CORS configuration for web playback
+- HLS adaptive bitrate streaming via MediaConvert
+  - 3 quality levels: 96kbps, 192kbps, 320kbps AAC
+  - Transcode start/complete Lambdas
+  - EventBridge rules for job status handling
+- Step Functions workflow updates
+  - StartTranscode step after file move
+  - Async transcoding via EventBridge completion events
+- EventBridge scheduled tasks
+  - Daily search index rebuild (3 AM UTC)
+- Search service with query validation
+  - Empty query validation
+  - Query length validation (max 500 characters)
+- ECR repository for Nixiesearch container images
+
 #### Initial Setup
 - Initial project setup
 - SDLC workflow plugins (6 phases)

@@ -47,7 +47,8 @@ Implement full-text search using Nixiesearch with DynamoDB for metadata tracking
 
 **FR-2.3**: Scheduled full re-index
 - Daily full re-index to catch any missed updates
-- Index stored in S3 for Lambda cold start loading
+- Index stored in S3 and loaded to Lambda /tmp on cold start
+- Pure serverless - no VPC or EFS required
 
 ### FR-3: HLS Adaptive Streaming
 
@@ -111,9 +112,10 @@ Implement full-text search using Nixiesearch with DynamoDB for metadata tracking
 
 ### NFR-3: Reliability
 
-**NFR-3.1**: Search index persisted to S3 (durable storage)
+**NFR-3.1**: Search index persisted to S3 (durable storage, no EFS)
 **NFR-3.2**: Transcoding failures don't block upload completion
 **NFR-3.3**: Graceful degradation when HLS not available
+**NFR-3.4**: Index loaded from S3 on Lambda cold start
 
 ### NFR-4: Security
 
@@ -126,6 +128,8 @@ Implement full-text search using Nixiesearch with DynamoDB for metadata tracking
 **NFR-5.1**: Use Lambda for search (pay-per-request vs always-on)
 **NFR-5.2**: S3 Intelligent-Tiering for HLS segments
 **NFR-5.3**: MediaConvert on-demand pricing for transcoding
+**NFR-5.4**: No VPC - eliminates NAT Gateway (~$45/month) and EFS costs
+**NFR-5.5**: Pure serverless - no idle costs when not in use
 
 ---
 
@@ -235,16 +239,23 @@ So that I can listen offline or backup my library
 ## Dependencies
 
 ### AWS Services
-- **Nixiesearch**: Full-text search engine (Lambda-based)
+- **Nixiesearch**: Full-text search engine (embedded in Lambda container)
 - **MediaConvert**: Audio transcoding to HLS
 - **CloudFront**: CDN for streaming and downloads
-- **S3**: HLS segments and search index storage
+- **S3**: HLS segments, search index storage, and media files
 - **Secrets Manager**: CloudFront signing key pair
+- **Lambda**: All compute (no VPC, no EFS)
+
+### Architecture
+- **Pure Serverless**: No VPC, NAT Gateway, or EFS
+- **S3 Index Storage**: Nixiesearch index loaded from S3 on cold start
+- **Public Network**: All Lambdas run in AWS public network
 
 ### External Libraries
-- **Nixiesearch**: Search engine binary
+- **Nixiesearch**: Search engine binary (embedded in Lambda container image)
 - **aws-sdk-go-v2/service/mediaconvert**: Transcoding API
 - **aws-sdk-go-v2/service/cloudfront**: Signed URL generation
+- **aws-sdk-go-v2/service/s3**: Index storage operations
 
 ---
 
