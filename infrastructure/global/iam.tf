@@ -43,7 +43,9 @@ resource "aws_iam_policy" "dynamodb_access" {
         ]
         Resource = [
           "arn:aws:dynamodb:*:*:table/${var.project_name}*",
-          "arn:aws:dynamodb:*:*:table/${var.project_name}*/index/*"
+          "arn:aws:dynamodb:*:*:table/${var.project_name}*/index/*",
+          "arn:aws:dynamodb:*:*:table/MusicLibrary",
+          "arn:aws:dynamodb:*:*:table/MusicLibrary/index/*"
         ]
       }
     ]

@@ -7,6 +7,14 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  backend "s3" {
+    bucket         = "music-library-prod-tofu-state"
+    key            = "global/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "music-library-prod-tofu-lock"
+    encrypt        = true
+  }
 }
 
 provider "aws" {

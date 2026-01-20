@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/awslabs/aws-lambda-go-api-proxy/core"
 	"github.com/labstack/echo/v4"
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/service"
@@ -85,10 +86,10 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 // getUserIDFromContext extracts the user ID from the request context
 // In production, this comes from the Cognito JWT authorizer via API Gateway
 func getUserIDFromContext(c echo.Context) string {
-	// Try to get from API Gateway claims (Lambda environment)
-	if claims := c.Request().Context().Value("claims"); claims != nil {
-		if claimsMap, ok := claims.(map[string]interface{}); ok {
-			if sub, ok := claimsMap["sub"].(string); ok {
+	// Try to get from API Gateway V2 JWT authorizer claims (Lambda environment)
+	if requestCtx, ok := core.GetAPIGatewayV2ContextFromContext(c.Request().Context()); ok {
+		if requestCtx.Authorizer != nil && requestCtx.Authorizer.JWT != nil {
+			if sub, exists := requestCtx.Authorizer.JWT.Claims["sub"]; exists {
 				return sub
 			}
 		}
