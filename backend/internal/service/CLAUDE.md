@@ -13,11 +13,13 @@ Business logic layer implementing domain operations for the Personal Music Searc
 | `album.go` | AlbumService - album operations and artist aggregation |
 | `user.go` | UserService - user profile management |
 | `playlist.go` | PlaylistService - playlist CRUD and track management |
+| `playlist_test.go` | Unit tests for PlaylistService (16 tests) |
 | `tag.go` | TagService - tag management and track associations |
+| `tag_test.go` | Unit tests for TagService (24 tests) |
 | `upload.go` | UploadService - upload workflow and presigned URLs |
 | `stream.go` | StreamService - streaming and download URL generation |
 | `search.go` | SearchService - Nixiesearch integration for full-text search |
-| `search_test.go` | Unit tests for SearchService |
+| `search_test.go` | Unit tests for SearchService including filterByTags (8 tests) |
 | `transcode.go` | TranscodeService - MediaConvert HLS transcoding |
 | `transcode_test.go` | Unit tests for TranscodeService |
 
@@ -52,14 +54,15 @@ Business logic layer implementing domain operations for the Personal Music Searc
 - `RemoveTracks` - Remove tracks from playlist
 
 ### TagService
-- `CreateTag` - Create new tag
-- `GetTag` - Get tag details
-- `UpdateTag` - Update tag (including rename)
-- `DeleteTag` - Delete tag
+- `CreateTag` - Create new tag (normalized to lowercase)
+- `GetTag` - Get tag details (case-insensitive lookup)
+- `UpdateTag` - Update tag (including rename, normalized)
+- `DeleteTag` - Delete tag (case-insensitive)
 - `ListTags` - List all user tags
-- `AddTagsToTrack` - Add tags to track (creates tags if needed)
-- `RemoveTagFromTrack` - Remove tag from track
-- `GetTracksByTag` - Query tracks by tag
+- `AddTagsToTrack` - Add tags to track (creates tags if needed, normalized)
+- `RemoveTagFromTrack` - Remove tag from track (case-insensitive)
+- `GetTracksByTag` - Query tracks by tag (case-insensitive)
+- `normalizeTagName` - Helper that converts tag name to lowercase
 
 ### UploadService
 - `CreatePresignedUpload` - Generate presigned URL for upload
@@ -79,10 +82,15 @@ Business logic layer implementing domain operations for the Personal Music Searc
 - `Search` - Execute full-text search with filters and pagination
   - Validates query is not empty
   - Validates query length (max 500 characters via `MaxQueryLength`)
+  - Applies tag filtering via `filterByTags` when tags specified
 - `Autocomplete` - Provide search suggestions
 - `IndexTrack` - Index a track in the search engine
 - `RemoveTrack` - Remove a track from the search index
 - `RebuildIndex` - Rebuild the entire search index for a user
+- `filterByTags` - Post-filter search results by tags
+  - Validates all tags exist (returns NotFoundError if not)
+  - Uses AND logic (tracks must have ALL specified tags)
+  - Deduplicates and normalizes tag names to lowercase
 
 ### TranscodeService
 - `StartTranscode` - Create MediaConvert job for HLS transcoding
