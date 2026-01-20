@@ -2,11 +2,17 @@ package service
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
 )
+
+// normalizeTagName converts tag name to lowercase for consistent storage/lookup
+func normalizeTagName(name string) string {
+	return strings.ToLower(strings.TrimSpace(name))
+}
 
 // tagService implements TagService
 type tagService struct {
@@ -21,8 +27,11 @@ func NewTagService(repo repository.Repository) TagService {
 }
 
 func (s *tagService) CreateTag(ctx context.Context, userID string, req models.CreateTagRequest) (*models.TagResponse, error) {
+	// Normalize tag name to lowercase
+	normalizedName := normalizeTagName(req.Name)
+
 	// Check if tag already exists
-	existing, err := s.repo.GetTag(ctx, userID, req.Name)
+	existing, err := s.repo.GetTag(ctx, userID, normalizedName)
 	if err == nil {
 		return nil, models.NewConflictError("Tag with this name already exists")
 	}
@@ -33,7 +42,7 @@ func (s *tagService) CreateTag(ctx context.Context, userID string, req models.Cr
 	now := time.Now()
 	tag := models.Tag{
 		UserID:     userID,
-		Name:       req.Name,
+		Name:       normalizedName,
 		Color:      req.Color,
 		TrackCount: 0,
 	}
@@ -50,10 +59,12 @@ func (s *tagService) CreateTag(ctx context.Context, userID string, req models.Cr
 }
 
 func (s *tagService) GetTag(ctx context.Context, userID, tagName string) (*models.TagResponse, error) {
-	tag, err := s.repo.GetTag(ctx, userID, tagName)
+	normalizedName := normalizeTagName(tagName)
+
+	tag, err := s.repo.GetTag(ctx, userID, normalizedName)
 	if err != nil {
 		if err == repository.ErrNotFound {
-			return nil, models.NewNotFoundError("Tag", tagName)
+			return nil, models.NewNotFoundError("Tag", normalizedName)
 		}
 		return nil, err
 	}
@@ -63,25 +74,30 @@ func (s *tagService) GetTag(ctx context.Context, userID, tagName string) (*model
 }
 
 func (s *tagService) UpdateTag(ctx context.Context, userID, tagName string, req models.UpdateTagRequest) (*models.TagResponse, error) {
-	tag, err := s.repo.GetTag(ctx, userID, tagName)
+	normalizedName := normalizeTagName(tagName)
+
+	tag, err := s.repo.GetTag(ctx, userID, normalizedName)
 	if err != nil {
 		if err == repository.ErrNotFound {
-			return nil, models.NewNotFoundError("Tag", tagName)
+			return nil, models.NewNotFoundError("Tag", normalizedName)
 		}
 		return nil, err
 	}
 
 	// Apply updates
-	if req.Name != nil && *req.Name != tag.Name {
-		// Renaming a tag - need to check if new name exists
-		_, err := s.repo.GetTag(ctx, userID, *req.Name)
-		if err == nil {
-			return nil, models.NewConflictError("Tag with this name already exists")
+	if req.Name != nil {
+		normalizedNewName := normalizeTagName(*req.Name)
+		if normalizedNewName != tag.Name {
+			// Renaming a tag - need to check if new name exists
+			_, err := s.repo.GetTag(ctx, userID, normalizedNewName)
+			if err == nil {
+				return nil, models.NewConflictError("Tag with this name already exists")
+			}
+			if err != repository.ErrNotFound {
+				return nil, err
+			}
+			tag.Name = normalizedNewName
 		}
-		if err != repository.ErrNotFound {
-			return nil, err
-		}
-		tag.Name = *req.Name
 	}
 	if req.Color != nil {
 		tag.Color = *req.Color
@@ -96,15 +112,17 @@ func (s *tagService) UpdateTag(ctx context.Context, userID, tagName string, req 
 }
 
 func (s *tagService) DeleteTag(ctx context.Context, userID, tagName string) error {
-	_, err := s.repo.GetTag(ctx, userID, tagName)
+	normalizedName := normalizeTagName(tagName)
+
+	_, err := s.repo.GetTag(ctx, userID, normalizedName)
 	if err != nil {
 		if err == repository.ErrNotFound {
-			return models.NewNotFoundError("Tag", tagName)
+			return models.NewNotFoundError("Tag", normalizedName)
 		}
 		return err
 	}
 
-	return s.repo.DeleteTag(ctx, userID, tagName)
+	return s.repo.DeleteTag(ctx, userID, normalizedName)
 }
 
 func (s *tagService) ListTags(ctx context.Context, userID string) ([]models.TagResponse, error) {
@@ -131,8 +149,14 @@ func (s *tagService) AddTagsToTrack(ctx context.Context, userID, trackID string,
 		return nil, err
 	}
 
-	// Create tags that don't exist
+	// Normalize all tag names
+	normalizedTags := make([]string, 0, len(req.Tags))
 	for _, tagName := range req.Tags {
+		normalizedTags = append(normalizedTags, normalizeTagName(tagName))
+	}
+
+	// Create tags that don't exist
+	for _, tagName := range normalizedTags {
 		_, err := s.repo.GetTag(ctx, userID, tagName)
 		if err == repository.ErrNotFound {
 			now := time.Now()
@@ -148,7 +172,7 @@ func (s *tagService) AddTagsToTrack(ctx context.Context, userID, trackID string,
 	}
 
 	// Add tags to track
-	if err := s.repo.AddTagsToTrack(ctx, userID, trackID, req.Tags); err != nil {
+	if err := s.repo.AddTagsToTrack(ctx, userID, trackID, normalizedTags); err != nil {
 		return nil, err
 	}
 
@@ -157,7 +181,7 @@ func (s *tagService) AddTagsToTrack(ctx context.Context, userID, trackID string,
 	for _, t := range track.Tags {
 		existingTags[t] = true
 	}
-	for _, t := range req.Tags {
+	for _, t := range normalizedTags {
 		existingTags[t] = true
 	}
 
@@ -175,6 +199,8 @@ func (s *tagService) AddTagsToTrack(ctx context.Context, userID, trackID string,
 }
 
 func (s *tagService) RemoveTagFromTrack(ctx context.Context, userID, trackID, tagName string) error {
+	normalizedName := normalizeTagName(tagName)
+
 	// Verify track exists
 	track, err := s.repo.GetTrack(ctx, userID, trackID)
 	if err != nil {
@@ -185,14 +211,14 @@ func (s *tagService) RemoveTagFromTrack(ctx context.Context, userID, trackID, ta
 	}
 
 	// Remove tag association
-	if err := s.repo.RemoveTagFromTrack(ctx, userID, trackID, tagName); err != nil {
+	if err := s.repo.RemoveTagFromTrack(ctx, userID, trackID, normalizedName); err != nil {
 		return err
 	}
 
 	// Update track's tags list
 	newTags := make([]string, 0, len(track.Tags))
 	for _, t := range track.Tags {
-		if t != tagName {
+		if t != normalizedName {
 			newTags = append(newTags, t)
 		}
 	}
@@ -202,16 +228,18 @@ func (s *tagService) RemoveTagFromTrack(ctx context.Context, userID, trackID, ta
 }
 
 func (s *tagService) GetTracksByTag(ctx context.Context, userID, tagName string) ([]models.TrackResponse, error) {
+	normalizedName := normalizeTagName(tagName)
+
 	// Verify tag exists
-	_, err := s.repo.GetTag(ctx, userID, tagName)
+	_, err := s.repo.GetTag(ctx, userID, normalizedName)
 	if err != nil {
 		if err == repository.ErrNotFound {
-			return nil, models.NewNotFoundError("Tag", tagName)
+			return nil, models.NewNotFoundError("Tag", normalizedName)
 		}
 		return nil, err
 	}
 
-	tracks, err := s.repo.GetTracksByTag(ctx, userID, tagName)
+	tracks, err := s.repo.GetTracksByTag(ctx, userID, normalizedName)
 	if err != nil {
 		return nil, err
 	}

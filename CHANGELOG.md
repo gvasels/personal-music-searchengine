@@ -55,6 +55,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Daily search index rebuild (3 AM UTC)
 - ECR repository for Nixiesearch container images
 
+#### Epic 4: Tags & Playlists
+- Tag filtering in search
+  - Filter search results by multiple tags (AND logic)
+  - Tags stored in DynamoDB, filtered post-search
+  - Returns NotFoundError if tag doesn't exist
+  - Tag deduplication in filter requests
+- Tag name normalization (case-insensitive)
+  - All tag names normalized to lowercase throughout
+  - "Rock" and "ROCK" match the same tag "rock"
+  - Normalization applied in all tag service methods
+- Unit tests for tag service (24 tests)
+  - Tag CRUD operations
+  - Track-tag associations
+  - Case normalization tests
+- Unit tests for playlist service (16 tests)
+  - Playlist CRUD operations
+  - Track add/remove with position support
+  - Cover art URL generation
+- Unit tests for filterByTags (8 tests)
+  - Empty tags, tag not found, AND logic
+  - Deduplication, case normalization
+
 ### Changed
 - CloudFront URL signing with expiration bounds validation (5 min to 7 days)
 - Search service with query length validation (max 500 characters)

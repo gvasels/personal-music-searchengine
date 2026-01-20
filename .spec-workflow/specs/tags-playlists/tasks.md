@@ -1,7 +1,7 @@
 # Tasks - Tags & Playlists (Epic 4)
 
 ## Epic: Tags & Playlists
-**Status**: Not Started
+**Status**: Completed
 **Wave**: 3
 
 ---
@@ -19,7 +19,7 @@ Based on clarification:
 ## Group 9: Tag Filtering in Search
 
 ### Task 9.1: Add filterByTags Method to Search Service
-**Status**: [ ] Pending
+**Status**: [x] Completed
 **Files**:
 - `backend/internal/service/search.go`
 
@@ -107,16 +107,16 @@ func (s *searchServiceImpl) filterByTags(ctx context.Context, userID string, res
 ```
 
 **Acceptance Criteria**:
-- [ ] filterByTags returns results unchanged when no tags specified
-- [ ] filterByTags returns NotFoundError when any tag doesn't exist
-- [ ] filterByTags uses AND logic for multiple tags
-- [ ] Search method integrates filterByTags correctly
-- [ ] SearchResponse.TotalResults reflects filtered count when tags applied
+- [x] filterByTags returns results unchanged when no tags specified
+- [x] filterByTags returns NotFoundError when any tag doesn't exist
+- [x] filterByTags uses AND logic for multiple tags
+- [x] Search method integrates filterByTags correctly
+- [x] SearchResponse.TotalResults reflects filtered count when tags applied
 
 ---
 
 ### Task 9.2: Add filterByTags Unit Tests
-**Status**: [ ] Pending
+**Status**: [x] Completed
 **Files**:
 - `backend/internal/service/search_test.go`
 
@@ -137,16 +137,16 @@ func (s *searchServiceImpl) filterByTags(ctx context.Context, userID string, res
 - Implement full `repository.Repository` interface (stubs for unused methods)
 
 **Acceptance Criteria**:
-- [ ] All 6 tests pass
-- [ ] Tests cover success, error, and edge cases
-- [ ] Mock repository properly set up
+- [x] All 8 tests pass (exceeded target)
+- [x] Tests cover success, error, and edge cases
+- [x] Mock repository properly set up
 
 ---
 
 ## Group 10: Tag Name Normalization
 
 ### Task 10.1: Normalize Tag Names to Lowercase
-**Status**: [ ] Pending
+**Status**: [x] Completed
 **Files**:
 - `backend/internal/service/tag.go`
 
@@ -179,16 +179,16 @@ func normalizeTagName(name string) string {
 | `TestAddTagsToTrack_NormalizesNames` | Tags normalized before storage |
 
 **Acceptance Criteria**:
-- [ ] All tag operations use normalized (lowercase) names
-- [ ] Existing case-sensitive tests updated to expect lowercase
-- [ ] Helper function added and used consistently
+- [x] All tag operations use normalized (lowercase) names
+- [x] Existing case-sensitive tests updated to expect lowercase
+- [x] Helper function added and used consistently
 
 ---
 
 ## Group 11: Tag Service Tests
 
 ### Task 11.1: Create Tag Service Unit Tests
-**Status**: [ ] Pending
+**Status**: [x] Completed
 **Files**:
 - `backend/internal/service/tag_test.go` (new)
 
@@ -228,16 +228,16 @@ type MockTagRepository struct {
 ```
 
 **Acceptance Criteria**:
-- [ ] All 17 tests pass
-- [ ] 80%+ code coverage for tag.go
-- [ ] Tests cover all error paths
+- [x] All 24 tests pass (exceeded target with normalization tests)
+- [x] 80%+ code coverage for tag.go
+- [x] Tests cover all error paths
 
 ---
 
 ## Group 12: Playlist Service Tests
 
 ### Task 12.1: Create Playlist Service Unit Tests
-**Status**: [ ] Pending
+**Status**: [x] Completed
 **Files**:
 - `backend/internal/service/playlist_test.go` (new)
 
@@ -281,16 +281,16 @@ type MockPlaylistS3Repository struct {
 ```
 
 **Acceptance Criteria**:
-- [ ] All 16 tests pass
-- [ ] 80%+ code coverage for playlist.go
-- [ ] Tests cover all error paths
+- [x] All 16 tests pass
+- [x] 80%+ code coverage for playlist.go
+- [x] Tests cover all error paths
 
 ---
 
 ## Group 13: Documentation & Cleanup
 
 ### Task 13.1: Update CHANGELOG
-**Status**: [ ] Pending
+**Status**: [x] Completed
 **Files**:
 - `CHANGELOG.md`
 
@@ -309,19 +309,19 @@ type MockPlaylistS3Repository struct {
 ```
 
 **Acceptance Criteria**:
-- [ ] CHANGELOG updated under [Unreleased]
-- [ ] All Epic 4 features documented
+- [x] CHANGELOG updated under [Unreleased]
+- [x] All Epic 4 features documented
 
 ### Task 13.2: Update Service CLAUDE.md
-**Status**: [ ] Pending
+**Status**: [x] Completed
 **Files**:
 - `backend/internal/service/CLAUDE.md`
 
 **Description**: Update service documentation with filterByTags details.
 
 **Acceptance Criteria**:
-- [ ] filterByTags function documented
-- [ ] Test files listed
+- [x] filterByTags function documented
+- [x] Test files listed
 
 ---
 
@@ -340,14 +340,14 @@ type MockPlaylistS3Repository struct {
 
 ## Test Plan Summary
 
-### Unit Tests to Create
+### Unit Tests Created
 
-| File | Test Count | Coverage Target |
-|------|------------|-----------------|
-| `service/search_test.go` | +6 tests | filterByTags 100% |
-| `service/tag_test.go` | 17 tests | tag.go 80%+ |
-| `service/playlist_test.go` | 16 tests | playlist.go 80%+ |
-| **Total** | **39 tests** | |
+| File | Test Count | Status |
+|------|------------|--------|
+| `service/search_test.go` | 8 tests | ✅ Completed |
+| `service/tag_test.go` | 24 tests | ✅ Completed |
+| `service/playlist_test.go` | 16 tests | ✅ Completed |
+| **Total** | **48 tests** | ✅ All passing |
 
 ### Test Execution
 ```bash
@@ -376,9 +376,9 @@ go tool cover -func=coverage.out
 ## PR Checklist
 
 After completing all tasks:
-- [ ] All tests pass (`go test ./internal/service/... -v`)
-- [ ] Code builds (`go build ./...`)
-- [ ] Coverage meets 80% target
-- [ ] CHANGELOG.md updated
-- [ ] CLAUDE.md files updated
-- [ ] Create PR to main with all changes
+- [x] All tests pass (`go test ./internal/service/... -v`) - 71 tests passing
+- [x] Code builds (`go build ./...`)
+- [x] Coverage meets 80% target
+- [x] CHANGELOG.md updated
+- [x] CLAUDE.md files updated
+- [x] Create PR to main with all changes - PR #6
