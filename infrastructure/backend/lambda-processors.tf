@@ -116,7 +116,7 @@ resource "aws_cloudwatch_log_group" "file_mover" {
   retention_in_days = 30
 }
 
-# Search Indexer Lambda (Stub)
+# Search Indexer Lambda
 resource "aws_lambda_function" "search_indexer" {
   function_name = "${local.name_prefix}-search-indexer"
   role          = local.lambda_role_arn
@@ -132,7 +132,8 @@ resource "aws_lambda_function" "search_indexer" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE_NAME = local.dynamodb_table_name
+      DYNAMODB_TABLE_NAME       = local.dynamodb_table_name
+      NIXIESEARCH_FUNCTION_NAME = aws_lambda_function.nixiesearch.function_name
     }
   }
 

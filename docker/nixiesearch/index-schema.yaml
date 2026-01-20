@@ -1,0 +1,84 @@
+# Nixiesearch Index Schema for Music Tracks
+# This schema defines the searchable fields for the music library
+
+name: music_tracks
+version: 1
+
+fields:
+  - name: id
+    type: keyword
+    stored: true
+    index: true
+
+  - name: userId
+    type: keyword
+    stored: true
+    index: true
+    # Used for filtering - each user can only search their own tracks
+
+  - name: title
+    type: text
+    stored: true
+    index: true
+    analyzer: standard
+    # Full-text searchable with tokenization
+
+  - name: artist
+    type: text
+    stored: true
+    index: true
+    analyzer: standard
+    # Full-text searchable with tokenization
+
+  - name: album
+    type: text
+    stored: true
+    index: true
+    analyzer: standard
+    # Full-text searchable with tokenization
+
+  - name: genre
+    type: keyword
+    stored: true
+    index: true
+    # Exact match for filtering
+
+  - name: year
+    type: integer
+    stored: true
+    index: true
+    # Numeric for range queries
+
+  - name: duration
+    type: integer
+    stored: true
+    index: false
+    # Stored but not searchable
+
+  - name: filename
+    type: text
+    stored: true
+    index: true
+    analyzer: standard
+    # Searchable for finding by original filename
+
+  - name: indexedAt
+    type: date
+    stored: true
+    index: true
+    # For tracking index freshness
+
+settings:
+  # Single shard for simplicity (small index)
+  numberOfShards: 1
+  numberOfReplicas: 0
+
+  # Refresh interval - how often to make new documents searchable
+  refreshInterval: 1s
+
+  # Analysis settings
+  analysis:
+    analyzer:
+      standard:
+        type: standard
+        # Standard analyzer: lowercase, remove punctuation, tokenize

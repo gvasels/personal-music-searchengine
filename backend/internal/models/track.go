@@ -5,6 +5,16 @@ import (
 	"time"
 )
 
+// HLSStatus represents the transcoding status for HLS streaming
+type HLSStatus string
+
+const (
+	HLSStatusPending    HLSStatus = "PENDING"
+	HLSStatusProcessing HLSStatus = "PROCESSING"
+	HLSStatusReady      HLSStatus = "READY"
+	HLSStatusFailed     HLSStatus = "FAILED"
+)
+
 // Track represents a music track in the library
 type Track struct {
 	ID          string      `json:"id" dynamodbav:"id"`
@@ -32,6 +42,13 @@ type Track struct {
 	PlayCount   int         `json:"playCount" dynamodbav:"playCount"`
 	LastPlayed  *time.Time  `json:"lastPlayed,omitempty" dynamodbav:"lastPlayed,omitempty"`
 	Tags        []string    `json:"tags,omitempty" dynamodbav:"tags,omitempty"`
+
+	// HLS streaming fields
+	HLSStatus        HLSStatus `json:"hlsStatus,omitempty" dynamodbav:"hlsStatus,omitempty"`
+	HLSPlaylistKey   string    `json:"hlsPlaylistKey,omitempty" dynamodbav:"hlsPlaylistKey,omitempty"` // S3 key to master.m3u8
+	HLSJobID         string    `json:"hlsJobId,omitempty" dynamodbav:"hlsJobId,omitempty"`             // MediaConvert job ID
+	HLSTranscodedAt  *time.Time `json:"hlsTranscodedAt,omitempty" dynamodbav:"hlsTranscodedAt,omitempty"`
+
 	Timestamps
 }
 
@@ -110,6 +127,8 @@ type TrackResponse struct {
 	PlayCount    int       `json:"playCount"`
 	LastPlayed   *time.Time `json:"lastPlayed,omitempty"`
 	Tags         []string  `json:"tags,omitempty"`
+	HLSStatus    string    `json:"hlsStatus,omitempty"`
+	HLSReady     bool      `json:"hlsReady"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
@@ -136,6 +155,8 @@ func (t *Track) ToResponse(coverArtURL string) TrackResponse {
 		PlayCount:    t.PlayCount,
 		LastPlayed:   t.LastPlayed,
 		Tags:         t.Tags,
+		HLSStatus:    string(t.HLSStatus),
+		HLSReady:     t.HLSStatus == HLSStatusReady,
 		CreatedAt:    t.CreatedAt,
 		UpdatedAt:    t.UpdatedAt,
 	}

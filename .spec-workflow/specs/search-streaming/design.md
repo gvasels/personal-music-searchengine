@@ -43,19 +43,20 @@
 
 ### 1. Nixiesearch Integration
 
-**Deployment Model**: Lambda function with EFS for index storage
+**Deployment Model**: Embedded Lambda with S3 index storage (pure serverless, no VPC)
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  API Lambda     │────►│  Nixiesearch    │────►│  EFS Volume     │
-│  (search req)   │     │  Lambda         │     │  (index data)   │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                               │
-                               ▼
-                        ┌─────────────────┐
-                        │  S3 Index       │
-                        │  (backup/sync)  │
-                        └─────────────────┘
+┌─────────────────┐     ┌─────────────────────────────────────┐
+│  API Lambda     │────►│  Nixiesearch Lambda (embedded)      │
+│  (search req)   │     │  • Loads index from S3 on cold start│
+│                 │     │  • Writes index back to S3 on update│
+└─────────────────┘     └───────────────────┬─────────────────┘
+                                            │
+                                            ▼
+                                 ┌─────────────────────┐
+                                 │  S3 Index Bucket    │
+                                 │  (lucene index dir) │
+                                 └─────────────────────┘
 ```
 
 **Index Schema**:
@@ -213,31 +214,35 @@ func (s *CloudFrontSigner) SignURL(resource string, expiry time.Duration) (strin
 
 ### DD-1: Nixiesearch vs OpenSearch Serverless
 
-**Decision**: Use Nixiesearch with EFS
+**Decision**: Use Nixiesearch embedded in Lambda with S3 index storage
 
 **Rationale**:
 - Lower cost for small-medium libraries (< 100k tracks)
 - No minimum hourly charge (unlike OpenSearch Serverless)
-- Simpler architecture with Lambda + EFS
+- Pure serverless - no VPC, NAT Gateway, or EFS costs
 - Sufficient features for music metadata search
+- S3 provides durable, cheap storage for index files
 
 **Trade-offs**:
-- Less powerful query language than OpenSearch
-- Manual index management required
-- Cold start latency with large indexes
+- Cold start latency when loading index from S3
+- Index size limited by Lambda ephemeral storage (10GB)
+- Eventual consistency for index updates
 
-### DD-2: EFS vs S3 for Search Index
+### DD-2: S3 for Search Index Storage
 
-**Decision**: EFS for active index, S3 for backup
+**Decision**: S3 only for index storage (no EFS)
 
 **Rationale**:
-- EFS provides fast random access for search queries
-- Lambda can mount EFS directly
-- S3 backup enables disaster recovery and multi-region
+- No VPC required - simpler architecture
+- No NAT Gateway costs (~$45/month saved)
+- No EFS costs (~$0.30/GB-month saved)
+- S3 provides 11 9's durability
+- Index loaded to /tmp on cold start, written back on updates
 
 **Trade-offs**:
-- EFS adds cost (~$0.30/GB-month)
-- Requires VPC configuration for Lambda
+- Higher cold start latency (index load from S3)
+- Must manage index serialization/deserialization
+- Index updates require S3 write operations
 
 ### DD-3: HLS vs Direct Streaming
 
@@ -435,25 +440,20 @@ Response:
 | `aws_cloudfront_key_group` | Key group for signing |
 | `aws_cloudfront_origin_access_control` | S3 origin security |
 | `aws_secretsmanager_secret.cf_signing_key` | Private key storage |
-| `aws_efs_file_system.search_index` | Nixiesearch index storage |
-| `aws_efs_access_point.search` | Lambda EFS mount |
-| `aws_lambda_function.nixiesearch` | Search engine Lambda |
+| `aws_s3_bucket.search_index` | S3 bucket for Nixiesearch index storage |
+| `aws_lambda_function.nixiesearch` | Search engine Lambda (embedded, public internet) |
 | `aws_lambda_function.transcode_start` | Start MediaConvert job |
 | `aws_lambda_function.transcode_complete` | Handle job completion |
 | `aws_iam_role.mediaconvert` | MediaConvert job role |
 | `aws_media_convert_queue.default` | Transcoding job queue |
 
-### VPC Requirements (for EFS)
+### Network Architecture
 
-```
-VPC
-├── Private Subnet A
-│   ├── EFS Mount Target
-│   └── Lambda (Nixiesearch)
-├── Private Subnet B
-│   └── EFS Mount Target
-└── NAT Gateway (for Lambda internet access)
-```
+**Pure Public Serverless** - No VPC required:
+- All Lambdas run in AWS public network
+- Nixiesearch Lambda loads index from S3 on cold start
+- No NAT Gateway, no EFS, no VPC endpoints
+- Reduces operational complexity and costs
 
 ---
 
@@ -488,12 +488,12 @@ VPC
 - Search error rate
 - Transcode job success/failure rate
 - CloudFront cache hit ratio
-- EFS throughput
+- S3 index bucket operations
 
 ### CloudWatch Alarms
 - Search latency > 1s (p95)
 - Transcode failure rate > 5%
-- EFS throughput > 80% provisioned
+- Lambda cold start duration > 5s
 
 ### X-Ray Tracing
 - End-to-end search request tracing

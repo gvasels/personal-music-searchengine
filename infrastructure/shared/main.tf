@@ -95,3 +95,11 @@ output "media_bucket_name" {
 output "media_bucket_arn" {
   value = aws_s3_bucket.media.arn
 }
+
+output "search_indexes_bucket_name" {
+  value = aws_s3_bucket.search_indexes.id
+}
+
+output "search_indexes_bucket_arn" {
+  value = aws_s3_bucket.search_indexes.arn
+}

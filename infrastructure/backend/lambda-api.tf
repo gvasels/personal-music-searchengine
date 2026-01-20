@@ -16,10 +16,14 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE_NAME = local.dynamodb_table_name
-      MEDIA_BUCKET        = local.media_bucket_name
-      STEP_FUNCTIONS_ARN  = aws_sfn_state_machine.upload_processor.arn
-      AWS_REGION          = var.aws_region
+      DYNAMODB_TABLE_NAME            = local.dynamodb_table_name
+      MEDIA_BUCKET                   = local.media_bucket_name
+      STEP_FUNCTIONS_ARN             = aws_sfn_state_machine.upload_processor.arn
+      AWS_REGION                     = var.aws_region
+      NIXIESEARCH_FUNCTION_NAME      = aws_lambda_function.nixiesearch.function_name
+      CLOUDFRONT_DOMAIN              = aws_cloudfront_distribution.media.domain_name
+      CLOUDFRONT_KEY_PAIR_ID         = aws_cloudfront_public_key.signing.id
+      CLOUDFRONT_SIGNING_KEY_SECRET  = aws_secretsmanager_secret.cloudfront_signing_key.name
     }
   }
 

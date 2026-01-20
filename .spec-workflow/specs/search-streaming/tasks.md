@@ -481,31 +481,9 @@
 
 ---
 
-## Group 12: VPC and EFS for Nixiesearch (Wave 3)
+## Group 12: Nixiesearch Lambda with S3 Index (Wave 3)
 
-### Task 12.1: VPC Infrastructure
-**Status**: [ ] Pending
-**Files**:
-- `infrastructure/backend/vpc.tf`
-
-**Acceptance Criteria**:
-- [ ] VPC with private subnets (2 AZs)
-- [ ] NAT Gateway for Lambda internet access
-- [ ] Security group for Lambda-EFS communication
-- [ ] VPC endpoints for DynamoDB and S3
-
-### Task 12.2: EFS File System
-**Status**: [ ] Pending
-**Files**:
-- `infrastructure/backend/efs.tf`
-
-**Acceptance Criteria**:
-- [ ] EFS file system for search index
-- [ ] Mount targets in each private subnet
-- [ ] Access point for Lambda mount
-- [ ] Encryption at rest enabled
-
-### Task 12.3: Nixiesearch Lambda
+### Task 12.1: Nixiesearch Lambda
 **Status**: [ ] Pending
 **Files**:
 - `infrastructure/backend/lambda-nixiesearch.tf`
@@ -517,26 +495,39 @@
 | `main()` | Lambda entry point |
 | `handleSearch(ctx, req)` | Process search request |
 | `handleIndex(ctx, req)` | Process index request |
-| `initNixiesearch()` | Initialize Nixiesearch engine |
+| `loadIndexFromS3()` | Load index from S3 to /tmp on cold start |
+| `saveIndexToS3()` | Save updated index back to S3 |
 
 **Acceptance Criteria**:
-- [ ] Lambda with VPC config and EFS mount
-- [ ] Nixiesearch binary bundled in layer
-- [ ] Handles search and index operations
-- [ ] Index persisted to EFS
+- [ ] Lambda with NO VPC (public serverless)
+- [ ] Nixiesearch embedded in Lambda
+- [ ] Index loaded from S3 on cold start
+- [ ] Index saved to S3 after updates
 - [ ] Memory: 1024MB, Timeout: 30s
+- [ ] Ephemeral storage: 2GB for index
 
-### Task 12.4: Nixiesearch Docker Image
+### Task 12.2: S3 Index Bucket
+**Status**: [ ] Pending
+**Files**:
+- `infrastructure/backend/s3-search-index.tf`
+
+**Acceptance Criteria**:
+- [ ] S3 bucket for search index storage
+- [ ] Bucket policy for Lambda access only
+- [ ] Versioning enabled for rollback
+- [ ] Lifecycle rules for old versions
+
+### Task 12.3: Nixiesearch Container Image
 **Status**: [ ] Pending
 **Files**:
 - `docker/nixiesearch/Dockerfile`
 - `docker/nixiesearch/index-schema.yaml`
 
 **Acceptance Criteria**:
-- [ ] Docker image with Nixiesearch binary
+- [ ] Container image with Nixiesearch embedded
 - [ ] Index schema for music tracks
-- [ ] Lambda layer build script
 - [ ] ECR repository for image
+- [ ] Lambda runs as container image
 
 ---
 
@@ -570,13 +561,13 @@
 
 | Group | Tasks | Status |
 |-------|-------|--------|
-| Group 8: Epic 2 Security Hardening | 3 | Not Started |
-| Group 9: Nixiesearch Integration | 5 | Not Started |
-| Group 10: HLS Transcoding Pipeline | 5 | Not Started |
-| Group 11: CloudFront Streaming | 6 | Not Started |
-| Group 12: VPC and EFS | 4 | Not Started |
+| Group 8: Epic 2 Security Hardening | 3 | Complete |
+| Group 9: Nixiesearch Integration | 5 | Complete |
+| Group 10: HLS Transcoding Pipeline | 5 | Complete |
+| Group 11: CloudFront Streaming | 6 | Complete |
+| Group 12: Nixiesearch Lambda + S3 Index | 3 | Not Started |
 | Group 13: Step Functions Update | 2 | Not Started |
-| **Total** | **25** | **0 Complete** |
+| **Total** | **24** | **19 Complete** |
 
 ---
 
@@ -612,13 +603,14 @@
 
 ### Between Groups
 - Group 10 depends on Group 9 (indexer needs search client)
-- Group 11 depends on Group 12 (Lambda needs VPC for EFS)
-- Group 13 depends on Groups 10, 11 (workflow includes new steps)
+- Group 12 depends on Group 9 (Nixiesearch Lambda uses search types)
+- Group 13 depends on Groups 10, 11, 12 (workflow includes new steps)
 
 ### External
-- Nixiesearch binary (download or build)
+- Nixiesearch binary (embedded in Lambda container)
 - MediaConvert service (AWS managed)
 - CloudFront (AWS managed)
+- S3 (index storage)
 
 ---
 
