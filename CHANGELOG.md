@@ -77,6 +77,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Empty tags, tag not found, AND logic
   - Deduplication, case normalization
 
+#### Epic 5: Frontend
+- React 18 SPA with Vite, TypeScript, TanStack Router/Query
+- TDD Implementation (63 unit tests, 81.56% coverage)
+  - Store tests: themeStore (4 tests), playerStore (14 tests)
+  - API client tests (11 tests)
+  - Component tests: Layout (5), TrackList (6), PlayerBar (5), UploadDropzone (5), CreatePlaylistModal (7), TagInput (6)
+- Authentication & Auth Guard
+  - AWS Amplify/Cognito integration
+  - Protected routes with login redirect
+  - useAuth hook for auth state
+- Layout Components
+  - Header with SearchBar and theme toggle
+  - Sidebar with navigation (mobile hamburger menu)
+  - Layout app shell with responsive design
+- Library Views
+  - TrackList with click-to-play integration
+  - formatDuration utility for time display
+- Audio Playback
+  - PlayerBar with Howler.js integration
+  - Zustand player store (queue, volume, repeat, shuffle)
+  - Play/pause, skip, seek, volume controls
+- Upload & Search
+  - UploadDropzone with react-dropzone (drag & drop)
+  - File type validation (MP3, FLAC, WAV, OGG, M4A, AAC)
+  - /upload route with progress tracking
+- Playlist & Tag Management
+  - CreatePlaylistModal with form validation
+  - TagInput component for add/remove tags (lowercase normalization)
+- Theming
+  - DaisyUI 5 with Tailwind CSS 4
+  - Dark theme: #120612 base, #50c878 primary, #72001c secondary
+  - Light theme: #fdfdf8 base with same accent colors
+  - Theme persistence via Zustand store
+
 ### Changed
 - CloudFront URL signing with expiration bounds validation (5 min to 7 days)
 - Search service with query length validation (max 500 characters)

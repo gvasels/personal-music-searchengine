@@ -2,7 +2,7 @@
 
 ## Overview
 
-React frontend for the Personal Music Search Engine. Built with Vite, TypeScript, TanStack Router, TanStack Query, and DaisyUI for styling. Uses Zustand for state management and Howler.js for audio playback.
+React frontend for the Personal Music Search Engine. Built with Vite, TypeScript, TanStack Router, TanStack Query, and DaisyUI 5 for styling. Uses Zustand for state management and Howler.js for audio playback.
 
 ## Directory Structure
 
@@ -10,9 +10,17 @@ React frontend for the Personal Music Search Engine. Built with Vite, TypeScript
 frontend/
 ├── src/
 │   ├── components/         # Reusable React components
-│   ├── hooks/              # Custom React hooks
+│   │   ├── layout/         # Layout components (Header, Sidebar, Layout)
+│   │   ├── library/        # Music library (TrackList, AlbumCard, ArtistCard)
+│   │   ├── player/         # Audio player (PlayerBar)
+│   │   ├── playlist/       # Playlist management (PlaylistCard, CreatePlaylistModal)
+│   │   ├── search/         # Search functionality (SearchBar)
+│   │   ├── tag/            # Tag management (TagInput)
+│   │   └── upload/         # File upload (UploadDropzone)
+│   ├── hooks/              # Custom React hooks (useAuth)
 │   ├── lib/                # Utilities and configurations
-│   ├── pages/              # Page components (if not using routes)
+│   │   ├── api/            # API client and types
+│   │   └── store/          # Zustand stores (player, theme)
 │   └── routes/             # TanStack Router file-based routes
 ├── public/                 # Static assets
 ├── index.html              # HTML entry point
@@ -22,69 +30,101 @@ frontend/
 └── tsconfig.json           # TypeScript configuration
 ```
 
-## File Descriptions
+## Components
 
-| File | Purpose |
-|------|---------|
-| `vite.config.ts` | Vite build configuration with TanStack Router plugin |
-| `tailwind.config.js` | Tailwind CSS config with custom dark/light DaisyUI themes |
-| `tsconfig.json` | TypeScript compiler options |
-| `package.json` | Dependencies and scripts |
-| `src/main.tsx` | Application entry point |
-| `src/index.css` | Global styles and DaisyUI theme imports |
-
-## Key Components
-
-### Layout Components (`src/components/`)
+### Layout (`src/components/layout/`)
 | Component | File | Description |
 |-----------|------|-------------|
-| `Layout` | `Layout.tsx` | App shell with sidebar, header, and player |
-| `Header` | `Header.tsx` | Top navigation with search and theme toggle |
-| `Sidebar` | `Sidebar.tsx` | Navigation menu |
-| `Player` | `Player.tsx` | Audio player with Howler.js |
+| `Layout` | `Layout.tsx` | App shell with sidebar, header, and PlayerBar |
+| `Header` | `Header.tsx` | Top navigation with SearchBar and theme toggle |
+| `Sidebar` | `Sidebar.tsx` | Navigation menu with mobile hamburger support |
 
-### Library Components (`src/components/`)
+### Library (`src/components/library/`)
 | Component | File | Description |
 |-----------|------|-------------|
-| `TrackList` | `TrackList.tsx` | Track listing with sorting/filtering |
-| `AlbumGrid` | `AlbumGrid.tsx` | Album grid view |
+| `TrackList` | `TrackList.tsx` | Track table with click-to-play integration |
+| `TrackRow` | `TrackRow.tsx` | Individual track row component |
+| `AlbumCard` | `AlbumCard.tsx` | Album card with cover art |
+| `AlbumGrid` | `AlbumGrid.tsx` | Grid layout for albums |
+| `ArtistCard` | `ArtistCard.tsx` | Artist card component |
+
+### Player (`src/components/player/`)
+| Component | File | Description |
+|-----------|------|-------------|
+| `PlayerBar` | `PlayerBar.tsx` | Fixed player bar with Howler.js integration |
+
+### Playlist (`src/components/playlist/`)
+| Component | File | Description |
+|-----------|------|-------------|
+| `PlaylistCard` | `PlaylistCard.tsx` | Playlist card with track count |
+| `CreatePlaylistModal` | `CreatePlaylistModal.tsx` | Modal for creating new playlists |
+
+### Search (`src/components/search/`)
+| Component | File | Description |
+|-----------|------|-------------|
+| `SearchBar` | `SearchBar.tsx` | Search with autocomplete dropdown |
+
+### Tag (`src/components/tag/`)
+| Component | File | Description |
+|-----------|------|-------------|
+| `TagInput` | `TagInput.tsx` | Tag add/remove component with badges |
+
+### Upload (`src/components/upload/`)
+| Component | File | Description |
+|-----------|------|-------------|
+| `UploadDropzone` | `UploadDropzone.tsx` | Drag-and-drop file upload with progress |
 
 ## Utilities (`src/lib/`)
 
-### API Client (`api.ts`)
+### API Client (`api/client.ts`)
 ```typescript
 // Axios client with Cognito auth interceptor
 export const apiClient: AxiosInstance
 
-// Type definitions
-export interface Track { ... }
-export interface Album { ... }
-export interface Playlist { ... }
-export interface Upload { ... }
-
 // API functions
 export const getTracks: (params?) => Promise<PaginatedResponse<Track>>
 export const getTrack: (id: string) => Promise<Track>
+export const getAlbums: (params?) => Promise<PaginatedResponse<Album>>
+export const getArtists: (params?) => Promise<PaginatedResponse<Artist>>
+export const getPlaylists: (params?) => Promise<PaginatedResponse<Playlist>>
+export const createPlaylist: (data) => Promise<Playlist>
+export const addTrackToPlaylist: (playlistId, trackId) => Promise<Playlist>
+export const addTagToTrack: (trackId, tagName) => Promise<Track>
+export const searchTracks: (query) => Promise<SearchResponse>
 export const getPresignedUploadUrl: (data) => Promise<PresignedUploadResponse>
-export const confirmUpload: (uploadId: string) => Promise<ConfirmUploadResponse>
-export const getStreamUrl: (trackId: string) => Promise<StreamUrlResponse>
+export const getStreamUrl: (trackId) => Promise<StreamUrlResponse>
 ```
 
-### Auth (`auth.ts`)
+### Types (`api/types.ts`)
+```typescript
+export interface Track { id, title, artist, album, duration, format, ... }
+export interface Album { id, name, artist, year, trackCount, ... }
+export interface Artist { id, name, trackCount, albumCount }
+export interface Playlist { id, name, description, trackIds, trackCount }
+export interface Tag { name, trackCount }
+export interface Upload { id, status, filename, progress, ... }
+export interface PaginatedResponse<T> { items, total, limit, offset }
+```
+
+### Auth (`auth.ts`, `amplify.ts`)
 ```typescript
 // AWS Amplify configuration for Cognito
+export const amplifyConfig: ResourcesConfig
 export const configureAuth: () => void
-export const getCurrentUser: () => Promise<User>
-export const signIn: (email: string, password: string) => Promise<void>
-export const signOut: () => Promise<void>
 ```
 
-### State Management (`store.ts`)
+### State Management (`store/`)
 ```typescript
-// Zustand stores
-export const usePlayerStore: StoreApi<PlayerState & PlayerActions>
-export const useThemeStore: StoreApi<ThemeState>
-export const useSidebarStore: StoreApi<SidebarState>
+// Player store with Howler.js (playerStore.ts)
+export const usePlayerStore: {
+  currentTrack, queue, isPlaying, volume, progress,
+  play, pause, next, previous, seek, setVolume, setQueue
+}
+
+// Theme store with persistence (themeStore.ts)
+export const useThemeStore: {
+  theme, toggleTheme
+}
 ```
 
 ## Routes (`src/routes/`)
@@ -93,8 +133,21 @@ TanStack Router file-based routing:
 
 | Route | File | Description |
 |-------|------|-------------|
-| `/` | `index.tsx` | Home/library view |
-| `/__root` | `__root.tsx` | Root layout wrapper |
+| `/` | `index.tsx` | Home page with library stats |
+| `/__root` | `__root.tsx` | Root layout with auth guard |
+| `/login` | `login.tsx` | Login page with Cognito auth |
+| `/tracks` | `tracks/index.tsx` | Track listing |
+| `/tracks/$trackId` | `tracks/$trackId.tsx` | Track detail with TagInput |
+| `/albums` | `albums/index.tsx` | Album grid view |
+| `/albums/$albumId` | `albums/$albumId.tsx` | Album detail with tracks |
+| `/artists` | `artists/index.tsx` | Artist listing |
+| `/artists/$artistId` | `artists/$artistId.tsx` | Artist detail |
+| `/playlists` | `playlists/index.tsx` | Playlist grid |
+| `/playlists/$playlistId` | `playlists/$playlistId.tsx` | Playlist detail |
+| `/tags` | `tags/index.tsx` | Tag cloud |
+| `/tags/$tagName` | `tags/$tagName.tsx` | Tracks by tag |
+| `/upload` | `upload.tsx` | File upload page |
+| `/search` | `search.tsx` | Search results page |
 
 ## DaisyUI Themes
 
@@ -120,8 +173,11 @@ TanStack Router file-based routing:
 | `axios` | HTTP client |
 | `aws-amplify` | Cognito authentication |
 | `howler` | Audio playback |
-| `daisyui` | UI components |
-| `tailwindcss` | Utility-first CSS |
+| `daisyui` | UI components (v5) |
+| `tailwindcss` | Utility-first CSS (v4) |
+| `react-dropzone` | Drag-and-drop file upload |
+| `react-hot-toast` | Toast notifications |
+| `clsx` | Classname utilities |
 
 ### Development
 | Package | Purpose |
@@ -129,7 +185,42 @@ TanStack Router file-based routing:
 | `vite` | Build tool |
 | `typescript` | Type checking |
 | `vitest` | Testing |
-| `@testing-library/react` | Component testing |
+| `@tanstack/router-vite-plugin` | Route generation |
+
+## Testing
+
+### Framework
+- **Vitest** with React Testing Library
+- **jsdom** environment for DOM simulation
+- **@testing-library/user-event** for user interaction simulation
+
+### Test Coverage (81.56%)
+| Area | Coverage | Tests |
+|------|----------|-------|
+| Layout components | 100% | 5 |
+| TrackList | 98.27% | 6 |
+| PlayerBar | 95.53% | 5 |
+| Zustand stores | 92.77% | 18 |
+| CreatePlaylistModal | 88.79% | 7 |
+| UploadDropzone | 86.07% | 5 |
+| TagInput | 82.75% | 6 |
+| API client | 19.71% | 11 |
+
+### Running Tests
+```bash
+# Run all tests
+npm test
+
+# Run with coverage
+npm run test -- --coverage
+
+# Run in watch mode
+npm run test -- --watch
+```
+
+### Test Utilities (`src/test/`)
+- `setup.ts` - Global mocks (matchMedia, localStorage, etc.)
+- `test-utils.tsx` - Custom render with QueryClient wrapper
 
 ## Build Commands
 
@@ -144,7 +235,10 @@ npm run build
 npm run preview
 
 # Run tests
-npm run test
+npm test
+
+# Run tests with coverage
+npm test -- --coverage
 
 # Type check
 npm run typecheck
@@ -162,22 +256,6 @@ npm run lint
 | `VITE_COGNITO_CLIENT_ID` | Cognito App Client ID |
 | `VITE_COGNITO_REGION` | AWS Region (us-east-1) |
 
-## Testing
-
-Component tests with Vitest and Testing Library:
-
-```typescript
-import { render, screen } from '@testing-library/react'
-import { TrackList } from './TrackList'
-
-describe('TrackList', () => {
-  it('renders tracks', () => {
-    render(<TrackList tracks={mockTracks} />)
-    expect(screen.getByText('Track Title')).toBeInTheDocument()
-  })
-})
-```
-
 ## Usage Examples
 
 ### Using the Player Store
@@ -185,31 +263,46 @@ describe('TrackList', () => {
 import { usePlayerStore } from '@/lib/store'
 
 function PlayButton({ track }) {
-  const { setQueue, play } = usePlayerStore()
+  const { setQueue } = usePlayerStore()
 
   return (
-    <button onClick={() => {
-      setQueue([track], 0)
-      play()
-    }}>
+    <button onClick={() => setQueue([track], 0)}>
       Play
     </button>
   )
 }
 ```
 
-### Fetching Tracks
+### Fetching Tracks with TanStack Query
 ```typescript
 import { useQuery } from '@tanstack/react-query'
-import { getTracks } from '@/lib/api'
+import { getTracks } from '@/lib/api/client'
 
 function TrackListPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['tracks'],
-    queryFn: () => getTracks()
+    queryFn: () => getTracks({ limit: 50 })
   })
 
   if (isLoading) return <div>Loading...</div>
   return <TrackList tracks={data.items} />
+}
+```
+
+### Adding Tags to a Track
+```typescript
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { addTagToTrack } from '@/lib/api/client'
+
+function TagButton({ trackId, tagName }) {
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: () => addTagToTrack(trackId, tagName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['track', trackId] })
+    }
+  })
+
+  return <button onClick={() => mutation.mutate()}>Add Tag</button>
 }
 ```
