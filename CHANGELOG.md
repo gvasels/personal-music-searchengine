@@ -77,35 +77,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Empty tags, tag not found, AND logic
   - Deduplication, case normalization
 
-#### Epic 5: Frontend
+#### Epic 5: Frontend (Complete)
 - React 18 SPA with Vite, TypeScript, TanStack Router/Query
-- TDD Implementation (63 unit tests, 81.56% coverage)
+- **TDD Implementation (351 unit tests)**
   - Store tests: themeStore (4 tests), playerStore (14 tests)
-  - API client tests (11 tests)
+  - API client tests: client (11), tracks (10), albums (5), artists (5), upload (4), search (4), playlists (7), tags (4)
+  - Hook tests: useAuth (18), useTracks (13), useAlbums (11), useArtists (11), useUpload (6), useSearch (8), usePlaylists (6), useTags (6)
   - Component tests: Layout (5), TrackList (6), PlayerBar (5), UploadDropzone (5), CreatePlaylistModal (7), TagInput (6)
-- Authentication & Auth Guard
+  - Route tests: index (22), login (19), tracks (10), trackDetail (17), albums (11), artists (11), upload (9), search (9), playlists (9), playlistDetail (11), tags (8), tagDetail (9)
+- **Wave 1: Authentication & Pages**
   - AWS Amplify/Cognito integration
-  - Protected routes with login redirect
+  - Protected routes with auth guard
   - useAuth hook for auth state
-- Layout Components
-  - Header with SearchBar and theme toggle
-  - Sidebar with navigation (mobile hamburger menu)
-  - Layout app shell with responsive design
-- Library Views
-  - TrackList with click-to-play integration
-  - formatDuration utility for time display
-- Audio Playback
+  - Login page with form validation
+  - Home page with library statistics
+- **Wave 2: Library Views**
+  - API layer: tracks, albums, artists with query key factories
+  - Hooks: useTracks, useAlbums, useArtists with TanStack Query
+  - Routes: /tracks, /tracks/:trackId, /albums, /artists
+  - TrackList with click-to-play, sorting, duration formatting
+- **Wave 3: Audio Playback**
   - PlayerBar with Howler.js integration
   - Zustand player store (queue, volume, repeat, shuffle)
   - Play/pause, skip, seek, volume controls
-- Upload & Search
-  - UploadDropzone with react-dropzone (drag & drop)
-  - File type validation (MP3, FLAC, WAV, OGG, M4A, AAC)
-  - /upload route with progress tracking
-- Playlist & Tag Management
+- **Wave 4: Upload & Search**
+  - API layer: upload (presigned URL, confirm, status), search (query, autocomplete)
+  - Hooks: useUpload (file upload with progress), useSearch (debounced queries)
+  - UploadDropzone with react-dropzone (drag & drop, file validation)
+  - Search page with results and filter inputs (artist, album)
+- **Wave 5: Playlists & Tags**
+  - API layer: playlists (CRUD, add/remove tracks), tags (list, tracks by tag)
+  - Hooks: usePlaylists, useTags with query key factories
+  - Routes: /playlists, /playlists/:playlistId, /tags, /tags/:tagName
   - CreatePlaylistModal with form validation
-  - TagInput component for add/remove tags (lowercase normalization)
-- Theming
+  - TagInput component (add/remove with lowercase normalization)
+  - Tag cloud with size based on track count
+- **Layout Components**
+  - Header with SearchBar and theme toggle
+  - Sidebar with navigation (mobile hamburger menu)
+  - Layout app shell with responsive design
+- **Theming**
   - DaisyUI 5 with Tailwind CSS 4
   - Dark theme: #120612 base, #50c878 primary, #72001c secondary
   - Light theme: #fdfdf8 base with same accent colors

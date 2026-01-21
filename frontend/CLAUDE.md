@@ -17,7 +17,7 @@ frontend/
 │   │   ├── search/         # Search functionality (SearchBar)
 │   │   ├── tag/            # Tag management (TagInput)
 │   │   └── upload/         # File upload (UploadDropzone)
-│   ├── hooks/              # Custom React hooks (useAuth)
+│   ├── hooks/              # Custom React hooks (useAuth, useTracks, useAlbums, etc.)
 │   ├── lib/                # Utilities and configurations
 │   │   ├── api/            # API client and types
 │   │   └── store/          # Zustand stores (player, theme)
@@ -74,26 +74,33 @@ frontend/
 |-----------|------|-------------|
 | `UploadDropzone` | `UploadDropzone.tsx` | Drag-and-drop file upload with progress |
 
+## Hooks (`src/hooks/`)
+
+| Hook | File | Purpose |
+|------|------|---------|
+| `useAuth` | `useAuth.ts` | Authentication state and actions (signIn, signOut, currentUser) |
+| `useTracks` | `useTracks.ts` | Track CRUD queries with `trackKeys` factory |
+| `useAlbums` | `useAlbums.ts` | Album queries with `albumKeys` factory |
+| `useArtists` | `useArtists.ts` | Artist queries with `artistKeys` factory |
+| `useUpload` | `useUpload.ts` | File upload mutations with progress tracking |
+| `useSearch` | `useSearch.ts` | Search queries and autocomplete with `searchKeys` factory |
+| `usePlaylists` | `usePlaylists.ts` | Playlist CRUD queries with `playlistKeys` factory |
+| `useTags` | `useTags.ts` | Tag queries and tracks-by-tag with `tagKeys` factory |
+
 ## Utilities (`src/lib/`)
 
-### API Client (`api/client.ts`)
-```typescript
-// Axios client with Cognito auth interceptor
-export const apiClient: AxiosInstance
+### API Modules (`api/`)
 
-// API functions
-export const getTracks: (params?) => Promise<PaginatedResponse<Track>>
-export const getTrack: (id: string) => Promise<Track>
-export const getAlbums: (params?) => Promise<PaginatedResponse<Album>>
-export const getArtists: (params?) => Promise<PaginatedResponse<Artist>>
-export const getPlaylists: (params?) => Promise<PaginatedResponse<Playlist>>
-export const createPlaylist: (data) => Promise<Playlist>
-export const addTrackToPlaylist: (playlistId, trackId) => Promise<Playlist>
-export const addTagToTrack: (trackId, tagName) => Promise<Track>
-export const searchTracks: (query) => Promise<SearchResponse>
-export const getPresignedUploadUrl: (data) => Promise<PresignedUploadResponse>
-export const getStreamUrl: (trackId) => Promise<StreamUrlResponse>
-```
+| File | Functions |
+|------|-----------|
+| `client.ts` | `apiClient` (Axios with Cognito auth interceptor) |
+| `tracks.ts` | `getTracks`, `getTrack`, `updateTrack`, `deleteTrack` |
+| `albums.ts` | `getAlbums`, `getAlbum` |
+| `artists.ts` | `getArtists`, `getArtist` |
+| `upload.ts` | `getPresignedUploadUrl`, `confirmUpload`, `getUploadStatus` |
+| `search.ts` | `searchTracks`, `searchAutocomplete` |
+| `playlists.ts` | `getPlaylists`, `getPlaylist`, `createPlaylist`, `updatePlaylist`, `deletePlaylist`, `addTrackToPlaylist`, `removeTrackFromPlaylist` |
+| `tags.ts` | `getTags`, `getTracksByTag`, `addTagToTrack`, `removeTagFromTrack` |
 
 ### Types (`api/types.ts`)
 ```typescript
@@ -194,17 +201,14 @@ TanStack Router file-based routing:
 - **jsdom** environment for DOM simulation
 - **@testing-library/user-event** for user interaction simulation
 
-### Test Coverage (81.56%)
-| Area | Coverage | Tests |
-|------|----------|-------|
-| Layout components | 100% | 5 |
-| TrackList | 98.27% | 6 |
-| PlayerBar | 95.53% | 5 |
-| Zustand stores | 92.77% | 18 |
-| CreatePlaylistModal | 88.79% | 7 |
-| UploadDropzone | 86.07% | 5 |
-| TagInput | 82.75% | 6 |
-| API client | 19.71% | 11 |
+### Test Coverage (351 tests)
+| Area | Tests |
+|------|-------|
+| API tests (client, tracks, albums, artists, upload, search, playlists, tags) | 50 |
+| Hook tests (useAuth, useTracks, useAlbums, useArtists, useUpload, useSearch, usePlaylists, useTags) | 92 |
+| Store tests (playerStore, themeStore) | 18 |
+| Component tests (Layout, TrackList, PlayerBar, UploadDropzone, CreatePlaylistModal, TagInput) | 34 |
+| Route tests (index, login, tracks, trackDetail, albums, artists, upload, search, playlists, playlistDetail, tags, tagDetail) | 157 |
 
 ### Running Tests
 ```bash
