@@ -8,6 +8,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Epic 6: Distribution & Polish
+- Frontend S3 bucket (`music-library-prod-frontend`) for SPA hosting
+  - Versioning enabled for rollback capability
+  - AES-256 server-side encryption
+  - Public access blocked (OAC only)
+- CloudFront distribution for frontend with:
+  - Origin Access Control (OAC) for S3 security
+  - SPA routing (403/404 → index.html)
+  - Cache behaviors: no-cache for index.html, 1 year TTL for /assets/*
+  - Gzip and Brotli compression
+  - PriceClass_100 (US, Canada, Europe)
+- Security headers response policy:
+  - X-Content-Type-Options: nosniff
+  - X-Frame-Options: DENY
+  - Strict-Transport-Security: max-age=31536000; includeSubDomains
+  - X-XSS-Protection: 1; mode=block
+- GitHub Actions OIDC authentication for AWS deployments
+  - IAM role with least-privilege permissions
+  - S3, CloudFront, ECR, Lambda deploy permissions
+- CI workflow (`.github/workflows/ci.yml`):
+  - Go tests with 80% coverage threshold
+  - Frontend tests (Vitest) with coverage
+  - ESLint and TypeScript type checking
+  - OpenTofu validation for all modules
+  - Gitleaks secrets scanning
+  - Checkov IaC security scanning
+- Deploy workflow (`.github/workflows/deploy.yml`):
+  - Automated infrastructure deployment on merge to main
+  - Frontend build and S3 sync with cache headers
+  - CloudFront cache invalidation
+  - Backend Docker build and Lambda update
+- Deployment documentation (`docs/deployment.md`)
+
 #### Epic 1: Foundation Backend
 - Go domain models (Track, Album, Artist, Playlist, User, Tag, Upload)
 - DynamoDB single-table design with repository layer

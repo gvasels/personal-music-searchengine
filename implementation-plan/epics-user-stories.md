@@ -271,11 +271,13 @@ This plan maps out the epics and user stories for building a personal music libr
 
 ---
 
-## Epic 6: Distribution & Polish (Phase 6)
+## Epic 6: Distribution & Polish (Phase 6) ✅ **COMPLETE** (2026-01-21)
 
 **Goal**: Deploy frontend, implement CI/CD, and finalize documentation.
 
-**Status**: Not Started
+**Status**: Complete
+
+**Implementation Summary**: Frontend hosting via S3/CloudFront, GitHub Actions CI/CD with OIDC, comprehensive documentation.
 
 ### User Stories
 
@@ -285,9 +287,9 @@ This plan maps out the epics and user stories for building a personal music libr
 **So that** I can use it from any device
 
 **Acceptance Criteria**:
-- [ ] S3 bucket for frontend
-- [ ] CloudFront distribution
-- [ ] Cache behaviors configured
+- [x] S3 bucket for frontend _(music-library-prod-frontend with versioning, encryption, OAC)_
+- [x] CloudFront distribution _(SPA routing, security headers, compression)_
+- [x] Cache behaviors configured _(no-cache for index.html, 1yr for /assets/*)_
 
 #### US-6.2: Testing & CI/CD
 **As a** Developer
@@ -295,10 +297,10 @@ This plan maps out the epics and user stories for building a personal music libr
 **So that** code quality is maintained
 
 **Acceptance Criteria**:
-- [ ] Go unit tests (80% coverage)
-- [ ] API integration tests
-- [ ] Frontend component tests
-- [ ] GitHub Actions CI/CD
+- [x] Go unit tests (80% coverage) _(ci.yml with coverage threshold check)_
+- [x] API integration tests _(existing integration_test.go)_
+- [x] Frontend component tests _(351 Vitest tests from Epic 5)_
+- [x] GitHub Actions CI/CD _(ci.yml for PRs, deploy.yml for main)_
 
 #### US-6.3: Documentation
 **As a** Developer
@@ -306,9 +308,9 @@ This plan maps out the epics and user stories for building a personal music libr
 **So that** the project can be maintained and extended
 
 **Acceptance Criteria**:
-- [ ] CLAUDE.md updated with project specifics
-- [ ] Deployment documentation
-- [ ] API documentation
+- [x] CLAUDE.md updated with project specifics _(infrastructure/frontend/CLAUDE.md)_
+- [x] Deployment documentation _(docs/deployment.md)_
+- [x] API documentation _(OpenAPI spec from Epic 1)_
 
 ---
 
@@ -321,7 +323,7 @@ This plan maps out the epics and user stories for building a personal music libr
 | 2 | 4, 5, 6 | Backend: API Lambda, Step Functions, API Gateway | ✅ Complete |
 | 3 | 7, 8, 9, 10 | Features: search, streaming, tags, playlists | ✅ Complete |
 | 4 | 11-15 | Frontend: full React application | ✅ Complete |
-| 5 | 16, 17, 18 | Polish: hosting, tests, documentation | In Progress |
+| 5 | 16, 17, 18 | Polish: hosting, tests, documentation | ✅ Complete |
 
 ---
 
