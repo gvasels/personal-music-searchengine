@@ -1,0 +1,14 @@
+{
+  "filePath": ".spec-workflow/specs/frontend/requirements.md",
+  "currentVersion": 1,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2026-01-20T04:03:17.545Z",
+      "trigger": "initial",
+      "approvalId": "approval_1768881797542_l4sqnftsk",
+      "approvalTitle": "Epic 5 Frontend Requirements"
+    }
+  ]
+}

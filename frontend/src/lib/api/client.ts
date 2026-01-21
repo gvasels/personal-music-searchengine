@@ -1,6 +1,8 @@
 import axios from 'axios';
 import type { Track, Album, Artist, Playlist, PaginatedResponse } from '@/types';
 
+export type { Track, Album, Artist, Playlist, PaginatedResponse };
+
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: { 'Content-Type': 'application/json' },
