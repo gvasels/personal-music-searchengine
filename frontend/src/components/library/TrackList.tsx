@@ -1,9 +1,12 @@
 import { Track } from '@/types';
 import { usePlayerStore } from '@/lib/store/playerStore';
+import { getDownloadUrl } from '@/lib/api/client';
 
 interface TrackListProps {
   tracks: Track[];
   isLoading?: boolean;
+  showDownload?: boolean;
+  showAddedDate?: boolean;
 }
 
 function formatDuration(seconds: number): string {
@@ -12,8 +15,33 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function TrackList({ tracks, isLoading }: TrackListProps) {
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+
+export function TrackList({ tracks, isLoading, showDownload = false, showAddedDate = false }: TrackListProps) {
   const { setQueue, currentTrack, isPlaying } = usePlayerStore();
+
+  const handleDownload = async (e: React.MouseEvent, track: Track) => {
+    e.stopPropagation();
+    try {
+      const { downloadUrl, filename } = await getDownloadUrl(track.id);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename || `${track.title}.${track.format}`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Failed to download track:', err);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -46,6 +74,8 @@ export function TrackList({ tracks, isLoading }: TrackListProps) {
           <th>Artist</th>
           <th>Album</th>
           <th className="w-20">Duration</th>
+          {showAddedDate && <th>Added</th>}
+          {showDownload && <th className="w-16">Download</th>}
         </tr>
       </thead>
       <tbody>
@@ -69,6 +99,23 @@ export function TrackList({ tracks, isLoading }: TrackListProps) {
             <td className="text-base-content/70">{track.artist}</td>
             <td className="text-base-content/70">{track.album}</td>
             <td className="tabular-nums">{formatDuration(track.duration)}</td>
+            {showAddedDate && (
+              <td className="text-sm text-base-content/60">{formatDate(track.createdAt)}</td>
+            )}
+            {showDownload && (
+              <td onClick={(e) => e.stopPropagation()}>
+                <button
+                  className="btn btn-ghost btn-xs"
+                  onClick={(e) => handleDownload(e, track)}
+                  aria-label="Download"
+                  title="Download for offline"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+              </td>
+            )}
           </tr>
         ))}
       </tbody>

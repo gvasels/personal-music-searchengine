@@ -84,7 +84,7 @@ export default function PlaylistDetailPage() {
           <p className="text-sm mt-2">Add tracks from your library</p>
         </div>
       ) : (
-        <TrackList tracks={tracks} />
+        <TrackList tracks={tracks} showDownload showAddedDate />
       )}
     </div>
   );

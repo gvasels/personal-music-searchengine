@@ -16,6 +16,15 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+
 export default function TracksPage() {
   const navigate = useNavigate();
   const { data, isLoading, isError, error, refetch } = useTracksQuery();
@@ -142,6 +151,7 @@ export default function TracksPage() {
               <th>Album</th>
               <th>Tags</th>
               <th>Duration</th>
+              <th>Uploaded</th>
               <th className="w-24">Actions</th>
             </tr>
           </thead>
@@ -184,6 +194,7 @@ export default function TracksPage() {
                     <TagsCell trackId={track.id} tags={track.tags || []} maxVisible={2} />
                   </td>
                   <td>{formatDuration(track.duration)}</td>
+                  <td className="text-sm text-base-content/60">{formatDate(track.createdAt)}</td>
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-1">
                       <button
