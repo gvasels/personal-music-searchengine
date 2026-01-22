@@ -8,6 +8,17 @@ vi.mock('@/lib/store/playerStore', () => ({
   usePlayerStore: vi.fn(),
 }));
 
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: vi.fn(() => ({
+    isAuthenticated: true,
+    user: { id: 'user-1', email: 'test@test.com' },
+    isLoading: false,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    signUp: vi.fn(),
+  })),
+}));
+
 const mockTrack = {
   id: 'track-1',
   title: 'Test Track',

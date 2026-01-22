@@ -2,9 +2,36 @@
  * Player Store Tests - REQ-5.6, REQ-5.7
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { act, renderHook } from '@testing-library/react';
-import { usePlayerStore } from '@/lib/store/playerStore';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import type { Track } from '@/types';
+
+// Mock AudioService before importing playerStore
+const mockAudioService = {
+  setCallbacks: vi.fn(),
+  load: vi.fn(),
+  play: vi.fn().mockResolvedValue(undefined),
+  pause: vi.fn(),
+  seek: vi.fn(),
+  setVolume: vi.fn(),
+  getVolume: vi.fn().mockReturnValue(1),
+  getCurrentTime: vi.fn().mockReturnValue(0),
+  getDuration: vi.fn().mockReturnValue(180),
+  isPlaying: vi.fn().mockReturnValue(false),
+  destroy: vi.fn(),
+};
+
+vi.mock('@/lib/audio/audioService', () => ({
+  AudioService: {
+    getInstance: vi.fn(() => mockAudioService),
+    resetInstance: vi.fn(),
+  },
+}));
+
+vi.mock('@/lib/api/client', () => ({
+  getStreamUrl: vi.fn().mockResolvedValue({ streamUrl: 'https://example.com/stream.m3u8' }),
+}));
+
+import { usePlayerStore } from '@/lib/store/playerStore';
 
 const mockTrack: Track = {
   id: 'track-1',
@@ -25,7 +52,7 @@ const mockTrack2: Track = { ...mockTrack, id: 'track-2', title: 'Track Two' };
 describe('Player Store', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset store to initial state
+    // Reset store to initial state with all new fields
     usePlayerStore.setState({
       currentTrack: null,
       queue: [],
@@ -33,8 +60,11 @@ describe('Player Store', () => {
       isPlaying: false,
       volume: 1,
       progress: 0,
+      duration: 0,
       shuffle: false,
       repeat: 'off',
+      isLoading: false,
+      _audioInitialized: false,
     });
   });
 
@@ -84,15 +114,18 @@ describe('Player Store', () => {
   });
 
   describe('play/pause', () => {
-    it('REQ-5.6: should toggle isPlaying', () => {
+    it('REQ-5.6: should toggle isPlaying', async () => {
       const { result } = renderHook(() => usePlayerStore());
 
-      act(() => {
+      await act(async () => {
         result.current.setQueue([mockTrack], 0);
-        result.current.play();
+        // Wait for async _loadTrack to complete
+        await new Promise(resolve => setTimeout(resolve, 10));
       });
 
-      expect(result.current.isPlaying).toBe(true);
+      await waitFor(() => {
+        expect(result.current.isPlaying).toBe(true);
+      });
 
       act(() => {
         result.current.pause();

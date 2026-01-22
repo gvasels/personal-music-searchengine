@@ -21,12 +21,28 @@ vi.mock('@/lib/store/playerStore', () => ({
     isPlaying: false,
     volume: 1,
     progress: 0,
+    shuffle: false,
+    repeat: 'off',
     play: vi.fn(),
     pause: vi.fn(),
     next: vi.fn(),
     previous: vi.fn(),
     setVolume: vi.fn(),
     seek: vi.fn(),
+    toggleShuffle: vi.fn(),
+    cycleRepeat: vi.fn(),
+  })),
+}));
+
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: vi.fn(() => ({
+    isAuthenticated: true,
+    user: { id: 'user-1', email: 'test@test.com' },
+    isLoading: false,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    signUp: vi.fn(),
+    isSigningOut: false,
   })),
 }));
 
