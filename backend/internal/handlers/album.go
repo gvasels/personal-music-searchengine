@@ -62,7 +62,7 @@ func (h *Handlers) ListArtists(c echo.Context) error {
 		return handleError(c, err)
 	}
 
-	return success(c, artists)
+	return successList(c, artists)
 }
 
 // ListTracksByArtist returns tracks by a specific artist
@@ -82,7 +82,7 @@ func (h *Handlers) ListTracksByArtist(c echo.Context) error {
 		return handleError(c, err)
 	}
 
-	return success(c, tracks)
+	return successList(c, tracks)
 }
 
 // ListAlbumsByArtist returns albums by a specific artist
@@ -102,5 +102,5 @@ func (h *Handlers) ListAlbumsByArtist(c echo.Context) error {
 		return handleError(c, err)
 	}
 
-	return success(c, albums)
+	return successList(c, albums)
 }

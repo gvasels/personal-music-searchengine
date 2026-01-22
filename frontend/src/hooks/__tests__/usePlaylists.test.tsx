@@ -45,7 +45,7 @@ describe('usePlaylists (Wave 5)', () => {
     it('should fetch playlists', async () => {
       const mockPlaylists = {
         items: [
-          { id: 'playlist-1', name: 'Favorites', trackIds: [], trackCount: 5 },
+          { id: 'playlist-1', name: 'Favorites', trackIds: [], trackCount: 5, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
         ],
         total: 1,
         limit: 20,
@@ -103,6 +103,8 @@ describe('usePlaylists (Wave 5)', () => {
         name: 'Favorites',
         trackIds: ['track-1', 'track-2'],
         trackCount: 2,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
       };
       vi.mocked(playlistsApi.getPlaylist).mockResolvedValue(mockPlaylist);
 

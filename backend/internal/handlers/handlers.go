@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/awslabs/aws-lambda-go-api-proxy/core"
 	"github.com/labstack/echo/v4"
@@ -83,24 +84,78 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 	api.POST("/search", h.AdvancedSearch)
 }
 
-// getUserIDFromContext extracts the user ID from the request context
+// AuthContext contains user authentication and permission information
+type AuthContext struct {
+	UserID      string
+	HasGlobal   bool   // True if user has GLOBAL read permission
+	Groups      []string
+}
+
+// getAuthContext extracts user ID and permissions from the request context
 // In production, this comes from the Cognito JWT authorizer via API Gateway
-func getUserIDFromContext(c echo.Context) string {
+func getAuthContext(c echo.Context) AuthContext {
+	ctx := AuthContext{}
+
 	// Try to get from API Gateway V2 JWT authorizer claims (Lambda environment)
 	if requestCtx, ok := core.GetAPIGatewayV2ContextFromContext(c.Request().Context()); ok {
 		if requestCtx.Authorizer != nil && requestCtx.Authorizer.JWT != nil {
-			if sub, exists := requestCtx.Authorizer.JWT.Claims["sub"]; exists {
-				return sub
+			claims := requestCtx.Authorizer.JWT.Claims
+
+			// Extract user ID (sub claim)
+			if sub, exists := claims["sub"]; exists {
+				ctx.UserID = sub
+			}
+
+			// Extract Cognito groups from cognito:groups claim
+			// Groups come as a space-separated string or array
+			if groups, exists := claims["cognito:groups"]; exists {
+				ctx.Groups = parseGroups(groups)
+				ctx.HasGlobal = containsGlobalGroup(ctx.Groups)
 			}
 		}
 	}
 
-	// Try to get from request header (for local development/testing)
-	if userID := c.Request().Header.Get("X-User-ID"); userID != "" {
-		return userID
+	// Fall back to headers for local development/testing
+	if ctx.UserID == "" {
+		ctx.UserID = c.Request().Header.Get("X-User-ID")
 	}
 
-	return ""
+	// Check for global permission header (for testing)
+	if c.Request().Header.Get("X-Global-Access") == "true" {
+		ctx.HasGlobal = true
+	}
+
+	return ctx
+}
+
+// parseGroups parses Cognito groups from JWT claim (can be string or []interface{})
+func parseGroups(groupsClaim string) []string {
+	if groupsClaim == "" {
+		return nil
+	}
+	// Cognito groups come as space-separated in the JWT
+	return strings.Split(groupsClaim, " ")
+}
+
+// containsGlobalGroup checks if user belongs to a group with global read access
+func containsGlobalGroup(groups []string) bool {
+	globalGroups := map[string]bool{
+		"GlobalReaders": true,
+		"Admin":         true,
+		"Admins":        true,
+	}
+	for _, g := range groups {
+		if globalGroups[g] {
+			return true
+		}
+	}
+	return false
+}
+
+// getUserIDFromContext extracts the user ID from the request context (legacy helper)
+// In production, this comes from the Cognito JWT authorizer via API Gateway
+func getUserIDFromContext(c echo.Context) string {
+	return getAuthContext(c).UserID
 }
 
 // handleError converts errors to appropriate HTTP responses
@@ -131,6 +186,21 @@ func bindAndValidate(c echo.Context, v interface{}) error {
 // success returns a JSON success response
 func success(c echo.Context, data interface{}) error {
 	return c.JSON(http.StatusOK, data)
+}
+
+// ListResponse wraps a slice in a list response with items array
+type ListResponse[T any] struct {
+	Items []T `json:"items"`
+	Total int `json:"total"`
+}
+
+// successList returns a JSON success response for list endpoints
+// This wraps plain slices in { items: [...], total: N } format
+func successList[T any](c echo.Context, items []T) error {
+	return c.JSON(http.StatusOK, ListResponse[T]{
+		Items: items,
+		Total: len(items),
+	})
 }
 
 // created returns a JSON response with 201 status

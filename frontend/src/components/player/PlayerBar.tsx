@@ -1,4 +1,5 @@
 import { usePlayerStore } from '@/lib/store/playerStore';
+import { useAuth } from '@/hooks/useAuth';
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -7,6 +8,7 @@ function formatTime(seconds: number): string {
 }
 
 export function PlayerBar() {
+  const { isAuthenticated } = useAuth();
   const {
     currentTrack,
     isPlaying,
@@ -23,6 +25,11 @@ export function PlayerBar() {
     toggleShuffle,
     cycleRepeat,
   } = usePlayerStore();
+
+  // Don't show player bar when not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div

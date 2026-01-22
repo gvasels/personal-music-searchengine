@@ -20,6 +20,7 @@ type DynamoDBClient interface {
 	UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error)
 	DeleteItem(ctx context.Context, params *dynamodb.DeleteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)
 	Query(ctx context.Context, params *dynamodb.QueryInput, optFns ...func(*dynamodb.Options)) (*dynamodb.QueryOutput, error)
+	Scan(ctx context.Context, params *dynamodb.ScanInput, optFns ...func(*dynamodb.Options)) (*dynamodb.ScanOutput, error)
 	BatchWriteItem(ctx context.Context, params *dynamodb.BatchWriteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.BatchWriteItemOutput, error)
 	TransactWriteItems(ctx context.Context, params *dynamodb.TransactWriteItemsInput, optFns ...func(*dynamodb.Options)) (*dynamodb.TransactWriteItemsOutput, error)
 }
@@ -131,6 +132,12 @@ func (r *DynamoDBRepository) ListTracks(ctx context.Context, userID string, filt
 		limit = 20
 	}
 
+	// Global scope: scan all tracks across all users
+	if filter.GlobalScope {
+		return r.listAllTracks(ctx, limit, filter)
+	}
+
+	// User-scoped query (default behavior)
 	keyCondition := expression.Key("PK").Equal(expression.Value(fmt.Sprintf("USER#%s", userID))).
 		And(expression.Key("SK").BeginsWith("TRACK#"))
 
@@ -189,6 +196,72 @@ func (r *DynamoDBRepository) ListTracks(ctx context.Context, userID string, filt
 		lastTrack := tracks[len(tracks)-1]
 		cursor := models.NewPaginationCursor(
 			fmt.Sprintf("USER#%s", userID),
+			fmt.Sprintf("TRACK#%s", lastTrack.ID),
+		)
+		nextCursor = models.EncodeCursor(cursor)
+	}
+
+	return &PaginatedResult[models.Track]{
+		Items:      tracks,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+	}, nil
+}
+
+// listAllTracks returns tracks from all users (requires GLOBAL permission)
+func (r *DynamoDBRepository) listAllTracks(ctx context.Context, limit int, filter models.TrackFilter) (*PaginatedResult[models.Track], error) {
+	// Filter for TRACK# SK prefix
+	filterExpr := expression.Name("SK").BeginsWith("TRACK#")
+	builder := expression.NewBuilder().WithFilter(filterExpr)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	input := &dynamodb.ScanInput{
+		TableName:                 aws.String(r.tableName),
+		FilterExpression:          expr.Filter(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit + 1)),
+	}
+
+	// Handle pagination cursor for scan
+	if filter.LastKey != "" {
+		cursor, err := models.DecodeCursor(filter.LastKey)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		input.ExclusiveStartKey = cursorToAttributeValue(cursor)
+	}
+
+	result, err := r.client.Scan(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan tracks: %w", err)
+	}
+
+	var items []models.TrackItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal tracks: %w", err)
+	}
+
+	tracks := make([]models.Track, 0, len(items))
+	for _, item := range items {
+		tracks = append(tracks, item.Track)
+	}
+
+	// Determine if there are more results
+	hasMore := len(tracks) > limit
+	if hasMore {
+		tracks = tracks[:limit]
+	}
+
+	// Build next cursor
+	var nextCursor string
+	if hasMore && len(tracks) > 0 {
+		lastTrack := tracks[len(tracks)-1]
+		cursor := models.NewPaginationCursor(
+			fmt.Sprintf("USER#%s", lastTrack.UserID),
 			fmt.Sprintf("TRACK#%s", lastTrack.ID),
 		)
 		nextCursor = models.EncodeCursor(cursor)

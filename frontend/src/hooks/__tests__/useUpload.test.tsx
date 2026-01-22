@@ -2,7 +2,7 @@
  * useUpload Hook Tests - Wave 4
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ReactNode } from 'react';
 
@@ -43,8 +43,9 @@ describe('useUpload Hook (Wave 4)', () => {
     it('should track uploading state', async () => {
       vi.mocked(uploadApi.getPresignedUploadUrl).mockResolvedValue({
         uploadId: 'upload-123',
-        presignedUrl: 'https://s3.example.com/presigned',
-        key: 'uploads/file.mp3',
+        uploadUrl: 'https://s3.example.com/presigned',
+        expiresAt: '2026-01-22T03:00:00Z',
+        maxFileSize: 5000000,
       });
 
       const { result } = renderHook(() => useUpload(), { wrapper: createWrapper() });

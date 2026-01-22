@@ -53,13 +53,17 @@ export function useUpload(): UseUploadReturn {
         setUploads((prev) => [...prev, uploadItem]);
 
         // Upload to S3
-        await fetch(presigned.presignedUrl, {
+        const uploadResponse = await fetch(presigned.uploadUrl, {
           method: 'PUT',
           body: file,
           headers: {
             'Content-Type': file.type,
           },
         });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Upload to S3 failed: ${uploadResponse.status}`);
+        }
 
         // Update progress
         setProgress(50);

@@ -1,11 +1,13 @@
 /**
  * Tracks List Page - Wave 2
- * Updated with play button and tags column
+ * Updated with play button, tags column, and actions
  */
+import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { useTracksQuery } from '../../hooks/useTracks';
+import { useTracksQuery, useDeleteTrack } from '../../hooks/useTracks';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { TagsCell } from '@/components/library/TagsCell';
+import { getDownloadUrl } from '@/lib/api/client';
 import type { Track } from '../../types';
 
 function formatDuration(seconds: number): string {
@@ -18,6 +20,8 @@ export default function TracksPage() {
   const navigate = useNavigate();
   const { data, isLoading, isError, error, refetch } = useTracksQuery();
   const { currentTrack, isPlaying, setQueue, pause } = usePlayerStore();
+  const deleteTrackMutation = useDeleteTrack();
+  const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
 
   const handleTrackClick = (track: Track) => {
     void navigate({
@@ -47,6 +51,39 @@ export default function TracksPage() {
       to: '/tracks',
       search: { sortBy: e.target.value },
     });
+  };
+
+  const handleDownload = async (e: React.MouseEvent, track: Track) => {
+    e.stopPropagation();
+    try {
+      const { downloadUrl, filename } = await getDownloadUrl(track.id);
+      // Create a temporary link to trigger download
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename || `${track.title}.${track.format}`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Failed to download track:', err);
+    }
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, track: Track) => {
+    e.stopPropagation();
+    setTrackToDelete(track);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (trackToDelete) {
+      try {
+        await deleteTrackMutation.mutateAsync(trackToDelete.id);
+        setTrackToDelete(null);
+      } catch (err) {
+        console.error('Failed to delete track:', err);
+      }
+    }
   };
 
   if (isLoading) {
@@ -105,6 +142,7 @@ export default function TracksPage() {
               <th>Album</th>
               <th>Tags</th>
               <th>Duration</th>
+              <th className="w-24">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -146,12 +184,70 @@ export default function TracksPage() {
                     <TagsCell trackId={track.id} tags={track.tags || []} maxVisible={2} />
                   </td>
                   <td>{formatDuration(track.duration)}</td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1">
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        onClick={(e) => handleDownload(e, track)}
+                        aria-label="Download"
+                        title="Download"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-xs text-error"
+                        onClick={(e) => handleDeleteClick(e, track)}
+                        aria-label="Delete"
+                        title="Delete"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {trackToDelete && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg">Delete Track</h3>
+            <p className="py-4">
+              Are you sure you want to delete "{trackToDelete.title}" by {trackToDelete.artist}?
+              This action cannot be undone.
+            </p>
+            <div className="modal-action">
+              <button
+                className="btn"
+                onClick={() => setTrackToDelete(null)}
+                disabled={deleteTrackMutation.isPending}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-error"
+                onClick={() => void handleConfirmDelete()}
+                disabled={deleteTrackMutation.isPending}
+              >
+                {deleteTrackMutation.isPending ? (
+                  <span className="loading loading-spinner loading-sm" />
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop" onClick={() => setTrackToDelete(null)} />
+        </div>
+      )}
     </div>
   );
 }

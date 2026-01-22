@@ -17,7 +17,7 @@ func (h *Handlers) ListTags(c echo.Context) error {
 		return handleError(c, err)
 	}
 
-	return success(c, tags)
+	return successList(c, tags)
 }
 
 // CreateTag creates a new tag
@@ -121,5 +121,5 @@ func (h *Handlers) GetTracksByTag(c echo.Context) error {
 		return handleError(c, err)
 	}
 
-	return success(c, tracks)
+	return successList(c, tracks)
 }

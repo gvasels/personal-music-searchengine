@@ -48,12 +48,13 @@ func NewS3Repository(client S3Client, presignClient S3PresignClient, bucketName 
 }
 
 // GeneratePresignedUploadURL generates a presigned URL for uploading a file
+// Note: StorageClass is NOT set here to simplify browser uploads (fewer signed headers).
+// Objects are automatically transitioned to INTELLIGENT_TIERING via S3 lifecycle rules.
 func (r *S3RepositoryImpl) GeneratePresignedUploadURL(ctx context.Context, key, contentType string, expiry time.Duration) (string, error) {
 	request, err := r.presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket:       aws.String(r.bucketName),
-		Key:          aws.String(key),
-		ContentType:  aws.String(contentType),
-		StorageClass: types.StorageClassIntelligentTiering,
+		Bucket:      aws.String(r.bucketName),
+		Key:         aws.String(key),
+		ContentType: aws.String(contentType),
 	}, func(opts *s3.PresignOptions) {
 		opts.Expires = expiry
 	})

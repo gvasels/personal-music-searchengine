@@ -22,8 +22,9 @@ describe('Upload API (Wave 4)', () => {
     it('should request presigned URL for file upload', async () => {
       const mockResponse = {
         uploadId: 'upload-123',
-        presignedUrl: 'https://s3.amazonaws.com/presigned-url',
-        key: 'uploads/track-123.mp3',
+        uploadUrl: 'https://s3.amazonaws.com/presigned-url',
+        expiresAt: '2026-01-22T03:00:00Z',
+        maxFileSize: 5000000,
       };
       vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
@@ -39,7 +40,7 @@ describe('Upload API (Wave 4)', () => {
         fileSize: 5000000,
       });
       expect(result.uploadId).toBe('upload-123');
-      expect(result.presignedUrl).toBeTruthy();
+      expect(result.uploadUrl).toBeTruthy();
     });
   });
 
@@ -50,7 +51,7 @@ describe('Upload API (Wave 4)', () => {
 
       const result = await confirmUpload('upload-123');
 
-      expect(apiClient.post).toHaveBeenCalledWith('/upload/upload-123/confirm');
+      expect(apiClient.post).toHaveBeenCalledWith('/upload/confirm', { uploadId: 'upload-123' });
       expect(result.status).toBe('processing');
     });
   });
@@ -67,7 +68,7 @@ describe('Upload API (Wave 4)', () => {
 
       const result = await getUploadStatus('upload-123');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/upload/upload-123/status');
+      expect(apiClient.get).toHaveBeenCalledWith('/uploads/upload-123');
       expect(result.status).toBe('completed');
       expect(result.trackId).toBe('track-456');
     });

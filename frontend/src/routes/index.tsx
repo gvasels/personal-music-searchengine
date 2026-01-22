@@ -149,7 +149,7 @@ function HomePage() {
               </svg>
               {isEmpty ? 'Upload Your First Track' : 'Upload Music'}
             </button>
-            <Link to="/library" className="btn btn-outline">
+            <Link to="/tracks" className="btn btn-outline">
               Browse Library
             </Link>
             <Link to="/playlists" className="btn btn-outline">
@@ -166,7 +166,7 @@ function HomePage() {
           <div className="flex items-center justify-between mb-4">
             <h2 id="recent-heading" className="text-xl font-semibold">Recent Tracks</h2>
             {recentTracks.length > 0 && (
-              <Link to="/library" className="link link-primary text-sm">
+              <Link to="/tracks" className="link link-primary text-sm">
                 View all
               </Link>
             )}

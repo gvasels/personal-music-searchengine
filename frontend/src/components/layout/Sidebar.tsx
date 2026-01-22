@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { useAuth } from '../../hooks/useAuth';
 
 const navItems = [
   { to: '/', label: 'Home', icon: '🏠' },
@@ -11,6 +12,13 @@ const navItems = [
 ];
 
 export function Sidebar() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Don't show sidebar when not authenticated or still loading
+  if (isLoading || !isAuthenticated) {
+    return null;
+  }
+
   return (
     <nav role="navigation" className="w-64 bg-base-100 p-4 hidden md:block">
       <ul className="menu">

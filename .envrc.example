@@ -13,3 +13,11 @@ export MEMORY_RETRIEVAL_MODE="hybrid"
 
 #daisy UI LICENSE KEY
 export DAISY_UI_MCP_LICENSE="license-number"
+
+# E2E Test Credentials
+export E2E_TEST_EMAIL="your-test-email@example.com"
+export E2E_TEST_PASSWORD="your-test-password"
+
+# Frontend URLs
+export FRONTEND_URL="https://your-cloudfront-distribution.cloudfront.net"
+export API_URL="https://your-api-gateway.execute-api.us-east-1.amazonaws.com/api/v1"

@@ -64,3 +64,9 @@ npm-debug.log*
 
 # Spec workflow approvals (local state)
 .spec-workflow/approvals/
+
+# Audio files
+*.mp3
+
+# Sample files
+sample-song/

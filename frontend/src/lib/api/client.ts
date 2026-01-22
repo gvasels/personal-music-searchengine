@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import type { Track, Album, Artist, Playlist, PaginatedResponse } from '@/types';
 
 export type { Track, Album, Artist, Playlist, PaginatedResponse };
@@ -8,10 +9,15 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+apiClient.interceptors.request.use(async (config) => {
+  try {
+    const session = await fetchAuthSession();
+    const token = session.tokens?.accessToken?.toString();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch {
+    // Not authenticated, continue without token
   }
   return config;
 });
@@ -65,8 +71,8 @@ export async function removeTrackFromPlaylist(playlistId: string, trackId: strin
   return response.data;
 }
 
-export async function addTagToTrack(trackId: string, tagName: string): Promise<Track> {
-  const response = await apiClient.post<Track>(`/tracks/${trackId}/tags`, { tagName });
+export async function addTagToTrack(trackId: string, tagName: string): Promise<{ tags: string[] }> {
+  const response = await apiClient.post<{ tags: string[] }>(`/tracks/${trackId}/tags`, { tags: [tagName] });
   return response.data;
 }
 
@@ -86,6 +92,15 @@ export async function getPresignedUploadUrl(data: { fileName: string; contentTyp
 }
 
 export async function getStreamUrl(trackId: string): Promise<{ streamUrl: string }> {
-  const response = await apiClient.get(`/tracks/${trackId}/stream`);
+  const response = await apiClient.get(`/stream/${trackId}`);
   return response.data;
+}
+
+export async function getDownloadUrl(trackId: string): Promise<{ downloadUrl: string; filename: string }> {
+  const response = await apiClient.get(`/download/${trackId}`);
+  return response.data;
+}
+
+export async function deleteTrack(trackId: string): Promise<void> {
+  await apiClient.delete(`/tracks/${trackId}`);
 }

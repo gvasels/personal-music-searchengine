@@ -11,8 +11,9 @@ export interface PresignedUploadRequest {
 
 export interface PresignedUploadResponse {
   uploadId: string;
-  presignedUrl: string;
-  key: string;
+  uploadUrl: string;
+  expiresAt: string;
+  maxFileSize: number;
 }
 
 export interface UploadConfirmResponse {
@@ -33,11 +34,11 @@ export async function getPresignedUploadUrl(data: PresignedUploadRequest): Promi
 }
 
 export async function confirmUpload(uploadId: string): Promise<UploadConfirmResponse> {
-  const response = await apiClient.post<UploadConfirmResponse>(`/upload/${uploadId}/confirm`);
+  const response = await apiClient.post<UploadConfirmResponse>('/upload/confirm', { uploadId });
   return response.data;
 }
 
 export async function getUploadStatus(uploadId: string): Promise<UploadStatusResponse> {
-  const response = await apiClient.get<UploadStatusResponse>(`/upload/${uploadId}/status`);
+  const response = await apiClient.get<UploadStatusResponse>(`/uploads/${uploadId}`);
   return response.data;
 }

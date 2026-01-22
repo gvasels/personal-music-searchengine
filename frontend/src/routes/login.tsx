@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, Link } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
 import { AuthErrorCode } from '../lib/auth';
 
@@ -217,9 +217,9 @@ function LoginPage() {
 
           <p className="text-center text-sm">
             Don't have an account?{' '}
-            <a href="/signup" className="link link-primary">
+            <Link to="/signup" className="link link-primary">
               Create account
-            </a>
+            </Link>
           </p>
         </div>
       </div>

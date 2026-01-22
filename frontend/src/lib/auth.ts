@@ -3,19 +3,25 @@
  * Task 1.1 - Amplify Auth Configuration
  */
 
-import { signIn as amplifySignIn, signOut as amplifySignOut, getCurrentUser as amplifyGetCurrentUser, fetchAuthSession } from 'aws-amplify/auth';
+import { signIn as amplifySignIn, signOut as amplifySignOut, getCurrentUser as amplifyGetCurrentUser, fetchAuthSession, signUp as amplifySignUp, confirmSignUp as amplifyConfirmSignUp, resendSignUpCode as amplifyResendSignUpCode } from 'aws-amplify/auth';
 import { Amplify } from 'aws-amplify';
 
 export enum AuthErrorCode {
   INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
   USER_NOT_FOUND = 'USER_NOT_FOUND',
   USER_NOT_CONFIRMED = 'USER_NOT_CONFIRMED',
+  USER_ALREADY_EXISTS = 'USER_ALREADY_EXISTS',
+  INVALID_PASSWORD = 'INVALID_PASSWORD',
+  INVALID_CODE = 'INVALID_CODE',
+  CODE_EXPIRED = 'CODE_EXPIRED',
   TOO_MANY_REQUESTS = 'TOO_MANY_REQUESTS',
   NETWORK_ERROR = 'NETWORK_ERROR',
   TOKEN_EXPIRED = 'TOKEN_EXPIRED',
   TOKEN_REFRESH_FAILED = 'TOKEN_REFRESH_FAILED',
   AUTH_CONFIG_INVALID = 'AUTH_CONFIG_INVALID',
   SIGN_OUT_FAILED = 'SIGN_OUT_FAILED',
+  SIGN_UP_FAILED = 'SIGN_UP_FAILED',
+  CONFIRMATION_FAILED = 'CONFIRMATION_FAILED',
   MFA_REQUIRED = 'MFA_REQUIRED',
   UNKNOWN = 'UNKNOWN',
 }
@@ -70,6 +76,14 @@ function mapAmplifyError(error: unknown): AuthError {
       return new AuthError('User not found', AuthErrorCode.USER_NOT_FOUND, error as Error);
     case 'UserNotConfirmedException':
       return new AuthError('User not confirmed', AuthErrorCode.USER_NOT_CONFIRMED, error as Error);
+    case 'UsernameExistsException':
+      return new AuthError('An account with this email already exists', AuthErrorCode.USER_ALREADY_EXISTS, error as Error);
+    case 'InvalidPasswordException':
+      return new AuthError('Password does not meet requirements', AuthErrorCode.INVALID_PASSWORD, error as Error);
+    case 'CodeMismatchException':
+      return new AuthError('Invalid verification code', AuthErrorCode.INVALID_CODE, error as Error);
+    case 'ExpiredCodeException':
+      return new AuthError('Verification code has expired', AuthErrorCode.CODE_EXPIRED, error as Error);
     case 'TooManyRequestsException':
       return new AuthError('Too many requests', AuthErrorCode.TOO_MANY_REQUESTS, error as Error);
     case 'NetworkError':
@@ -197,5 +211,80 @@ export async function refreshToken(): Promise<Tokens> {
   } catch (error) {
     if (error instanceof AuthError) throw error;
     throw new AuthError('Token refresh failed', AuthErrorCode.TOKEN_REFRESH_FAILED, error as Error);
+  }
+}
+
+export interface SignUpResult {
+  isSignUpComplete: boolean;
+  userId?: string;
+  nextStep: string;
+}
+
+export async function signUp(email: string, password: string): Promise<SignUpResult> {
+  if (!email || !email.trim()) {
+    throw new AuthError('Email is required', AuthErrorCode.INVALID_CREDENTIALS);
+  }
+  if (!password) {
+    throw new AuthError('Password is required', AuthErrorCode.INVALID_CREDENTIALS);
+  }
+  if (password.length < 8) {
+    throw new AuthError('Password must be at least 8 characters', AuthErrorCode.INVALID_PASSWORD);
+  }
+
+  try {
+    const result = await amplifySignUp({
+      username: email.trim(),
+      password,
+      options: {
+        userAttributes: {
+          email: email.trim(),
+        },
+      },
+    });
+
+    return {
+      isSignUpComplete: result.isSignUpComplete,
+      userId: result.userId,
+      nextStep: result.nextStep?.signUpStep || 'DONE',
+    };
+  } catch (error) {
+    if (error instanceof AuthError) throw error;
+    throw mapAmplifyError(error);
+  }
+}
+
+export async function confirmSignUp(email: string, code: string): Promise<boolean> {
+  if (!email || !email.trim()) {
+    throw new AuthError('Email is required', AuthErrorCode.INVALID_CREDENTIALS);
+  }
+  if (!code || !code.trim()) {
+    throw new AuthError('Verification code is required', AuthErrorCode.INVALID_CODE);
+  }
+
+  try {
+    const result = await amplifyConfirmSignUp({
+      username: email.trim(),
+      confirmationCode: code.trim(),
+    });
+
+    return result.isSignUpComplete;
+  } catch (error) {
+    if (error instanceof AuthError) throw error;
+    throw mapAmplifyError(error);
+  }
+}
+
+export async function resendSignUpCode(email: string): Promise<void> {
+  if (!email || !email.trim()) {
+    throw new AuthError('Email is required', AuthErrorCode.INVALID_CREDENTIALS);
+  }
+
+  try {
+    await amplifyResendSignUpCode({
+      username: email.trim(),
+    });
+  } catch (error) {
+    if (error instanceof AuthError) throw error;
+    throw mapAmplifyError(error);
   }
 }

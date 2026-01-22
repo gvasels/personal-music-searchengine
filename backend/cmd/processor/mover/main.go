@@ -20,22 +20,16 @@ import (
 
 // Event represents the input from Step Functions
 type Event struct {
-	UploadID   string       `json:"uploadId"`
-	UserID     string       `json:"userId"`
-	SourceKey  string       `json:"sourceKey"`
-	Track      *TrackResult `json:"track"`
-	BucketName string       `json:"bucketName"`
-}
-
-// TrackResult represents the track creation result
-type TrackResult struct {
-	TrackID string `json:"trackId"`
-	AlbumID string `json:"albumId,omitempty"`
+	UploadID   string `json:"uploadId"`
+	UserID     string `json:"userId"`
+	SourceKey  string `json:"sourceKey"`
+	TrackID    string `json:"trackId"` // Direct trackId from Step Functions
+	BucketName string `json:"bucketName"`
 }
 
 // Response represents the output to Step Functions
 type Response struct {
-	FinalKey string `json:"finalKey"`
+	NewKey string `json:"newKey"` // Matches Step Functions expected output
 }
 
 var s3Client *s3.Client
@@ -61,8 +55,16 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 	ctx, cancel := context.WithTimeout(ctx, validation.ProcessorTimeoutSeconds*time.Second)
 	defer cancel()
 
-	if event.Track == nil || event.Track.TrackID == "" {
+	if event.TrackID == "" {
 		return nil, fmt.Errorf("track ID is required")
+	}
+
+	// Validate UUIDs
+	if err := validation.ValidateUUID(event.TrackID, "trackId"); err != nil {
+		return nil, err
+	}
+	if err := validation.ValidateUUID(event.UserID, "userId"); err != nil {
+		return nil, err
 	}
 
 	// Determine file extension from source key
@@ -72,7 +74,7 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 	}
 
 	// Create destination key
-	destKey := fmt.Sprintf("media/%s/%s%s", event.UserID, event.Track.TrackID, ext)
+	destKey := fmt.Sprintf("media/%s/%s%s", event.UserID, event.TrackID, ext)
 
 	// Copy file to new location
 	copySource := fmt.Sprintf("%s/%s", event.BucketName, event.SourceKey)
@@ -96,7 +98,7 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 	}
 
 	// Update track with new S3 key
-	track, err := repo.GetTrack(ctx, event.UserID, event.Track.TrackID)
+	track, err := repo.GetTrack(ctx, event.UserID, event.TrackID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get track: %w", err)
 	}
@@ -106,7 +108,7 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 		return nil, fmt.Errorf("failed to update track S3 key: %w", err)
 	}
 
-	return &Response{FinalKey: destKey}, nil
+	return &Response{NewKey: destKey}, nil
 }
 
 // getFileExtension extracts file extension from a path

@@ -18,9 +18,9 @@ var (
 
 // PaginatedResult represents a paginated query result
 type PaginatedResult[T any] struct {
-	Items      []T
-	NextCursor string
-	HasMore    bool
+	Items      []T    `json:"items"`
+	NextCursor string `json:"nextCursor,omitempty"`
+	HasMore    bool   `json:"hasMore"`
 }
 
 // Repository defines the data access interface for DynamoDB operations

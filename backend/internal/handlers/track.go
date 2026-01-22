@@ -6,9 +6,10 @@ import (
 )
 
 // ListTracks returns a paginated list of tracks
+// If user has GLOBAL permission, returns tracks from all users
 func (h *Handlers) ListTracks(c echo.Context) error {
-	userID := getUserIDFromContext(c)
-	if userID == "" {
+	auth := getAuthContext(c)
+	if auth.UserID == "" {
 		return handleError(c, models.ErrUnauthorized)
 	}
 
@@ -17,7 +18,10 @@ func (h *Handlers) ListTracks(c echo.Context) error {
 		return handleError(c, models.ErrBadRequest)
 	}
 
-	tracks, err := h.services.Track.ListTracks(c.Request().Context(), userID, filter)
+	// Set global scope if user has GLOBAL permission
+	filter.GlobalScope = auth.HasGlobal
+
+	tracks, err := h.services.Track.ListTracks(c.Request().Context(), auth.UserID, filter)
 	if err != nil {
 		return handleError(c, err)
 	}
