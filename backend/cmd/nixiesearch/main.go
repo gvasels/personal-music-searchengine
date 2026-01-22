@@ -92,10 +92,16 @@ type SearchResponse struct {
 	Cursor  string         `json:"cursor,omitempty"`
 }
 
-// SearchResult represents a single search hit
+// SearchResult represents a single search hit (flat structure matching client expectations)
 type SearchResult struct {
-	Document Document `json:"document"`
-	Score    float64  `json:"score"`
+	ID       string  `json:"id"`
+	Title    string  `json:"title"`
+	Artist   string  `json:"artist"`
+	Album    string  `json:"album"`
+	Genre    string  `json:"genre"`
+	Year     int     `json:"year,omitempty"`
+	Duration int     `json:"duration,omitempty"`
+	Score    float64 `json:"score"`
 }
 
 // IndexRequest for adding a document
@@ -288,7 +294,13 @@ func handleSearch(ctx context.Context, payload interface{}) (Response, error) {
 		score := calculateScore(doc, queryLower)
 		if queryLower == "" || score > 0 {
 			results = append(results, SearchResult{
-				Document: doc,
+				ID:       doc.ID,
+				Title:    doc.Title,
+				Artist:   doc.Artist,
+				Album:    doc.Album,
+				Genre:    doc.Genre,
+				Year:     doc.Year,
+				Duration: doc.Duration,
 				Score:    score,
 			})
 		}
@@ -321,24 +333,130 @@ func calculateScore(doc Document, query string) float64 {
 
 	var score float64
 
-	// Title match (highest weight)
-	if strings.Contains(strings.ToLower(doc.Title), query) {
-		score += 3.0
+	// Score each field with different weights
+	score += scoreField(doc.Title, query, 3.0)    // Title: highest weight
+	score += scoreField(doc.Artist, query, 2.0)   // Artist: high weight
+	score += scoreField(doc.Album, query, 1.5)    // Album: medium weight
+	score += scoreField(doc.Filename, query, 0.5) // Filename: low weight
+
+	return score
+}
+
+// scoreField calculates match score for a single field using multiple strategies
+func scoreField(field, query string, weight float64) float64 {
+	if field == "" {
+		return 0
 	}
-	// Artist match
-	if strings.Contains(strings.ToLower(doc.Artist), query) {
-		score += 2.0
+
+	fieldLower := strings.ToLower(field)
+	queryLower := strings.ToLower(query)
+	var score float64
+
+	// Strategy 1: Exact match (highest score)
+	if fieldLower == queryLower {
+		return weight * 5.0
 	}
-	// Album match
-	if strings.Contains(strings.ToLower(doc.Album), query) {
-		score += 1.5
+
+	// Strategy 2: Prefix match on full field
+	if strings.HasPrefix(fieldLower, queryLower) {
+		score += weight * 3.0
 	}
-	// Filename match
-	if strings.Contains(strings.ToLower(doc.Filename), query) {
-		score += 1.0
+
+	// Strategy 3: Contains match
+	if strings.Contains(fieldLower, queryLower) {
+		score += weight * 2.0
+	}
+
+	// Strategy 4: Word prefix match (any word starts with query)
+	words := strings.Fields(fieldLower)
+	for _, word := range words {
+		if strings.HasPrefix(word, queryLower) {
+			score += weight * 2.5
+			break
+		}
+	}
+
+	// Strategy 5: Fuzzy match using Levenshtein distance
+	// Check each word in the field
+	for _, word := range words {
+		distance := levenshtein(word, queryLower)
+		wordLen := len(word)
+		queryLen := len(queryLower)
+		maxLen := wordLen
+		if queryLen > maxLen {
+			maxLen = queryLen
+		}
+
+		// Allow up to 2 character differences for short words, more for longer
+		maxDistance := 1
+		if maxLen > 4 {
+			maxDistance = 2
+		}
+		if maxLen > 8 {
+			maxDistance = 3
+		}
+
+		if distance <= maxDistance && distance > 0 {
+			// Fuzzy match found - score inversely proportional to distance
+			fuzzyScore := weight * (1.0 - float64(distance)/float64(maxLen+1))
+			if fuzzyScore > score {
+				score = fuzzyScore
+			}
+		}
 	}
 
 	return score
+}
+
+// levenshtein calculates the Levenshtein distance between two strings
+func levenshtein(a, b string) int {
+	if len(a) == 0 {
+		return len(b)
+	}
+	if len(b) == 0 {
+		return len(a)
+	}
+
+	// Create matrix
+	matrix := make([][]int, len(a)+1)
+	for i := range matrix {
+		matrix[i] = make([]int, len(b)+1)
+		matrix[i][0] = i
+	}
+	for j := 0; j <= len(b); j++ {
+		matrix[0][j] = j
+	}
+
+	// Fill matrix
+	for i := 1; i <= len(a); i++ {
+		for j := 1; j <= len(b); j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			matrix[i][j] = min(
+				matrix[i-1][j]+1,      // deletion
+				matrix[i][j-1]+1,      // insertion
+				matrix[i-1][j-1]+cost, // substitution
+			)
+		}
+	}
+
+	return matrix[len(a)][len(b)]
+}
+
+// min returns the minimum of three integers
+func min(a, b, c int) int {
+	if a < b {
+		if a < c {
+			return a
+		}
+		return c
+	}
+	if b < c {
+		return b
+	}
+	return c
 }
 
 func handleIndex(ctx context.Context, payload interface{}) (Response, error) {

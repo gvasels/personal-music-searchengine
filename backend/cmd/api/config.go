@@ -19,6 +19,9 @@ type Config struct {
 	// Step Functions
 	StepFunctionsARN string
 
+	// Nixiesearch
+	NixiesearchFunctionName string
+
 	// CloudFront (optional)
 	CloudFrontDomain     string
 	CloudFrontKeyPairID  string
@@ -31,14 +34,15 @@ type Config struct {
 // LoadConfig loads configuration from environment variables
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
-		AWSRegion:            getEnvOrDefault("AWS_REGION", "us-east-1"),
-		DynamoDBTableName:    os.Getenv("DYNAMODB_TABLE_NAME"),
-		MediaBucketName:      os.Getenv("MEDIA_BUCKET"),
-		StepFunctionsARN:     os.Getenv("STEP_FUNCTIONS_ARN"),
-		CloudFrontDomain:     os.Getenv("CLOUDFRONT_DOMAIN"),
-		CloudFrontKeyPairID:  os.Getenv("CLOUDFRONT_KEY_PAIR_ID"),
-		CloudFrontPrivateKey: os.Getenv("CLOUDFRONT_PRIVATE_KEY"),
-		ServerPort:           getEnvOrDefault("PORT", "8080"),
+		AWSRegion:               getEnvOrDefault("AWS_REGION", "us-east-1"),
+		DynamoDBTableName:       os.Getenv("DYNAMODB_TABLE_NAME"),
+		MediaBucketName:         os.Getenv("MEDIA_BUCKET"),
+		StepFunctionsARN:        os.Getenv("STEP_FUNCTIONS_ARN"),
+		NixiesearchFunctionName: os.Getenv("NIXIESEARCH_FUNCTION_NAME"),
+		CloudFrontDomain:        os.Getenv("CLOUDFRONT_DOMAIN"),
+		CloudFrontKeyPairID:     os.Getenv("CLOUDFRONT_KEY_PAIR_ID"),
+		CloudFrontPrivateKey:    os.Getenv("CLOUDFRONT_PRIVATE_KEY"),
+		ServerPort:              getEnvOrDefault("PORT", "8080"),
 	}
 
 	// Validate required fields

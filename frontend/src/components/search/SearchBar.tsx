@@ -60,12 +60,12 @@ export function SearchBar() {
           }
           break;
         case 'album':
-          if (suggestion.albumId) {
-            navigate({ to: '/albums/$albumId', params: { albumId: suggestion.albumId } });
-          }
+          // Search for the album
+          navigate({ to: '/search', search: { q: suggestion.value } });
           break;
         case 'artist':
-          navigate({ to: '/artists/$artistName', params: { artistName: suggestion.value } });
+          // Search for the artist
+          navigate({ to: '/search', search: { q: suggestion.value } });
           break;
       }
     },
@@ -164,14 +164,14 @@ export function SearchBar() {
             <button
               key={`${suggestion.type}-${suggestion.value}-${idx}`}
               type="button"
-              className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-base-200 transition-colors ${
+              className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-base-200 transition-colors text-base-content ${
                 isSelected ? 'bg-base-200' : ''
               }`}
               onClick={() => handleSelect(suggestion)}
               onMouseEnter={() => setSelectedIndex(globalIndex)}
             >
-              <span className="flex-1 truncate">{suggestion.value}</span>
-              <span className="text-xs text-base-content/40 capitalize">{suggestion.type}</span>
+              <span className="flex-1 truncate text-base-content">{suggestion.value}</span>
+              <span className="text-xs text-base-content/50 capitalize">{suggestion.type}</span>
             </button>
           );
         })}

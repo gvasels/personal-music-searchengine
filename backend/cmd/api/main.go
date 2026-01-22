@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	awslambda "github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
 	echoadapter "github.com/awslabs/aws-lambda-go-api-proxy/echo"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/gvasels/personal-music-searchengine/internal/handlers"
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
+	"github.com/gvasels/personal-music-searchengine/internal/search"
 	"github.com/gvasels/personal-music-searchengine/internal/service"
 )
 
@@ -76,6 +78,7 @@ func setupEcho() (*echo.Echo, error) {
 	var dynamoClient *dynamodb.Client
 	var s3Client *s3.Client
 	var sfnClient *sfn.Client
+	var lambdaClient *awslambda.Client
 
 	if localEndpoint != "" {
 		// LocalStack configuration
@@ -89,10 +92,14 @@ func setupEcho() (*echo.Echo, error) {
 		sfnClient = sfn.NewFromConfig(awsCfg, func(o *sfn.Options) {
 			o.BaseEndpoint = &localEndpoint
 		})
+		lambdaClient = awslambda.NewFromConfig(awsCfg, func(o *awslambda.Options) {
+			o.BaseEndpoint = &localEndpoint
+		})
 	} else {
 		dynamoClient = dynamodb.NewFromConfig(awsCfg)
 		s3Client = s3.NewFromConfig(awsCfg)
 		sfnClient = sfn.NewFromConfig(awsCfg)
+		lambdaClient = awslambda.NewFromConfig(awsCfg)
 	}
 
 	// Create repositories
@@ -120,6 +127,12 @@ func setupEcho() (*echo.Echo, error) {
 	if uploadSvc, ok := services.Upload.(*service.UploadServiceImpl); ok {
 		sfnAdapter := service.NewSFNClientAdapter(sfnClient)
 		uploadSvc.SetStepFunctionsClient(sfnAdapter)
+	}
+
+	// Initialize search service if Nixiesearch function name is configured
+	if appCfg.NixiesearchFunctionName != "" {
+		searchClient := search.NewClient(lambdaClient, appCfg.NixiesearchFunctionName)
+		services.Search = service.NewSearchService(searchClient, repo, s3Repo)
 	}
 
 	// Create handlers

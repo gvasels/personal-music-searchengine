@@ -140,17 +140,17 @@ func (s *searchServiceImpl) Autocomplete(ctx context.Context, userID, query stri
 	for _, result := range resp.Results {
 		// Add track suggestion
 		suggestions = append(suggestions, models.SearchSuggestion{
-			Text: result.Title,
-			Type: "track",
-			ID:   result.ID,
+			Value:   result.Title,
+			Type:    "track",
+			TrackID: result.ID,
 		})
 
 		// Add artist suggestion (deduplicated)
 		if result.Artist != "" && !seenArtists[result.Artist] {
 			seenArtists[result.Artist] = true
 			suggestions = append(suggestions, models.SearchSuggestion{
-				Text: result.Artist,
-				Type: "artist",
+				Value: result.Artist,
+				Type:  "artist",
 			})
 		}
 
@@ -158,8 +158,8 @@ func (s *searchServiceImpl) Autocomplete(ctx context.Context, userID, query stri
 		if result.Album != "" && !seenAlbums[result.Album] {
 			seenAlbums[result.Album] = true
 			suggestions = append(suggestions, models.SearchSuggestion{
-				Text: result.Album,
-				Type: "album",
+				Value: result.Album,
+				Type:  "album",
 			})
 		}
 

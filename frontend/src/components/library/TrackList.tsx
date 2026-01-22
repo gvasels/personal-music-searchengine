@@ -1,12 +1,15 @@
 import { Track } from '@/types';
+import { useNavigate } from '@tanstack/react-router';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { getDownloadUrl } from '@/lib/api/client';
+import { AddToPlaylistDropdown } from './AddToPlaylistDropdown';
 
 interface TrackListProps {
   tracks: Track[];
   isLoading?: boolean;
   showDownload?: boolean;
   showAddedDate?: boolean;
+  showAddToPlaylist?: boolean;
 }
 
 function formatDuration(seconds: number): string {
@@ -24,16 +27,27 @@ function formatDate(dateString: string): string {
   });
 }
 
-export function TrackList({ tracks, isLoading, showDownload = false, showAddedDate = false }: TrackListProps) {
+export function TrackList({ tracks, isLoading, showDownload = false, showAddedDate = false, showAddToPlaylist = false }: TrackListProps) {
+  const navigate = useNavigate();
   const { setQueue, currentTrack, isPlaying } = usePlayerStore();
+
+  const handleArtistClick = (e: React.MouseEvent, artist: string) => {
+    e.stopPropagation();
+    navigate({ to: '/search', search: { q: artist } });
+  };
+
+  const handleAlbumClick = (e: React.MouseEvent, album: string) => {
+    e.stopPropagation();
+    navigate({ to: '/search', search: { q: album } });
+  };
 
   const handleDownload = async (e: React.MouseEvent, track: Track) => {
     e.stopPropagation();
     try {
-      const { downloadUrl, filename } = await getDownloadUrl(track.id);
+      const { downloadUrl, fileName } = await getDownloadUrl(track.id);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = filename || `${track.title}.${track.format}`;
+      link.download = fileName || `${track.title}.${track.format}`;
       link.target = '_blank';
       document.body.appendChild(link);
       link.click();
@@ -75,7 +89,7 @@ export function TrackList({ tracks, isLoading, showDownload = false, showAddedDa
           <th>Album</th>
           <th className="w-20">Duration</th>
           {showAddedDate && <th>Added</th>}
-          {showDownload && <th className="w-16">Download</th>}
+          {(showDownload || showAddToPlaylist) && <th className="w-24">Actions</th>}
         </tr>
       </thead>
       <tbody>
@@ -96,24 +110,45 @@ export function TrackList({ tracks, isLoading, showDownload = false, showAddedDa
               )}
             </td>
             <td className="font-medium">{track.title}</td>
-            <td className="text-base-content/70">{track.artist}</td>
-            <td className="text-base-content/70">{track.album}</td>
+            <td>
+              <button
+                className="text-base-content/70 hover:text-primary hover:underline"
+                onClick={(e) => handleArtistClick(e, track.artist)}
+              >
+                {track.artist}
+              </button>
+            </td>
+            <td>
+              <button
+                className="text-base-content/70 hover:text-primary hover:underline"
+                onClick={(e) => handleAlbumClick(e, track.album)}
+              >
+                {track.album}
+              </button>
+            </td>
             <td className="tabular-nums">{formatDuration(track.duration)}</td>
             {showAddedDate && (
               <td className="text-sm text-base-content/60">{formatDate(track.createdAt)}</td>
             )}
-            {showDownload && (
+            {(showDownload || showAddToPlaylist) && (
               <td onClick={(e) => e.stopPropagation()}>
-                <button
-                  className="btn btn-ghost btn-xs"
-                  onClick={(e) => handleDownload(e, track)}
-                  aria-label="Download"
-                  title="Download for offline"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                </button>
+                <div className="flex gap-1">
+                  {showAddToPlaylist && (
+                    <AddToPlaylistDropdown trackId={track.id} />
+                  )}
+                  {showDownload && (
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      onClick={(e) => handleDownload(e, track)}
+                      aria-label="Download"
+                      title="Download for offline"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
               </td>
             )}
           </tr>

@@ -56,9 +56,10 @@ type FacetItem struct {
 
 // SearchSuggestion represents an autocomplete suggestion
 type SearchSuggestion struct {
-	Text     string `json:"text"`
+	Value    string `json:"value"`
 	Type     string `json:"type"` // track, artist, album, tag
-	ID       string `json:"id,omitempty"`
+	TrackID  string `json:"trackId,omitempty"`
+	AlbumID  string `json:"albumId,omitempty"`
 	ImageURL string `json:"imageUrl,omitempty"`
 }
 
