@@ -46,7 +46,7 @@ export async function deletePlaylist(id: string): Promise<void> {
 }
 
 export async function addTrackToPlaylist(playlistId: string, trackId: string): Promise<Playlist> {
-  const response = await apiClient.post<Playlist>(`/playlists/${playlistId}/tracks`, { trackId });
+  const response = await apiClient.post<Playlist>(`/playlists/${playlistId}/tracks`, { trackIds: [trackId] });
   return response.data;
 }
 
@@ -54,6 +54,8 @@ export async function removeTrackFromPlaylist(
   playlistId: string,
   trackId: string
 ): Promise<Playlist> {
-  const response = await apiClient.delete<Playlist>(`/playlists/${playlistId}/tracks/${trackId}`);
+  const response = await apiClient.delete<Playlist>(`/playlists/${playlistId}/tracks`, {
+    data: { trackIds: [trackId] },
+  });
   return response.data;
 }

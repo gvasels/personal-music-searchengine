@@ -18,7 +18,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header role="banner" className="navbar bg-secondary text-secondary-content shadow-md">
+    <header role="banner" className="navbar bg-secondary text-secondary-content shadow-md relative">
       <div className="flex-none md:hidden">
         <button
           onClick={onMenuClick}
@@ -30,13 +30,16 @@ export function Header({ onMenuClick }: HeaderProps) {
           </svg>
         </button>
       </div>
-      <div className="flex-1">
+      <div className="flex-none">
         <img src="/logo.png" alt="Music Library" className="h-10" />
       </div>
-      <div className="flex-1 px-4 hidden md:block">
-        {isAuthenticated && <SearchBar />}
-      </div>
-      <div className="flex-none gap-2">
+      <div className="flex-1"></div>
+      {isAuthenticated && (
+        <div className="absolute left-1/2 -translate-x-1/2 hidden md:block">
+          <SearchBar />
+        </div>
+      )}
+      <div className="flex-none gap-2 z-10">
         <button
           onClick={toggleTheme}
           className="btn btn-ghost btn-circle text-secondary-content hover:bg-secondary-content/20"
