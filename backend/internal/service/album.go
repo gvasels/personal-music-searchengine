@@ -73,8 +73,19 @@ func (s *albumService) GetAlbum(ctx context.Context, userID, albumID string) (*m
 		return tracks[i].TrackNumber < tracks[j].TrackNumber
 	})
 
+	// Calculate total duration
+	totalDuration := 0
+	for _, t := range tracks {
+		totalDuration += t.Duration
+	}
+
+	albumResp := album.ToResponse(coverArtURL)
+	// Override with calculated values
+	albumResp.TrackCount = len(tracks)
+	albumResp.TotalDuration = totalDuration
+
 	return &models.AlbumWithTracks{
-		Album:  album.ToResponse(coverArtURL),
+		Album:  albumResp,
 		Tracks: tracks,
 	}, nil
 }
@@ -85,8 +96,45 @@ func (s *albumService) ListAlbums(ctx context.Context, userID string, filter mod
 		return nil, err
 	}
 
+	// Get all tracks to calculate actual track counts per album
+	trackFilter := models.TrackFilter{
+		Limit: 1000, // Get all tracks for aggregation
+	}
+	trackResult, err := s.repo.ListTracks(ctx, userID, trackFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build album -> track count and duration map
+	// Key format: "albumTitle|artist" for uniqueness
+	type albumStats struct {
+		trackCount    int
+		totalDuration int
+	}
+	albumStatsMap := make(map[string]*albumStats)
+	for _, track := range trackResult.Items {
+		if track.Album == "" {
+			continue
+		}
+		key := track.Album + "|" + track.Artist
+		if _, exists := albumStatsMap[key]; !exists {
+			albumStatsMap[key] = &albumStats{}
+		}
+		albumStatsMap[key].trackCount++
+		albumStatsMap[key].totalDuration += track.Duration
+	}
+
 	responses := make([]models.AlbumResponse, 0, len(result.Items))
 	for _, album := range result.Items {
+		// Look up actual track count
+		key := album.Title + "|" + album.Artist
+		stats := albumStatsMap[key]
+
+		// Skip albums with 0 tracks (orphaned albums)
+		if stats == nil || stats.trackCount == 0 {
+			continue
+		}
+
 		coverArtURL := ""
 		if album.CoverArtKey != "" {
 			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, album.CoverArtKey, 24*time.Hour)
@@ -94,7 +142,12 @@ func (s *albumService) ListAlbums(ctx context.Context, userID string, filter mod
 				coverArtURL = url
 			}
 		}
-		responses = append(responses, album.ToResponse(coverArtURL))
+
+		resp := album.ToResponse(coverArtURL)
+		// Override with calculated values
+		resp.TrackCount = stats.trackCount
+		resp.TotalDuration = stats.totalDuration
+		responses = append(responses, resp)
 	}
 
 	return &repository.PaginatedResult[models.AlbumResponse]{
@@ -110,8 +163,43 @@ func (s *albumService) ListAlbumsByArtist(ctx context.Context, userID, artist st
 		return nil, err
 	}
 
+	// Get tracks by this artist to calculate actual track counts
+	trackFilter := models.TrackFilter{
+		Artist: artist,
+		Limit:  1000,
+	}
+	trackResult, err := s.repo.ListTracks(ctx, userID, trackFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build album -> track count and duration map
+	type albumStats struct {
+		trackCount    int
+		totalDuration int
+	}
+	albumStatsMap := make(map[string]*albumStats)
+	for _, track := range trackResult.Items {
+		if track.Album == "" || track.Artist != artist {
+			continue
+		}
+		if _, exists := albumStatsMap[track.Album]; !exists {
+			albumStatsMap[track.Album] = &albumStats{}
+		}
+		albumStatsMap[track.Album].trackCount++
+		albumStatsMap[track.Album].totalDuration += track.Duration
+	}
+
 	responses := make([]models.AlbumResponse, 0, len(albums))
 	for _, album := range albums {
+		// Look up actual track count
+		stats := albumStatsMap[album.Title]
+
+		// Skip albums with 0 tracks
+		if stats == nil || stats.trackCount == 0 {
+			continue
+		}
+
 		coverArtURL := ""
 		if album.CoverArtKey != "" {
 			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, album.CoverArtKey, 24*time.Hour)
@@ -119,7 +207,11 @@ func (s *albumService) ListAlbumsByArtist(ctx context.Context, userID, artist st
 				coverArtURL = url
 			}
 		}
-		responses = append(responses, album.ToResponse(coverArtURL))
+
+		resp := album.ToResponse(coverArtURL)
+		resp.TrackCount = stats.trackCount
+		resp.TotalDuration = stats.totalDuration
+		responses = append(responses, resp)
 	}
 
 	return responses, nil
