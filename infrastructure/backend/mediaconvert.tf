@@ -178,7 +178,8 @@ resource "aws_iam_role_policy" "transcode_lambda" {
         Action = [
           "mediaconvert:CreateJob",
           "mediaconvert:GetJob",
-          "mediaconvert:DescribeEndpoints"
+          "mediaconvert:DescribeEndpoints",
+          "mediaconvert:TagResource"
         ]
         Resource = "*"
       },

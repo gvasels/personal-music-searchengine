@@ -16,8 +16,9 @@ const MaxFileSizeBytes int64 = 100 * 1024 * 1024
 // Set to 5 seconds less than Lambda timeout to allow graceful shutdown.
 const ProcessorTimeoutSeconds = 55
 
-// uuidRegex matches UUID v4 format (with or without hyphens).
-var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?4[0-9a-fA-F]{3}-?[89abAB][0-9a-fA-F]{3}-?[0-9a-fA-F]{12}$`)
+// uuidRegex matches UUID format (any version, with or without hyphens).
+// Cognito generates UUIDs that may not be strictly v4 compliant.
+var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$`)
 
 // IsValidUUID returns true if the string is a valid UUID v4 format.
 func IsValidUUID(s string) bool {

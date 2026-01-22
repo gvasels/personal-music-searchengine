@@ -40,13 +40,15 @@ var (
 
 func init() {
 	mediaConvertEndpoint := os.Getenv("MEDIACONVERT_ENDPOINT")
-	mediaConvertRole := os.Getenv("MEDIACONVERT_ROLE")
-	mediaConvertQueue := os.Getenv("MEDIACONVERT_QUEUE")
+	mediaConvertRole := os.Getenv("MEDIACONVERT_ROLE_ARN")
+	mediaConvertQueue := os.Getenv("MEDIACONVERT_QUEUE_ARN")
 	mediaBucket := os.Getenv("MEDIA_BUCKET")
 	tableName = os.Getenv("DYNAMODB_TABLE_NAME")
 
 	if mediaConvertEndpoint == "" || mediaConvertRole == "" || mediaBucket == "" {
 		fmt.Println("MediaConvert configuration incomplete, transcoding disabled")
+		fmt.Printf("MEDIACONVERT_ENDPOINT=%s, MEDIACONVERT_ROLE_ARN=%s, MEDIA_BUCKET=%s\n",
+			mediaConvertEndpoint, mediaConvertRole, mediaBucket)
 		return
 	}
 

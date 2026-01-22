@@ -126,7 +126,7 @@ type TrackResponse struct {
 	CoverArtURL  string    `json:"coverArtUrl,omitempty"`
 	PlayCount    int       `json:"playCount"`
 	LastPlayed   *time.Time `json:"lastPlayed,omitempty"`
-	Tags         []string  `json:"tags,omitempty"`
+	Tags         []string  `json:"tags"`
 	HLSStatus    string    `json:"hlsStatus,omitempty"`
 	HLSReady     bool      `json:"hlsReady"`
 	CreatedAt    time.Time `json:"createdAt"`
@@ -135,6 +135,12 @@ type TrackResponse struct {
 
 // ToResponse converts a Track to a TrackResponse
 func (t *Track) ToResponse(coverArtURL string) TrackResponse {
+	// Ensure tags is never nil to avoid undefined in JavaScript
+	tags := t.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+
 	return TrackResponse{
 		ID:           t.ID,
 		Title:        t.Title,
@@ -154,7 +160,7 @@ func (t *Track) ToResponse(coverArtURL string) TrackResponse {
 		CoverArtURL:  coverArtURL,
 		PlayCount:    t.PlayCount,
 		LastPlayed:   t.LastPlayed,
-		Tags:         t.Tags,
+		Tags:         tags,
 		HLSStatus:    string(t.HLSStatus),
 		HLSReady:     t.HLSStatus == HLSStatusReady,
 		CreatedAt:    t.CreatedAt,
@@ -164,15 +170,16 @@ func (t *Track) ToResponse(coverArtURL string) TrackResponse {
 
 // TrackFilter represents filter options for listing tracks
 type TrackFilter struct {
-	Artist    string   `query:"artist"`
-	Album     string   `query:"album"`
-	Genre     string   `query:"genre"`
-	Year      int      `query:"year"`
-	Tags      []string `query:"tags"`
-	SortBy    string   `query:"sortBy"`    // title, artist, album, createdAt, playCount
-	SortOrder string   `query:"sortOrder"` // asc, desc
-	Limit     int      `query:"limit"`
-	LastKey   string   `query:"lastKey"`
+	Artist      string   `query:"artist"`
+	Album       string   `query:"album"`
+	Genre       string   `query:"genre"`
+	Year        int      `query:"year"`
+	Tags        []string `query:"tags"`
+	SortBy      string   `query:"sortBy"`    // title, artist, album, createdAt, playCount
+	SortOrder   string   `query:"sortOrder"` // asc, desc
+	Limit       int      `query:"limit"`
+	LastKey     string   `query:"lastKey"`
+	GlobalScope bool     `query:"-"` // If true, return tracks from all users (requires GLOBAL permission)
 }
 
 // Helper functions

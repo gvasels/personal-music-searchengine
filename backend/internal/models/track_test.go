@@ -266,3 +266,37 @@ func TestUpdateTrackRequestFields(t *testing.T) {
 	assert.NotNil(t, req.Year)
 	assert.Equal(t, 2024, *req.Year)
 }
+
+// TestTrackToResponseNilTags verifies Tags is never nil in response (prevents JS undefined errors)
+func TestTrackToResponseNilTags(t *testing.T) {
+	track := Track{
+		ID:     "track-123",
+		UserID: "user-456",
+		Title:  "Test Song",
+		Artist: "Test Artist",
+		Format: AudioFormatMP3,
+		Tags:   nil, // Explicitly nil
+	}
+	track.CreatedAt = time.Now()
+	track.UpdatedAt = time.Now()
+
+	response := track.ToResponse("")
+
+	// Tags should be empty slice, not nil
+	assert.NotNil(t, response.Tags, "Tags should not be nil")
+	assert.Len(t, response.Tags, 0, "Tags should be empty slice")
+
+	// Verify JSON serialization includes empty array, not null/missing
+	jsonBytes, err := json.Marshal(response)
+	require.NoError(t, err)
+
+	var jsonMap map[string]interface{}
+	err = json.Unmarshal(jsonBytes, &jsonMap)
+	require.NoError(t, err)
+
+	// Tags should be present as empty array
+	assert.Contains(t, jsonMap, "tags", "tags field should be present in JSON")
+	tags, ok := jsonMap["tags"].([]interface{})
+	assert.True(t, ok, "tags should be an array")
+	assert.Len(t, tags, 0, "tags should be empty array")
+}

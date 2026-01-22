@@ -5,8 +5,11 @@ import (
 	"io"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dhowden/tag"
+	"github.com/tcolgate/mp3"
+
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 )
 
@@ -27,6 +30,14 @@ func (e *Extractor) Extract(reader io.ReadSeeker, filename string) (*models.Uplo
 		return e.metadataFromFilename(filename), nil
 	}
 
+	// Calculate duration for MP3 files
+	duration := 0
+	if m.FileType() == tag.MP3 {
+		if _, err := reader.Seek(0, io.SeekStart); err == nil {
+			duration = e.calculateMP3Duration(reader)
+		}
+	}
+
 	metadata := &models.UploadMetadata{
 		Title:       e.parseTitle(m.Title(), filename),
 		Artist:      e.parseArtist(m.Artist()),
@@ -34,7 +45,7 @@ func (e *Extractor) Extract(reader io.ReadSeeker, filename string) (*models.Uplo
 		Album:       m.Album(),
 		Genre:       m.Genre(),
 		Year:        m.Year(),
-		Duration:    0, // Will be set separately if available
+		Duration:    duration,
 		Format:      e.formatToString(m.FileType()),
 		HasCoverArt: m.Picture() != nil,
 		Composer:    m.Composer(),
@@ -179,4 +190,21 @@ func (e *Extractor) extensionToFormat(ext string) models.AudioFormat {
 	default:
 		return models.AudioFormatMP3
 	}
+}
+
+// calculateMP3Duration calculates the duration of an MP3 file by parsing frames
+func (e *Extractor) calculateMP3Duration(reader io.ReadSeeker) int {
+	decoder := mp3.NewDecoder(reader)
+	var totalDuration time.Duration
+	var frame mp3.Frame
+	skipped := 0
+
+	for {
+		if err := decoder.Decode(&frame, &skipped); err != nil {
+			break
+		}
+		totalDuration += frame.Duration()
+	}
+
+	return int(totalDuration.Seconds())
 }

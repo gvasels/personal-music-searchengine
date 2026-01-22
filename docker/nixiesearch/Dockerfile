@@ -22,11 +22,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bootstrap ./cmd/nixiesearc
 # Final image
 FROM public.ecr.aws/lambda/provided:al2023
 
-# Copy the Lambda handler
-COPY --from=builder /build/bootstrap ${LAMBDA_RUNTIME_DIR}/bootstrap
+# Copy the Lambda handler to the correct location
+COPY --from=builder /build/bootstrap /var/runtime/bootstrap
 
 # Set permissions
-RUN chmod 755 ${LAMBDA_RUNTIME_DIR}/bootstrap
+RUN chmod 755 /var/runtime/bootstrap
 
-# Lambda handler
-CMD ["bootstrap"]
+# Entrypoint for provided runtime
+ENTRYPOINT ["/var/runtime/bootstrap"]

@@ -18,6 +18,9 @@ func TestIsValidUUID_Valid(t *testing.T) {
 		{"standard format", "550e8400-e29b-41d4-a716-446655440000"},
 		{"uppercase", "550E8400-E29B-41D4-A716-446655440000"},
 		{"mixed case", "550e8400-E29B-41d4-A716-446655440000"},
+		{"uuid v1", "550e8400-e29b-11d4-a716-446655440000"},
+		{"uuid v5", "550e8400-e29b-51d4-a716-446655440000"},
+		{"cognito style", "14c88468-d0f1-700d-646e-0e2e934f67b0"},
 	}
 
 	for _, tt := range tests {
@@ -36,7 +39,6 @@ func TestIsValidUUID_Invalid(t *testing.T) {
 		{"too short", "550e8400-e29b-41d4-a716"},
 		{"too long", "550e8400-e29b-41d4-a716-446655440000-extra"},
 		{"invalid characters", "550e8400-e29b-41d4-a716-44665544000g"},
-		{"wrong version", "550e8400-e29b-51d4-a716-446655440000"}, // version 5 not 4
 		{"sql injection attempt", "'; DROP TABLE users;--"},
 		{"path traversal", "../../../etc/passwd"},
 		{"spaces", "550e8400 e29b 41d4 a716 446655440000"},
