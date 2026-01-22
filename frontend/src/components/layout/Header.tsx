@@ -14,7 +14,7 @@ export function Header() {
   };
 
   return (
-    <header role="banner" className="navbar bg-base-100 shadow-md">
+    <header role="banner" className="navbar bg-secondary text-secondary-content shadow-md">
       <div className="flex-1">
         <span className="text-xl font-bold">Music Library</span>
       </div>
@@ -24,7 +24,7 @@ export function Header() {
       <div className="flex-none gap-2">
         <button
           onClick={toggleTheme}
-          className="btn btn-ghost btn-circle"
+          className="btn btn-ghost btn-circle text-secondary-content hover:bg-secondary-content/20"
           aria-label="Toggle theme"
         >
           {theme === 'dark' ? '☀️' : '🌙'}
@@ -32,7 +32,7 @@ export function Header() {
         {isAuthenticated && (
           <button
             onClick={handleSignOut}
-            className="btn btn-ghost btn-sm"
+            className="btn btn-primary btn-sm"
             disabled={isSigningOut}
             aria-label="Sign out"
           >

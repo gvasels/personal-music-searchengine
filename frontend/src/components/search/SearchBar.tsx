@@ -194,7 +194,7 @@ export function SearchBar() {
               setIsOpen(true);
             }
           }}
-          className="input input-bordered w-full pl-10 pr-4"
+          className="input input-bordered w-full pl-10 pr-4 bg-base-100 text-base-content"
           aria-label="Search"
           aria-expanded={isOpen}
           aria-haspopup="listbox"
