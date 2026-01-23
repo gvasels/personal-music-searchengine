@@ -65,6 +65,42 @@ func (h *Handlers) ListArtists(c echo.Context) error {
 	return successList(c, artists)
 }
 
+// GetArtist returns artist details with albums and recent tracks
+func (h *Handlers) GetArtist(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == "" {
+		return handleError(c, models.ErrUnauthorized)
+	}
+
+	artistName := c.Param("name")
+	if artistName == "" {
+		return handleError(c, models.ErrBadRequest)
+	}
+
+	// Get tracks by this artist
+	tracks, err := h.services.Track.ListTracksByArtist(c.Request().Context(), userID, artistName)
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	// Get albums by this artist
+	albums, err := h.services.Album.ListAlbumsByArtist(c.Request().Context(), userID, artistName)
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	// Build response
+	response := map[string]interface{}{
+		"name":         artistName,
+		"trackCount":   len(tracks),
+		"albumCount":   len(albums),
+		"albums":       albums,
+		"recentTracks": tracks,
+	}
+
+	return success(c, response)
+}
+
 // ListTracksByArtist returns tracks by a specific artist
 func (h *Handlers) ListTracksByArtist(c echo.Context) error {
 	userID := getUserIDFromContext(c)

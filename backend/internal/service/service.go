@@ -77,6 +77,8 @@ type StreamService interface {
 type SearchService interface {
 	Search(ctx context.Context, userID string, req models.SearchRequest) (*models.SearchResponse, error)
 	Autocomplete(ctx context.Context, userID, query string) (*models.AutocompleteResponse, error)
+	RemoveTrack(ctx context.Context, trackID string) error
+	IndexTrack(ctx context.Context, track models.Track) error
 }
 
 // Services holds all service implementations

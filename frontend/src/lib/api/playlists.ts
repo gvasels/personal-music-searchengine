@@ -2,7 +2,7 @@
  * Playlists API - Wave 5
  */
 import { apiClient } from './client';
-import type { Playlist, PaginatedResponse } from '../../types';
+import type { Playlist, PlaylistWithTracks, PaginatedResponse } from '../../types';
 
 export interface GetPlaylistsParams {
   limit?: number;
@@ -26,8 +26,8 @@ export async function getPlaylists(
   return response.data;
 }
 
-export async function getPlaylist(id: string): Promise<Playlist> {
-  const response = await apiClient.get<Playlist>(`/playlists/${id}`);
+export async function getPlaylist(id: string): Promise<PlaylistWithTracks> {
+  const response = await apiClient.get<PlaylistWithTracks>(`/playlists/${id}`);
   return response.data;
 }
 

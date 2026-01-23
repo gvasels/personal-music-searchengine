@@ -1,8 +1,32 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import type { Track, Album, Artist, Playlist, PaginatedResponse } from '@/types';
 
 export type { Track, Album, Artist, Playlist, PaginatedResponse };
+
+// API error response structure from backend
+interface ApiErrorResponse {
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+}
+
+// Custom error class that extracts the API error message
+export class ApiError extends Error {
+  code: string;
+  statusCode: number;
+  details?: unknown;
+
+  constructor(code: string, message: string, statusCode: number, details?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.statusCode = statusCode;
+    this.details = details;
+  }
+}
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -21,6 +45,29 @@ apiClient.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+// Response interceptor to extract API error messages
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<ApiErrorResponse>) => {
+    // Extract the API error message from the response
+    const apiError = error.response?.data?.error;
+    if (apiError) {
+      throw new ApiError(
+        apiError.code,
+        apiError.message,
+        error.response?.status || 500,
+        apiError.details
+      );
+    }
+    // Fallback to generic error
+    throw new ApiError(
+      'NETWORK_ERROR',
+      error.message || 'An unexpected error occurred',
+      error.response?.status || 0
+    );
+  }
+);
 
 export async function getTracks(params?: { limit?: number; offset?: number }): Promise<PaginatedResponse<Track>> {
   const response = await apiClient.get<PaginatedResponse<Track>>('/tracks', { params });
@@ -62,12 +109,12 @@ export async function deletePlaylist(id: string): Promise<void> {
 }
 
 export async function addTrackToPlaylist(playlistId: string, trackId: string): Promise<Playlist> {
-  const response = await apiClient.post<Playlist>(`/playlists/${playlistId}/tracks`, { trackId });
+  const response = await apiClient.post<Playlist>(`/playlists/${playlistId}/tracks`, { trackIds: [trackId] });
   return response.data;
 }
 
 export async function removeTrackFromPlaylist(playlistId: string, trackId: string): Promise<Playlist> {
-  const response = await apiClient.delete<Playlist>(`/playlists/${playlistId}/tracks/${trackId}`);
+  const response = await apiClient.delete<Playlist>(`/playlists/${playlistId}/tracks`, { data: { trackIds: [trackId] } });
   return response.data;
 }
 
@@ -96,7 +143,7 @@ export async function getStreamUrl(trackId: string): Promise<{ streamUrl: string
   return response.data;
 }
 
-export async function getDownloadUrl(trackId: string): Promise<{ downloadUrl: string; filename: string }> {
+export async function getDownloadUrl(trackId: string): Promise<{ downloadUrl: string; fileName: string }> {
   const response = await apiClient.get(`/download/${trackId}`);
   return response.data;
 }

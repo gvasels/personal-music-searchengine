@@ -79,6 +79,27 @@
   html {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
+
+  /* 4. Focus Indicators for Accessibility (WCAG compliance) */
+  *:focus-visible {
+    outline: 2px solid rgb(80, 200, 120);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 2px solid rgb(80, 200, 120);
+    outline-offset: 2px;
+  }
+
+  /* 9. Contrast Improvements - better readability */
+  [data-theme="dark"] .text-base-content\/60,
+  [data-theme="dark"] .text-base-content\/70 {
+    color: oklch(0.75 0.01 264);
+  }
 }
 
 @layer components {
@@ -119,9 +140,116 @@
     @apply relative;
   }
 
-  .search-suggestions {
-    @apply absolute top-full left-0 right-0 mt-1;
-    @apply rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto;
+  /* 1. Search Dropdown - proper constraints and z-index fix */
+  .search-suggestions,
+  [role="listbox"] {
+    position: fixed;
+    z-index: 9999;
+    max-height: 400px;
+    min-width: 400px;
+    overflow-y: auto;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    isolation: isolate;
+    backdrop-filter: none;
+  }
+
+  [data-theme="dark"] [role="listbox"] {
+    background: #120612;
+  }
+
+  [data-theme="light"] [role="listbox"] {
+    background: #fdfdf8;
+  }
+
+  /* 3. Button Hover States - clear visual feedback */
+  .btn:not(.btn-disabled):hover {
+    transform: scale(1.02);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+  }
+
+  .btn:not(.btn-disabled):active {
+    transform: scale(0.98);
+  }
+
+  .btn-ghost:hover {
+    transform: scale(1.05);
+  }
+
+  /* Delete button hover - red tint */
+  .btn[aria-label="Delete"]:hover,
+  .btn.text-error:hover {
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+
+  /* 5. Navigation Active State */
+  nav a[aria-current="page"],
+  nav .active,
+  .menu li > a[aria-current="page"],
+  .menu li > .active {
+    background-color: rgba(80, 200, 120, 0.2);
+    border-left: 3px solid rgb(80, 200, 120);
+    font-weight: 600;
+  }
+
+  /* 6. Loading/Empty States */
+  .playlists-container,
+  .tracks-container,
+  .albums-container {
+    min-height: 50vh;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    min-height: 300px;
+  }
+
+  [data-theme="dark"] .empty-state {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  [data-theme="light"] .empty-state {
+    color: rgba(0, 0, 0, 0.5);
+  }
+
+  /* 7. Music Player Controls Spacing */
+  .player-controls {
+    gap: 1rem;
+    padding: 1rem 2rem;
+  }
+
+  .player-controls button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* 8. Text Truncation for Long Titles */
+  .track-title,
+  .album-title,
+  .artist-name {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Show full text on hover with tooltip-like behavior */
+  td {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (min-width: 1024px) {
+    td {
+      max-width: 300px;
+    }
   }
 }
 
@@ -138,4 +266,87 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+}
+
+/* 2. Table Responsiveness - mobile friendly */
+@media (max-width: 768px) {
+  .table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tbody tr {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+    padding: 1rem 0;
+    gap: 0.5rem;
+  }
+
+  .table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .table tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+
+  /* Keep action buttons inline on mobile */
+  .table tbody td:last-child {
+    justify-content: flex-end;
+  }
+}
+
+/* Ensure proper stacking for fixed elements */
+.fixed {
+  isolation: isolate;
+}
+
+/* Z-index stacking context for search dropdown */
+header,
+[role="banner"] {
+  position: relative;
+  z-index: 100;
+  isolation: isolate;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+table,
+.table {
+  position: relative;
+  z-index: 0;
+}
+
+/* Fix 1: Make search bar wider */
+.search-container,
+.search-wrapper,
+[role="combobox"] {
+  width: 100%;
+  min-width: 400px;
+  max-width: 500px;
+}
+
+/* Parent flex container should allow growth */
+.header-search-wrapper {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  max-width: 600px;
 }

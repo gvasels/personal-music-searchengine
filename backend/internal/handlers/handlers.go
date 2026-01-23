@@ -47,6 +47,7 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 
 	// Artist routes
 	api.GET("/artists", h.ListArtists)
+	api.GET("/artists/:name", h.GetArtist)
 	api.GET("/artists/:name/tracks", h.ListTracksByArtist)
 	api.GET("/artists/:name/albums", h.ListAlbumsByArtist)
 
@@ -82,6 +83,7 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 	// Search routes
 	api.GET("/search", h.SimpleSearch)
 	api.POST("/search", h.AdvancedSearch)
+	api.GET("/search/autocomplete", h.Autocomplete)
 }
 
 // AuthContext contains user authentication and permission information

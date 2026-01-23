@@ -34,7 +34,7 @@ export function PlayerBar() {
   return (
     <div
       data-testid="player-bar"
-      className="fixed bottom-0 left-0 right-0 h-20 bg-base-100 border-t border-base-300 flex items-center px-4"
+      className="fixed bottom-0 left-0 right-0 h-20 bg-base-100 border-t border-base-300 flex items-center px-4 z-50"
     >
       {/* Track Info */}
       <div className="flex items-center gap-3 w-1/4">
@@ -63,7 +63,7 @@ export function PlayerBar() {
 
       {/* Controls */}
       <div className="flex flex-col items-center flex-1">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 player-controls">
           <button
             onClick={toggleShuffle}
             className={`btn btn-ghost btn-sm ${shuffle ? 'text-primary' : ''}`}

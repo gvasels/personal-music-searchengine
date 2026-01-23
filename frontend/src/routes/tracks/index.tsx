@@ -7,6 +7,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useTracksQuery, useDeleteTrack } from '../../hooks/useTracks';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { TagsCell } from '@/components/library/TagsCell';
+import { AddToPlaylistDropdown } from '@/components/library';
 import { getDownloadUrl } from '@/lib/api/client';
 import type { Track } from '../../types';
 
@@ -65,11 +66,11 @@ export default function TracksPage() {
   const handleDownload = async (e: React.MouseEvent, track: Track) => {
     e.stopPropagation();
     try {
-      const { downloadUrl, filename } = await getDownloadUrl(track.id);
+      const { downloadUrl, fileName } = await getDownloadUrl(track.id);
       // Create a temporary link to trigger download
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = filename || `${track.title}.${track.format}`;
+      link.download = fileName || `${track.title}.${track.format}`;
       link.target = '_blank';
       document.body.appendChild(link);
       link.click();
@@ -197,6 +198,7 @@ export default function TracksPage() {
                   <td className="text-sm text-base-content/60">{formatDate(track.createdAt)}</td>
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-1">
+                      <AddToPlaylistDropdown trackId={track.id} />
                       <button
                         className="btn btn-ghost btn-xs"
                         onClick={(e) => handleDownload(e, track)}

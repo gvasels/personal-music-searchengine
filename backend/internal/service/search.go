@@ -73,8 +73,10 @@ func (s *searchServiceImpl) Search(ctx context.Context, userID string, req model
 		return nil, fmt.Errorf("search failed: %w", err)
 	}
 
+	// Deduplicate results by track ID (in case same track was indexed multiple times)
+	results := deduplicateSearchResults(resp.Results)
+
 	// Apply tag filtering if tags specified (post-filtering since tags are in DynamoDB)
-	results := resp.Results
 	if len(req.Filters.Tags) > 0 {
 		results, err = s.filterByTags(ctx, userID, results, req.Filters.Tags)
 		if err != nil {
@@ -132,18 +134,25 @@ func (s *searchServiceImpl) Autocomplete(ctx context.Context, userID, query stri
 		return nil, fmt.Errorf("autocomplete failed: %w", err)
 	}
 
+	// Deduplicate results
+	results := deduplicateSearchResults(resp.Results)
+
 	// Convert results to suggestions
 	suggestions := make([]models.SearchSuggestion, 0)
+	seenTracks := make(map[string]bool)
 	seenArtists := make(map[string]bool)
 	seenAlbums := make(map[string]bool)
 
-	for _, result := range resp.Results {
-		// Add track suggestion
-		suggestions = append(suggestions, models.SearchSuggestion{
-			Value:   result.Title,
-			Type:    "track",
-			TrackID: result.ID,
-		})
+	for _, result := range results {
+		// Add track suggestion (deduplicated by title)
+		if !seenTracks[result.Title] {
+			seenTracks[result.Title] = true
+			suggestions = append(suggestions, models.SearchSuggestion{
+				Value:   result.Title,
+				Type:    "track",
+				TrackID: result.ID,
+			})
+		}
 
 		// Add artist suggestion (deduplicated)
 		if result.Artist != "" && !seenArtists[result.Artist] {
@@ -438,4 +447,18 @@ func formatDuration(seconds int) string {
 	minutes := seconds / 60
 	secs := seconds % 60
 	return fmt.Sprintf("%d:%02d", minutes, secs)
+}
+
+// deduplicateSearchResults removes duplicate tracks from search results (by ID).
+// This handles cases where the same track was indexed multiple times.
+func deduplicateSearchResults(results []search.SearchResult) []search.SearchResult {
+	seen := make(map[string]bool)
+	deduplicated := make([]search.SearchResult, 0, len(results))
+	for _, result := range results {
+		if !seen[result.ID] {
+			seen[result.ID] = true
+			deduplicated = append(deduplicated, result)
+		}
+	}
+	return deduplicated
 }

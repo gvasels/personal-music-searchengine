@@ -13,6 +13,10 @@ export interface Track {
   s3Key: string;
   artworkS3Key?: string;
   tags: string[];
+  bpm?: number;           // Beats per minute (20-300)
+  musicalKey?: string;    // e.g., "Am", "C", "F#m"
+  keyMode?: string;       // "major" or "minor"
+  keyCamelot?: string;    // Camelot notation, e.g., "8A", "11B"
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +47,12 @@ export interface Playlist {
   coverArt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Backend returns this structure for single playlist with tracks
+export interface PlaylistWithTracks {
+  playlist: Playlist;
+  tracks: Track[];
 }
 
 export interface Tag {

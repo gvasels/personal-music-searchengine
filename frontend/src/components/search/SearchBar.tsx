@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { createPortal } from 'react-dom';
+import { useNavigate, useLocation } from '@tanstack/react-router';
 import { useAutocompleteQuery } from '@/hooks/useSearch';
+import { useThemeStore } from '@/lib/store/themeStore';
 import type { AutocompleteSuggestion } from '@/lib/api/search';
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -21,16 +23,52 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export function SearchBar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const debouncedQuery = useDebounce(query, 300);
   const { data, isLoading } = useAutocompleteQuery(debouncedQuery);
 
+  // Clear search query when navigating to a different page (except /search)
+  useEffect(() => {
+    if (!location.pathname.startsWith('/search')) {
+      setQuery('');
+      setIsOpen(false);
+    }
+  }, [location.pathname]);
+
   const suggestions = data?.suggestions || [];
+
+  // Update dropdown position when open or on scroll/resize
+  useEffect(() => {
+    const updatePosition = () => {
+      if (containerRef.current && isOpen) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + window.scrollY + 4,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
+    };
+
+    updatePosition();
+
+    if (isOpen) {
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+      };
+    }
+  }, [isOpen]);
 
   // Group suggestions by type
   const groupedSuggestions = suggestions.reduce(
@@ -140,6 +178,14 @@ export function SearchBar() {
     setSelectedIndex(-1);
   }, [debouncedQuery, suggestions.length]);
 
+  // Get theme for background color
+  const { theme } = useThemeStore();
+  const bgColor = theme === 'dark' ? '#120612' : '#fdfdf8';
+  const borderColor = theme === 'dark' ? '#1c2c37' : '#edeee6';
+  const textColor = theme === 'dark' ? '#f5f5f5' : '#1a1a1a';
+  const textColorMuted = theme === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
+  const hoverBg = theme === 'dark' ? '#1c2c37' : '#f7f7f2';
+
   const renderSuggestionGroup = (type: string, items: AutocompleteSuggestion[]) => {
     const typeLabels: Record<string, string> = {
       track: 'Tracks',
@@ -153,7 +199,10 @@ export function SearchBar() {
 
     return (
       <div key={type}>
-        <div className="px-3 py-1.5 text-xs font-semibold text-base-content/60 uppercase tracking-wide">
+        <div
+          className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide"
+          style={{ color: textColorMuted }}
+        >
           {typeLabels[type] || type}
         </div>
         {items.map((suggestion, idx) => {
@@ -164,14 +213,16 @@ export function SearchBar() {
             <button
               key={`${suggestion.type}-${suggestion.value}-${idx}`}
               type="button"
-              className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-base-200 transition-colors text-base-content ${
-                isSelected ? 'bg-base-200' : ''
-              }`}
+              className="w-full px-3 py-2 text-left flex items-center gap-2 transition-colors"
+              style={{
+                color: textColor,
+                backgroundColor: isSelected ? hoverBg : 'transparent',
+              }}
               onClick={() => handleSelect(suggestion)}
               onMouseEnter={() => setSelectedIndex(globalIndex)}
             >
-              <span className="flex-1 truncate text-base-content">{suggestion.value}</span>
-              <span className="text-xs text-base-content/50 capitalize">{suggestion.type}</span>
+              <span className="flex-1 truncate">{suggestion.value}</span>
+              <span className="text-xs capitalize" style={{ color: textColorMuted }}>{suggestion.type}</span>
             </button>
           );
         })}
@@ -179,8 +230,39 @@ export function SearchBar() {
     );
   };
 
+  const dropdownContent = isOpen && (
+    <div
+      ref={dropdownRef}
+      className="rounded-lg shadow-2xl max-h-80 overflow-y-auto"
+      style={{
+        position: 'fixed',
+        top: dropdownPosition.top,
+        left: dropdownPosition.left,
+        width: dropdownPosition.width,
+        zIndex: 99999,
+        backgroundColor: bgColor,
+        border: `1px solid ${borderColor}`,
+      }}
+      role="listbox"
+    >
+      {suggestions.length === 0 && debouncedQuery.length >= 2 && !isLoading ? (
+        <div className="px-3 py-4 text-center" style={{ color: textColorMuted }}>
+          No results found for "{debouncedQuery}"
+        </div>
+      ) : (
+        <>
+          {['track', 'artist', 'album'].map(
+            (type) =>
+              groupedSuggestions[type]?.length > 0 &&
+              renderSuggestionGroup(type, groupedSuggestions[type])
+          )}
+        </>
+      )}
+    </div>
+  );
+
   return (
-    <div className="relative w-full max-w-md">
+    <div ref={containerRef} className="relative w-full min-w-[400px] max-w-[500px] search-container">
       <div className="relative">
         <input
           ref={inputRef}
@@ -220,27 +302,8 @@ export function SearchBar() {
         )}
       </div>
 
-      {isOpen && (
-        <div
-          ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-80 overflow-y-auto"
-          role="listbox"
-        >
-          {suggestions.length === 0 && debouncedQuery.length >= 2 && !isLoading ? (
-            <div className="px-3 py-4 text-center text-base-content/60">
-              No results found for "{debouncedQuery}"
-            </div>
-          ) : (
-            <>
-              {['track', 'artist', 'album'].map(
-                (type) =>
-                  groupedSuggestions[type]?.length > 0 &&
-                  renderSuggestionGroup(type, groupedSuggestions[type])
-              )}
-            </>
-          )}
-        </div>
-      )}
+      {/* Render dropdown via portal to escape stacking contexts */}
+      {dropdownContent && createPortal(dropdownContent, document.body)}
     </div>
   );
 }

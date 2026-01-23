@@ -54,10 +54,11 @@ export default function TrackDetailPage() {
   }
 
   if (isError || !track) {
+    const errorMessage = error?.message || 'Track not found or you do not have access to it';
     return (
       <div className="space-y-4">
         <div className="alert alert-error">
-          <span>Track not found: {error?.message}</span>
+          <span>{errorMessage}</span>
         </div>
         <button className="btn" onClick={handleBack}>
           Back
@@ -137,7 +138,7 @@ export default function TrackDetailPage() {
                 </p>
               )}
 
-              <div className="stats shadow">
+              <div className="stats shadow flex-wrap">
                 <div className="stat">
                   <div className="stat-title">Duration</div>
                   <div className="stat-value text-lg">{formatDuration(track.duration)}</div>
@@ -146,6 +147,21 @@ export default function TrackDetailPage() {
                   <div className="stat-title">Format</div>
                   <div className="stat-value text-lg uppercase">{track.format}</div>
                 </div>
+                {track.bpm && track.bpm > 0 && (
+                  <div className="stat">
+                    <div className="stat-title">BPM</div>
+                    <div className="stat-value text-lg">{track.bpm}</div>
+                  </div>
+                )}
+                {track.musicalKey && (
+                  <div className="stat">
+                    <div className="stat-title">Key</div>
+                    <div className="stat-value text-lg">
+                      {track.musicalKey}
+                      {track.keyCamelot && <span className="text-sm opacity-60 ml-1">({track.keyCamelot})</span>}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {track.tags.length > 0 && (

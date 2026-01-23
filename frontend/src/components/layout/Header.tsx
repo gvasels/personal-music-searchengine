@@ -18,7 +18,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header role="banner" className="navbar bg-secondary text-secondary-content shadow-md relative">
+    <header role="banner" className="navbar bg-secondary text-secondary-content shadow-md">
       <div className="flex-none md:hidden">
         <button
           onClick={onMenuClick}
@@ -35,7 +35,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       </div>
       <div className="flex-1"></div>
       {isAuthenticated && (
-        <div className="absolute left-1/2 -translate-x-1/2 hidden md:block">
+        <div className="absolute left-1/2 -translate-x-1/2 hidden md:block header-search-wrapper">
           <SearchBar />
         </div>
       )}

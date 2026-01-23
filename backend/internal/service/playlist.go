@@ -89,8 +89,12 @@ func (s *playlistService) GetPlaylist(ctx context.Context, userID, playlistID st
 		tracks = append(tracks, track.ToResponse(trackCoverURL))
 	}
 
+	playlistResp := playlist.ToResponse(coverArtURL)
+	// Use actual track count from fetched tracks
+	playlistResp.TrackCount = len(tracks)
+
 	return &models.PlaylistWithTracks{
-		Playlist: playlist.ToResponse(coverArtURL),
+		Playlist: playlistResp,
 		Tracks:   tracks,
 	}, nil
 }
@@ -158,7 +162,15 @@ func (s *playlistService) ListPlaylists(ctx context.Context, userID string, filt
 				coverArtURL = url
 			}
 		}
-		responses = append(responses, playlist.ToResponse(coverArtURL))
+		resp := playlist.ToResponse(coverArtURL)
+
+		// Calculate actual track count from playlist-track associations
+		playlistTracks, err := s.repo.GetPlaylistTracks(ctx, playlist.ID)
+		if err == nil {
+			resp.TrackCount = len(playlistTracks)
+		}
+
+		responses = append(responses, resp)
 	}
 
 	return &repository.PaginatedResult[models.PlaylistResponse]{

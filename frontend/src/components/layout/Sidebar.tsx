@@ -42,8 +42,8 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       <nav
         role="navigation"
         className={`
-          fixed md:static inset-y-0 left-0 z-50
-          w-64 bg-base-100 p-4
+          fixed md:static top-0 bottom-20 left-0 z-40
+          w-64 bg-base-100 p-4 overflow-y-auto
           transform transition-transform duration-200 ease-in-out
           md:transform-none md:block
           ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
@@ -65,7 +65,15 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         <ul className="menu">
           {navItems.map((item) => (
             <li key={item.to}>
-              <Link to={item.to} className="flex items-center gap-2" onClick={handleNavClick}>
+              <Link
+                to={item.to}
+                className="flex items-center gap-2 rounded-lg transition-colors"
+                activeProps={{
+                  className: 'flex items-center gap-2 rounded-lg transition-colors bg-primary/20 border-l-3 border-primary font-semibold',
+                  'aria-current': 'page',
+                }}
+                onClick={handleNavClick}
+              >
                 <span>{item.icon}</span>
                 <span>{item.label}</span>
               </Link>

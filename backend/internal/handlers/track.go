@@ -71,6 +71,21 @@ func (h *Handlers) UpdateTrack(c echo.Context) error {
 		return handleError(c, err)
 	}
 
+	// Re-index in search to reflect metadata changes (best effort)
+	if h.services.Search != nil {
+		trackModel := models.Track{
+			ID:       track.ID,
+			UserID:   userID,
+			Title:    track.Title,
+			Artist:   track.Artist,
+			Album:    track.Album,
+			Genre:    track.Genre,
+			Year:     track.Year,
+			Duration: track.Duration,
+		}
+		_ = h.services.Search.IndexTrack(c.Request().Context(), trackModel)
+	}
+
 	return success(c, track)
 }
 
@@ -88,6 +103,11 @@ func (h *Handlers) DeleteTrack(c echo.Context) error {
 
 	if err := h.services.Track.DeleteTrack(c.Request().Context(), userID, trackID); err != nil {
 		return handleError(c, err)
+	}
+
+	// Remove from search index (best effort - don't fail if search removal fails)
+	if h.services.Search != nil {
+		_ = h.services.Search.RemoveTrack(c.Request().Context(), trackID)
 	}
 
 	return noContent(c)
