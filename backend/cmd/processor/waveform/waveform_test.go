@@ -4,12 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// skipIfNoFFmpeg skips the test if FFmpeg/FFprobe is not available
+func skipIfNoFFmpeg(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("ffprobe"); err != nil {
+		t.Skip("Skipping test: ffprobe not available in PATH")
+	}
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("Skipping test: ffmpeg not available in PATH")
+	}
+}
 
 // =============================================================================
 // WaveformData Tests
@@ -130,6 +142,8 @@ func TestWaveformData_JSONFields(t *testing.T) {
 // =============================================================================
 
 func TestGenerator_Generate_ValidMP3(t *testing.T) {
+	skipIfNoFFmpeg(t)
+
 	// Create a test fixture MP3 file
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.mp3")
@@ -159,6 +173,8 @@ func TestGenerator_Generate_ValidMP3(t *testing.T) {
 }
 
 func TestGenerator_Generate_ValidFLAC(t *testing.T) {
+	skipIfNoFFmpeg(t)
+
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.flac")
 
@@ -177,6 +193,8 @@ func TestGenerator_Generate_ValidFLAC(t *testing.T) {
 }
 
 func TestGenerator_Generate_ValidWAV(t *testing.T) {
+	skipIfNoFFmpeg(t)
+
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.wav")
 
@@ -227,6 +245,8 @@ func TestGenerator_Generate_InvalidFile(t *testing.T) {
 }
 
 func TestGenerator_Generate_PeaksNormalized(t *testing.T) {
+	skipIfNoFFmpeg(t)
+
 	// This test verifies that generated peaks are normalized 0.0-1.0
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.mp3")
@@ -251,6 +271,8 @@ func TestGenerator_Generate_PeaksNormalized(t *testing.T) {
 }
 
 func TestGenerator_Generate_SampleRateCorrect(t *testing.T) {
+	skipIfNoFFmpeg(t)
+
 	// Verify waveform has ~100 samples per second
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.mp3")
@@ -305,6 +327,8 @@ func TestGenerator_Generate_ContextCancellation(t *testing.T) {
 // =============================================================================
 
 func TestGenerator_GenerateFromBytes_ValidMP3(t *testing.T) {
+	skipIfNoFFmpeg(t)
+
 	// Minimal MP3 header bytes
 	mp3Data := []byte{0x49, 0x44, 0x33, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
