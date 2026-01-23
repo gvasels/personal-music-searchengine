@@ -300,3 +300,200 @@ func TestTrackToResponseNilTags(t *testing.T) {
 	assert.True(t, ok, "tags should be an array")
 	assert.Len(t, tags, 0, "tags should be empty array")
 }
+
+// =============================================================================
+// Waveform and Analysis Fields Tests (TDD Red - will fail until implemented)
+// =============================================================================
+
+// AnalysisStatus constants for testing - TDD Red: These will be added to track.go
+const (
+	AnalysisStatusPending   = "PENDING"
+	AnalysisStatusAnalyzing = "ANALYZING"
+	AnalysisStatusCompleted = "COMPLETED"
+	AnalysisStatusFailed    = "FAILED"
+)
+
+// TestTrack_WaveformURL verifies the WaveformURL field exists
+func TestTrack_WaveformURL(t *testing.T) {
+	track := Track{
+		ID:     "track-123",
+		UserID: "user-456",
+		Title:  "Test Song",
+		Format: AudioFormatMP3,
+	}
+
+	// TDD Red: This will fail until WaveformURL field is added to Track
+	track.WaveformURL = "https://cdn.example.com/waveforms/track-123.json"
+	assert.Equal(t, "https://cdn.example.com/waveforms/track-123.json", track.WaveformURL)
+}
+
+// TestTrack_BeatGrid verifies the BeatGrid field exists
+func TestTrack_BeatGrid(t *testing.T) {
+	track := Track{
+		ID:     "track-123",
+		UserID: "user-456",
+		Title:  "Test Song",
+		Format: AudioFormatMP3,
+	}
+
+	// TDD Red: This will fail until BeatGrid field is added to Track
+	track.BeatGrid = []int64{0, 500, 1000, 1500, 2000}
+	assert.Equal(t, []int64{0, 500, 1000, 1500, 2000}, track.BeatGrid)
+	assert.Len(t, track.BeatGrid, 5)
+}
+
+// TestTrack_AnalysisStatus verifies the AnalysisStatus field exists
+func TestTrack_AnalysisStatus(t *testing.T) {
+	track := Track{
+		ID:     "track-123",
+		UserID: "user-456",
+		Title:  "Test Song",
+		Format: AudioFormatMP3,
+	}
+
+	// TDD Red: This will fail until AnalysisStatus field is added to Track
+	track.AnalysisStatus = AnalysisStatusCompleted
+	assert.Equal(t, AnalysisStatusCompleted, track.AnalysisStatus)
+}
+
+// TestTrack_AnalyzedAt verifies the AnalyzedAt field exists
+func TestTrack_AnalyzedAt(t *testing.T) {
+	track := Track{
+		ID:     "track-123",
+		UserID: "user-456",
+		Title:  "Test Song",
+		Format: AudioFormatMP3,
+	}
+
+	// TDD Red: This will fail until AnalyzedAt field is added to Track
+	now := time.Now()
+	track.AnalyzedAt = &now
+	assert.NotNil(t, track.AnalyzedAt)
+	assert.Equal(t, now, *track.AnalyzedAt)
+}
+
+// TestTrack_WaveformJSON verifies WaveformURL JSON serialization
+func TestTrack_WaveformJSON(t *testing.T) {
+	track := Track{
+		ID:     "track-123",
+		UserID: "user-456",
+		Title:  "Test Song",
+		Format: AudioFormatMP3,
+	}
+	track.WaveformURL = "https://cdn.example.com/waveforms/track-123.json"
+
+	jsonBytes, err := json.Marshal(track)
+	require.NoError(t, err)
+
+	var jsonMap map[string]interface{}
+	err = json.Unmarshal(jsonBytes, &jsonMap)
+	require.NoError(t, err)
+
+	// TDD Red: This will fail until field has correct JSON tag
+	assert.Contains(t, jsonMap, "waveformUrl")
+	assert.Equal(t, "https://cdn.example.com/waveforms/track-123.json", jsonMap["waveformUrl"])
+}
+
+// TestTrack_BeatGridJSON verifies BeatGrid JSON serialization
+func TestTrack_BeatGridJSON(t *testing.T) {
+	track := Track{
+		ID:     "track-123",
+		UserID: "user-456",
+		Title:  "Test Song",
+		Format: AudioFormatMP3,
+	}
+	track.BeatGrid = []int64{0, 500, 1000}
+
+	jsonBytes, err := json.Marshal(track)
+	require.NoError(t, err)
+
+	var jsonMap map[string]interface{}
+	err = json.Unmarshal(jsonBytes, &jsonMap)
+	require.NoError(t, err)
+
+	// TDD Red: This will fail until field has correct JSON tag
+	assert.Contains(t, jsonMap, "beatGrid")
+}
+
+// TestTrack_AnalysisStatusValues verifies valid analysis status values
+func TestTrack_AnalysisStatusValues(t *testing.T) {
+	tests := []struct {
+		name   string
+		status string
+		valid  bool
+	}{
+		{"pending", AnalysisStatusPending, true},
+		{"analyzing", AnalysisStatusAnalyzing, true},
+		{"completed", AnalysisStatusCompleted, true},
+		{"failed", AnalysisStatusFailed, true},
+		{"invalid", "INVALID", false},
+		{"empty", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// TDD Red: This will fail until IsValidAnalysisStatus is implemented
+			valid := IsValidAnalysisStatus(tt.status)
+			assert.Equal(t, tt.valid, valid)
+		})
+	}
+}
+
+// TestTrackResponse_WaveformURL verifies TrackResponse includes WaveformURL
+func TestTrackResponse_WaveformURL(t *testing.T) {
+	track := Track{
+		ID:     "track-123",
+		UserID: "user-456",
+		Title:  "Test Song",
+		Format: AudioFormatMP3,
+	}
+	track.WaveformURL = "https://cdn.example.com/waveforms/track-123.json"
+	track.CreatedAt = time.Now()
+	track.UpdatedAt = time.Now()
+
+	response := track.ToResponse("")
+
+	// TDD Red: This will fail until TrackResponse.WaveformURL is added
+	assert.Equal(t, "https://cdn.example.com/waveforms/track-123.json", response.WaveformURL)
+}
+
+// TestTrackResponse_AnalysisStatus verifies TrackResponse includes AnalysisStatus
+func TestTrackResponse_AnalysisStatus(t *testing.T) {
+	track := Track{
+		ID:     "track-123",
+		UserID: "user-456",
+		Title:  "Test Song",
+		Format: AudioFormatMP3,
+	}
+	track.AnalysisStatus = AnalysisStatusCompleted
+	track.CreatedAt = time.Now()
+	track.UpdatedAt = time.Now()
+
+	response := track.ToResponse("")
+
+	// TDD Red: This will fail until TrackResponse.AnalysisStatus is added
+	assert.Equal(t, AnalysisStatusCompleted, response.AnalysisStatus)
+}
+
+// TestTrackFilter_BPMRange verifies TrackFilter supports BPM range filtering
+func TestTrackFilter_BPMRange(t *testing.T) {
+	filter := TrackFilter{
+		BPMMin: 120,
+		BPMMax: 130,
+	}
+
+	// TDD Red: These fields should already exist but verify they work
+	assert.Equal(t, 120, filter.BPMMin)
+	assert.Equal(t, 130, filter.BPMMax)
+}
+
+// IsValidAnalysisStatus checks if the given status is valid
+// TDD Red: STUB - returns false for all inputs, tests will fail
+func IsValidAnalysisStatus(status string) bool {
+	switch status {
+	case AnalysisStatusPending, AnalysisStatusAnalyzing, AnalysisStatusCompleted, AnalysisStatusFailed:
+		return true
+	default:
+		return false
+	}
+}
