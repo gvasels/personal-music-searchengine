@@ -21,7 +21,7 @@ export function UploadDropzone({
   const [isDragActive, setIsDragActive] = useState(false);
 
   const onDrop = useCallback(
-    (acceptedFiles: File[], rejectedFiles: any[]) => {
+    (acceptedFiles: File[], rejectedFiles: { file: File; errors: { code: string; message: string }[] }[]) => {
       if (rejectedFiles.length > 0) {
         const firstError = rejectedFiles[0].errors[0];
         if (firstError.code === 'file-too-large') {

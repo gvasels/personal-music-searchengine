@@ -128,6 +128,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
  * Hook to access selection context
  * @throws Error if used outside SelectionProvider
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSelection(): SelectionContextValue {
   const context = useContext(SelectionContext);
   if (!context) {
@@ -139,6 +140,7 @@ export function useSelection(): SelectionContextValue {
 /**
  * Optional hook that returns null if not in SelectionProvider
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSelectionOptional(): SelectionContextValue | null {
   return useContext(SelectionContext);
 }

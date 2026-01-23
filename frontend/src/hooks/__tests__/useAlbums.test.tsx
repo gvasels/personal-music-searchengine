@@ -120,7 +120,7 @@ describe('useAlbums Hooks (Wave 2)', () => {
         ...mockAlbum,
         tracks: [{ id: 'track-1', title: 'Track 1', duration: 180 }],
       };
-      vi.mocked(albumsApi.getAlbum).mockResolvedValue(albumWithTracks as any);
+      vi.mocked(albumsApi.getAlbum).mockResolvedValue(albumWithTracks as unknown as ReturnType<typeof albumsApi.getAlbum>);
 
       const { result } = renderHook(() => useAlbumQuery('album-1'), { wrapper: createWrapper() });
 

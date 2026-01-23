@@ -57,6 +57,7 @@ describe('useSearch Hooks (Wave 4)', () => {
     it('should fetch search results', async () => {
       vi.mocked(searchApi.searchTracks).mockResolvedValue({
         query: 'test',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         tracks: [{ id: 'track-1', title: 'Test' }] as any,
         totalResults: 1,
         limit: 20,

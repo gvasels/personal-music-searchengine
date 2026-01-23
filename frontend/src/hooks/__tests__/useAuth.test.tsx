@@ -176,7 +176,9 @@ describe('useAuth Hook (Task 1.4)', () => {
       await act(async () => {
         try {
           await result.current.signIn('test@example.com', 'wrong');
-        } catch {}
+        } catch {
+          // Expected to throw - error state will be checked below
+        }
       });
 
       await waitFor(() => {
@@ -242,7 +244,9 @@ describe('useAuth Hook (Task 1.4)', () => {
       await act(async () => {
         try {
           await result.current.signIn('test@example.com', 'wrong');
-        } catch {}
+        } catch {
+          // Expected to throw - error state will be checked below
+        }
       });
 
       await waitFor(() => expect(result.current.error).toBeTruthy());

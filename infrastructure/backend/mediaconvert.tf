@@ -3,7 +3,7 @@
 
 # MediaConvert Queue (on-demand pricing)
 resource "aws_media_convert_queue" "default" {
-  name        = "${local.name_prefix}-transcoding"
+  name         = "${local.name_prefix}-transcoding"
   pricing_plan = "ON_DEMAND"
   status       = "ACTIVE"
 }
@@ -83,11 +83,11 @@ resource "aws_lambda_function" "transcode_start" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE_NAME     = local.dynamodb_table_name
-      MEDIA_BUCKET            = local.media_bucket_name
-      MEDIACONVERT_ROLE_ARN   = aws_iam_role.mediaconvert.arn
-      MEDIACONVERT_QUEUE_ARN  = aws_media_convert_queue.default.arn
-      MEDIACONVERT_ENDPOINT   = "https://mediaconvert.${var.aws_region}.amazonaws.com"
+      DYNAMODB_TABLE_NAME    = local.dynamodb_table_name
+      MEDIA_BUCKET           = local.media_bucket_name
+      MEDIACONVERT_ROLE_ARN  = aws_iam_role.mediaconvert.arn
+      MEDIACONVERT_QUEUE_ARN = aws_media_convert_queue.default.arn
+      MEDIACONVERT_ENDPOINT  = "https://mediaconvert.${var.aws_region}.amazonaws.com"
     }
   }
 

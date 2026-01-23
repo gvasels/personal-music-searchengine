@@ -118,7 +118,7 @@ describe('useArtists Hooks (Wave 2)', () => {
         albums: [{ id: 'album-1', name: 'Album 1', year: 2024 }],
         recentTracks: [{ id: 'track-1', title: 'Track 1', duration: 180 }],
       };
-      vi.mocked(artistsApi.getArtist).mockResolvedValue(artistWithDetails as any);
+      vi.mocked(artistsApi.getArtist).mockResolvedValue(artistWithDetails as unknown as ReturnType<typeof artistsApi.getArtist>);
 
       const { result } = renderHook(() => useArtistQuery('Test Artist'), { wrapper: createWrapper() });
 

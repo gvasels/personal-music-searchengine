@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const mockUseSearch = vi.fn();
 vi.mock('../../hooks/useSearch', () => ({
   useSearchQuery: () => mockUseSearch(),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   searchKeys: { results: (p: any) => ['search', 'results', p] },
 }));
 

@@ -71,6 +71,7 @@ export function ModuleCard({
 }
 
 // Preset module configurations
+// eslint-disable-next-line react-refresh/only-export-components
 export const studioModules = [
   {
     title: 'DJ Crates',

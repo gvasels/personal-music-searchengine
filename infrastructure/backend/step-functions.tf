@@ -13,11 +13,11 @@ resource "aws_sfn_state_machine" "upload_processor" {
         Type     = "Task"
         Resource = aws_lambda_function.metadata_extractor.arn
         Parameters = {
-          "uploadId.$"  = "$.uploadId"
-          "userId.$"    = "$.userId"
-          "s3Key.$"     = "$.s3Key"
-          "fileName.$"  = "$.fileName"
-          "bucketName"  = local.media_bucket_name
+          "uploadId.$" = "$.uploadId"
+          "userId.$"   = "$.userId"
+          "s3Key.$"    = "$.s3Key"
+          "fileName.$" = "$.fileName"
+          "bucketName" = local.media_bucket_name
         }
         ResultPath = "$.metadata"
         Retry = [
@@ -42,11 +42,11 @@ resource "aws_sfn_state_machine" "upload_processor" {
         Type     = "Task"
         Resource = aws_lambda_function.cover_art_processor.arn
         Parameters = {
-          "uploadId.$"    = "$.uploadId"
-          "userId.$"      = "$.userId"
-          "s3Key.$"       = "$.s3Key"
-          "metadata.$"    = "$.metadata"
-          "bucketName"    = local.media_bucket_name
+          "uploadId.$" = "$.uploadId"
+          "userId.$"   = "$.userId"
+          "s3Key.$"    = "$.s3Key"
+          "metadata.$" = "$.metadata"
+          "bucketName" = local.media_bucket_name
         }
         ResultPath = "$.coverArt"
         Retry = [
@@ -61,7 +61,7 @@ resource "aws_sfn_state_machine" "upload_processor" {
           {
             ErrorEquals = ["States.ALL"]
             ResultPath  = "$.coverArtError"
-            Next        = "CreateTrackRecord"  # Continue even if cover art fails
+            Next        = "CreateTrackRecord" # Continue even if cover art fails
           }
         ]
         Next = "CreateTrackRecord"
@@ -71,14 +71,14 @@ resource "aws_sfn_state_machine" "upload_processor" {
         Type     = "Task"
         Resource = aws_lambda_function.track_creator.arn
         Parameters = {
-          "uploadId.$"   = "$.uploadId"
-          "userId.$"     = "$.userId"
-          "s3Key.$"      = "$.s3Key"
-          "fileName.$"   = "$.fileName"
-          "metadata.$"   = "$.metadata"
-          "coverArt.$"   = "$.coverArt"
-          "bucketName"   = local.media_bucket_name
-          "tableName"    = local.dynamodb_table_name
+          "uploadId.$" = "$.uploadId"
+          "userId.$"   = "$.userId"
+          "s3Key.$"    = "$.s3Key"
+          "fileName.$" = "$.fileName"
+          "metadata.$" = "$.metadata"
+          "coverArt.$" = "$.coverArt"
+          "bucketName" = local.media_bucket_name
+          "tableName"  = local.dynamodb_table_name
         }
         ResultPath = "$.track"
         Retry = [
@@ -103,11 +103,11 @@ resource "aws_sfn_state_machine" "upload_processor" {
         Type     = "Task"
         Resource = aws_lambda_function.file_mover.arn
         Parameters = {
-          "uploadId.$"   = "$.uploadId"
-          "userId.$"     = "$.userId"
-          "sourceKey.$"  = "$.s3Key"
-          "trackId.$"    = "$.track.trackId"
-          "bucketName"   = local.media_bucket_name
+          "uploadId.$"  = "$.uploadId"
+          "userId.$"    = "$.userId"
+          "sourceKey.$" = "$.s3Key"
+          "trackId.$"   = "$.track.trackId"
+          "bucketName"  = local.media_bucket_name
         }
         ResultPath = "$.finalLocation"
         Retry = [
@@ -132,12 +132,12 @@ resource "aws_sfn_state_machine" "upload_processor" {
         Type     = "Task"
         Resource = aws_lambda_function.transcode_start.arn
         Parameters = {
-          "trackId.$"      = "$.track.trackId"
-          "userId.$"       = "$.userId"
-          "s3Key.$"        = "$.finalLocation.newKey"
-          "format.$"       = "$.metadata.format"
-          "bucketName"     = local.media_bucket_name
-          "tableName"      = local.dynamodb_table_name
+          "trackId.$"  = "$.track.trackId"
+          "userId.$"   = "$.userId"
+          "s3Key.$"    = "$.finalLocation.newKey"
+          "format.$"   = "$.metadata.format"
+          "bucketName" = local.media_bucket_name
+          "tableName"  = local.dynamodb_table_name
         }
         ResultPath = "$.transcode"
         Retry = [
@@ -152,7 +152,7 @@ resource "aws_sfn_state_machine" "upload_processor" {
           {
             ErrorEquals = ["States.ALL"]
             ResultPath  = "$.transcodeError"
-            Next        = "IndexForSearch"  # Continue even if transcode fails to start
+            Next        = "IndexForSearch" # Continue even if transcode fails to start
           }
         ]
         Next = "IndexForSearch"
@@ -162,10 +162,10 @@ resource "aws_sfn_state_machine" "upload_processor" {
         Type     = "Task"
         Resource = aws_lambda_function.search_indexer.arn
         Parameters = {
-          "trackId.$"   = "$.track.trackId"
-          "userId.$"    = "$.userId"
-          "metadata.$"  = "$.metadata"
-          "tableName"   = local.dynamodb_table_name
+          "trackId.$"  = "$.track.trackId"
+          "userId.$"   = "$.userId"
+          "metadata.$" = "$.metadata"
+          "tableName"  = local.dynamodb_table_name
         }
         ResultPath = "$.searchIndex"
         Retry = [
@@ -180,7 +180,7 @@ resource "aws_sfn_state_machine" "upload_processor" {
           {
             ErrorEquals = ["States.ALL"]
             ResultPath  = "$.searchError"
-            Next        = "MarkUploadCompleted"  # Continue even if indexing fails
+            Next        = "MarkUploadCompleted" # Continue even if indexing fails
           }
         ]
         Next = "MarkUploadCompleted"
@@ -190,11 +190,11 @@ resource "aws_sfn_state_machine" "upload_processor" {
         Type     = "Task"
         Resource = aws_lambda_function.upload_status_updater.arn
         Parameters = {
-          "uploadId.$"  = "$.uploadId"
-          "userId.$"    = "$.userId"
-          "trackId.$"   = "$.track.trackId"
-          "status"      = "COMPLETED"
-          "tableName"   = local.dynamodb_table_name
+          "uploadId.$" = "$.uploadId"
+          "userId.$"   = "$.userId"
+          "trackId.$"  = "$.track.trackId"
+          "status"     = "COMPLETED"
+          "tableName"  = local.dynamodb_table_name
         }
         End = true
       }
@@ -203,11 +203,11 @@ resource "aws_sfn_state_machine" "upload_processor" {
         Type     = "Task"
         Resource = aws_lambda_function.upload_status_updater.arn
         Parameters = {
-          "uploadId.$"  = "$.uploadId"
-          "userId.$"    = "$.userId"
-          "status"      = "FAILED"
-          "error.$"     = "$.error"
-          "tableName"   = local.dynamodb_table_name
+          "uploadId.$" = "$.uploadId"
+          "userId.$"   = "$.userId"
+          "status"     = "FAILED"
+          "error.$"    = "$.error"
+          "tableName"  = local.dynamodb_table_name
         }
         End = true
       }
@@ -289,7 +289,7 @@ resource "aws_iam_role_policy" "step_functions_lambda" {
 # IAM Policy for API Lambda to start Step Functions execution
 resource "aws_iam_role_policy" "lambda_step_functions" {
   name = "${local.name_prefix}-lambda-step-functions"
-  role = split("/", local.lambda_role_arn)[1]  # Extract role name from ARN
+  role = split("/", local.lambda_role_arn)[1] # Extract role name from ARN
 
   policy = jsonencode({
     Version = "2012-10-17"

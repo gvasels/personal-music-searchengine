@@ -143,6 +143,7 @@ function SignupPage() {
     } else if (field === 'verificationCode') {
       setValidationErrors((prev) => ({ ...prev, verificationCode: validateVerificationCode(verificationCode) }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, password, confirmPassword, verificationCode]);
 
   const handleSignupSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
@@ -175,6 +176,7 @@ function SignupPage() {
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, password, confirmPassword, navigate]);
 
   const handleVerifySubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {

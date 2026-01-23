@@ -93,7 +93,7 @@ describe('useTags (Wave 5)', () => {
         limit: 20,
         offset: 0,
       };
-      vi.mocked(tagsApi.getTracksByTag).mockResolvedValue(mockTracks as any);
+      vi.mocked(tagsApi.getTracksByTag).mockResolvedValue(mockTracks as unknown as ReturnType<typeof tagsApi.getTracksByTag>);
 
       const { result } = renderHook(() => useTracksByTagQuery('rock'), {
         wrapper: createWrapper(),
@@ -110,7 +110,7 @@ describe('useTags (Wave 5)', () => {
     it('should pass pagination params', async () => {
       const params = { limit: 10, offset: 20 };
       const mockTracks = { items: [], total: 0, limit: 10, offset: 20 };
-      vi.mocked(tagsApi.getTracksByTag).mockResolvedValue(mockTracks as any);
+      vi.mocked(tagsApi.getTracksByTag).mockResolvedValue(mockTracks as unknown as ReturnType<typeof tagsApi.getTracksByTag>);
 
       const { result } = renderHook(() => useTracksByTagQuery('rock', params), {
         wrapper: createWrapper(),

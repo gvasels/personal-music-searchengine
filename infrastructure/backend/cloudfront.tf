@@ -63,7 +63,7 @@ resource "aws_cloudfront_distribution" "media" {
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
-    default_ttl            = 3600  # 1 hour for HLS segments
+    default_ttl            = 3600 # 1 hour for HLS segments
     max_ttl                = 86400
 
     # Require signed URLs
@@ -89,7 +89,7 @@ resource "aws_cloudfront_distribution" "media" {
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
-    default_ttl            = 604800  # 1 week
+    default_ttl            = 604800 # 1 week
     max_ttl                = 31536000
 
     # Require signed URLs
@@ -115,7 +115,7 @@ resource "aws_cloudfront_distribution" "media" {
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
-    default_ttl            = 604800  # 1 week
+    default_ttl            = 604800 # 1 week
     max_ttl                = 31536000
 
     # Require signed URLs for cover art too (user's private library)
