@@ -1,15 +1,18 @@
 /**
  * Artists List Page - Wave 2
+ *
+ * Uses legacy /artists endpoint which returns ArtistSummary (aggregated from tracks/albums).
+ * For full Artist entity management, see the separate artist entity pages.
  */
 import { useNavigate } from '@tanstack/react-router';
 import { useArtistsQuery } from '../../hooks/useArtists';
-import type { Artist } from '../../types';
+import type { ArtistSummary } from '../../types';
 
 export default function ArtistsPage() {
   const navigate = useNavigate();
   const { data, isLoading, isError, error, refetch } = useArtistsQuery();
 
-  const handleArtistClick = (artist: Artist) => {
+  const handleArtistClick = (artist: ArtistSummary) => {
     void navigate({
       to: '/artists/$artistName',
       params: { artistName: artist.name },

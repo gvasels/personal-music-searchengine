@@ -12,9 +12,13 @@ func (h *Handlers) SimpleSearch(c echo.Context) error {
 		return handleError(c, models.ErrUnauthorized)
 	}
 
+	// Accept both 'q' and 'query' parameters for flexibility
 	query := c.QueryParam("q")
 	if query == "" {
-		return handleError(c, models.NewValidationError("query parameter 'q' is required"))
+		query = c.QueryParam("query")
+	}
+	if query == "" {
+		return handleError(c, models.NewValidationError("query parameter 'q' or 'query' is required"))
 	}
 
 	// Build a simple search request from query params

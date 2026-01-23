@@ -40,6 +40,19 @@ type Repository interface {
 	ListAlbumsByArtist(ctx context.Context, userID, artist string) ([]models.Album, error)
 	UpdateAlbumStats(ctx context.Context, userID, albumID string, trackCount, totalDuration int) error
 
+	// Artist operations
+	CreateArtist(ctx context.Context, artist models.Artist) error
+	GetArtist(ctx context.Context, userID, artistID string) (*models.Artist, error)
+	GetArtistByName(ctx context.Context, userID, name string) ([]*models.Artist, error)
+	ListArtists(ctx context.Context, userID string, filter models.ArtistFilter) (*PaginatedResult[models.Artist], error)
+	UpdateArtist(ctx context.Context, artist models.Artist) error
+	DeleteArtist(ctx context.Context, userID, artistID string) error
+	BatchGetArtists(ctx context.Context, userID string, artistIDs []string) (map[string]*models.Artist, error)
+	SearchArtists(ctx context.Context, userID, query string, limit int) ([]*models.Artist, error)
+	GetArtistTrackCount(ctx context.Context, userID, artistID string) (int, error)
+	GetArtistAlbumCount(ctx context.Context, userID, artistID string) (int, error)
+	GetArtistTotalPlays(ctx context.Context, userID, artistID string) (int, error)
+
 	// User operations
 	CreateUser(ctx context.Context, user models.User) error
 	GetUser(ctx context.Context, userID string) (*models.User, error)

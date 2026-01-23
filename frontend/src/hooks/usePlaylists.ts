@@ -10,10 +10,12 @@ import {
   deletePlaylist,
   addTrackToPlaylist,
   removeTrackFromPlaylist,
+  reorderPlaylistTracks,
   type GetPlaylistsParams,
   type CreatePlaylistData,
   type UpdatePlaylistData,
 } from '../lib/api/playlists';
+import type { PlaylistWithTracks, Track } from '@/types';
 
 export const playlistKeys = {
   all: ['playlists'] as const,
@@ -88,6 +90,55 @@ export function useRemoveTracksFromPlaylist() {
     onSuccess: (_, { id }) => {
       void queryClient.invalidateQueries({ queryKey: playlistKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: playlistKeys.lists() });
+    },
+  });
+}
+
+export function useReorderPlaylistTracks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, trackIds }: { id: string; trackIds: string[] }) =>
+      reorderPlaylistTracks(id, { trackIds }),
+    onMutate: async ({ id, trackIds }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: playlistKeys.detail(id) });
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData<PlaylistWithTracks>(playlistKeys.detail(id));
+
+      // Optimistically update to the new order
+      if (previousData) {
+        const trackMap = new Map(previousData.tracks.map((t) => [t.id, t]));
+        const reorderedTracks: Track[] = [];
+
+        for (const trackId of trackIds) {
+          const track = trackMap.get(trackId);
+          if (track) {
+            reorderedTracks.push(track);
+          }
+        }
+
+        queryClient.setQueryData<PlaylistWithTracks>(playlistKeys.detail(id), {
+          ...previousData,
+          playlist: {
+            ...previousData.playlist,
+            trackIds,
+          },
+          tracks: reorderedTracks,
+        });
+      }
+
+      return { previousData };
+    },
+    onError: (_err, { id }, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(playlistKeys.detail(id), context.previousData);
+      }
+    },
+    onSettled: (_, __, { id }) => {
+      // Always refetch after error or success
+      void queryClient.invalidateQueries({ queryKey: playlistKeys.detail(id) });
     },
   });
 }

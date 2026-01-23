@@ -4,16 +4,17 @@ import "time"
 
 // User represents a user profile in the system
 type User struct {
-	ID          string `json:"id" dynamodbav:"id"`
-	Email       string `json:"email" dynamodbav:"email"`
-	DisplayName string `json:"displayName" dynamodbav:"displayName"`
-	AvatarURL   string `json:"avatarUrl,omitempty" dynamodbav:"avatarUrl,omitempty"`
+	ID          string           `json:"id" dynamodbav:"id"`
+	Email       string           `json:"email" dynamodbav:"email"`
+	DisplayName string           `json:"displayName" dynamodbav:"displayName"`
+	AvatarURL   string           `json:"avatarUrl,omitempty" dynamodbav:"avatarUrl,omitempty"`
+	Tier        SubscriptionTier `json:"tier" dynamodbav:"tier"`
 	Timestamps
-	StorageUsed  int64 `json:"storageUsed" dynamodbav:"storageUsed"`
-	StorageLimit int64 `json:"storageLimit" dynamodbav:"storageLimit"`
-	TrackCount   int   `json:"trackCount" dynamodbav:"trackCount"`
-	AlbumCount   int   `json:"albumCount" dynamodbav:"albumCount"`
-	PlaylistCount int  `json:"playlistCount" dynamodbav:"playlistCount"`
+	StorageUsed   int64 `json:"storageUsed" dynamodbav:"storageUsed"`
+	StorageLimit  int64 `json:"storageLimit" dynamodbav:"storageLimit"`
+	TrackCount    int   `json:"trackCount" dynamodbav:"trackCount"`
+	AlbumCount    int   `json:"albumCount" dynamodbav:"albumCount"`
+	PlaylistCount int   `json:"playlistCount" dynamodbav:"playlistCount"`
 }
 
 // UserItem represents a User in DynamoDB single-table design
@@ -60,25 +61,31 @@ type UpdateUserRequest struct {
 
 // UserResponse represents a user in API responses
 type UserResponse struct {
-	ID            string    `json:"id"`
-	Email         string    `json:"email"`
-	DisplayName   string    `json:"displayName"`
-	AvatarURL     string    `json:"avatarUrl,omitempty"`
-	CreatedAt     time.Time `json:"createdAt"`
-	StorageUsed   int64     `json:"storageUsed"`
-	StorageLimit  int64     `json:"storageLimit"`
-	TrackCount    int       `json:"trackCount"`
-	AlbumCount    int       `json:"albumCount"`
-	PlaylistCount int       `json:"playlistCount"`
+	ID            string           `json:"id"`
+	Email         string           `json:"email"`
+	DisplayName   string           `json:"displayName"`
+	AvatarURL     string           `json:"avatarUrl,omitempty"`
+	Tier          SubscriptionTier `json:"tier"`
+	CreatedAt     time.Time        `json:"createdAt"`
+	StorageUsed   int64            `json:"storageUsed"`
+	StorageLimit  int64            `json:"storageLimit"`
+	TrackCount    int              `json:"trackCount"`
+	AlbumCount    int              `json:"albumCount"`
+	PlaylistCount int              `json:"playlistCount"`
 }
 
 // ToResponse converts a User to a UserResponse
 func (u *User) ToResponse() UserResponse {
+	tier := u.Tier
+	if tier == "" {
+		tier = TierFree
+	}
 	return UserResponse{
 		ID:            u.ID,
 		Email:         u.Email,
 		DisplayName:   u.DisplayName,
 		AvatarURL:     u.AvatarURL,
+		Tier:          tier,
 		CreatedAt:     u.CreatedAt,
 		StorageUsed:   u.StorageUsed,
 		StorageLimit:  u.StorageLimit,

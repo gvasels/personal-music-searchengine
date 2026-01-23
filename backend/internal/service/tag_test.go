@@ -166,6 +166,44 @@ func (m *MockTagRepository) ListUploadsByStatus(ctx context.Context, status mode
 	return nil, nil
 }
 
+// Artist-related methods
+func (m *MockTagRepository) CreateArtist(ctx context.Context, artist models.Artist) error {
+	return nil
+}
+func (m *MockTagRepository) GetArtist(ctx context.Context, userID, artistID string) (*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockTagRepository) GetArtistByName(ctx context.Context, userID, name string) ([]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockTagRepository) UpdateArtist(ctx context.Context, artist models.Artist) error {
+	return nil
+}
+func (m *MockTagRepository) DeleteArtist(ctx context.Context, userID, artistID string) error {
+	return nil
+}
+func (m *MockTagRepository) ListArtists(ctx context.Context, userID string, filter models.ArtistFilter) (*repository.PaginatedResult[models.Artist], error) {
+	return nil, nil
+}
+func (m *MockTagRepository) BatchGetArtists(ctx context.Context, userID string, artistIDs []string) (map[string]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockTagRepository) SearchArtists(ctx context.Context, userID, query string, limit int) ([]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockTagRepository) GetArtistTrackCount(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockTagRepository) GetArtistAlbumCount(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockTagRepository) GetArtistTotalPlays(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockTagRepository) SearchPlaylists(ctx context.Context, userID, query string, limit int) ([]models.Playlist, error) {
+	return nil, nil
+}
+
 // =============================================================================
 // CreateTag Tests
 // =============================================================================

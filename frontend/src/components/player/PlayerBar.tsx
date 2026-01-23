@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuth } from '@/hooks/useAuth';
+import { Waveform } from './Waveform';
+import { Equalizer } from './Equalizer';
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -8,6 +11,7 @@ function formatTime(seconds: number): string {
 }
 
 export function PlayerBar() {
+  const [showEQ, setShowEQ] = useState(false);
   const { isAuthenticated } = useAuth();
   const {
     currentTrack,
@@ -102,14 +106,13 @@ export function PlayerBar() {
         </div>
         <div className="flex items-center gap-2 w-full max-w-md mt-1">
           <span className="text-xs tabular-nums">{formatTime(progress)}</span>
-          <input
-            type="range"
-            min={0}
-            max={currentTrack?.duration || 100}
-            value={progress}
-            onChange={(e) => seek(Number(e.target.value))}
-            className="range range-xs range-primary flex-1"
-            aria-label="progress"
+          <Waveform
+            trackId={currentTrack?.id}
+            duration={currentTrack?.duration || 0}
+            progress={progress}
+            onSeek={seek}
+            height={32}
+            className="flex-1"
           />
           <span className="text-xs tabular-nums">
             {formatTime(currentTrack?.duration || 0)}
@@ -117,8 +120,17 @@ export function PlayerBar() {
         </div>
       </div>
 
-      {/* Volume */}
+      {/* Volume & EQ */}
       <div className="flex items-center gap-2 w-1/4 justify-end">
+        <Equalizer compact className="mr-2" />
+        <button
+          className={`btn btn-ghost btn-sm ${showEQ ? 'text-primary' : ''}`}
+          onClick={() => setShowEQ(!showEQ)}
+          aria-label="equalizer settings"
+          title="Equalizer"
+        >
+          ⚙️
+        </button>
         <button className="btn btn-ghost btn-sm" aria-label="volume">
           {volume === 0 ? '🔇' : volume < 0.5 ? '🔉' : '🔊'}
         </button>
@@ -133,6 +145,22 @@ export function PlayerBar() {
           aria-label="volume"
         />
       </div>
+
+      {/* EQ Panel */}
+      {showEQ && (
+        <div className="absolute bottom-20 right-4 z-50">
+          <div className="relative">
+            <button
+              className="absolute -top-2 -right-2 btn btn-circle btn-xs btn-ghost"
+              onClick={() => setShowEQ(false)}
+              aria-label="close equalizer"
+            >
+              ✕
+            </button>
+            <Equalizer className="shadow-xl" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

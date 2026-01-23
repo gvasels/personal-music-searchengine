@@ -13,6 +13,7 @@ const (
 	EntityUser          EntityType = "USER"
 	EntityTrack         EntityType = "TRACK"
 	EntityAlbum         EntityType = "ALBUM"
+	EntityArtist        EntityType = "ARTIST"
 	EntityPlaylist      EntityType = "PLAYLIST"
 	EntityPlaylistTrack EntityType = "PLAYLIST_TRACK"
 	EntityUpload        EntityType = "UPLOAD"

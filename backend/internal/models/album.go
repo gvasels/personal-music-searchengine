@@ -110,7 +110,8 @@ type ArtistSummary struct {
 
 // ArtistFilter represents filter options for listing artists
 type ArtistFilter struct {
-	SortBy    string `query:"sortBy"`    // name, trackCount, albumCount
+	Name      string `query:"name"`      // Filter by name (partial match)
+	SortBy    string `query:"sortBy"`    // name, trackCount, albumCount, createdAt
 	SortOrder string `query:"sortOrder"` // asc, desc
 	Limit     int    `query:"limit"`
 	LastKey   string `query:"lastKey"`

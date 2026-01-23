@@ -479,6 +479,101 @@ Comprehensive content rights management across geographic scopes - from local ve
 
 ---
 
+## AI/ML Infrastructure - Bedrock Access Gateway + Marengo
+
+Unified AI infrastructure using [Bedrock Access Gateway](https://github.com/aws-samples/bedrock-access-gateway) with extended support for TwelveLabs Marengo video understanding models.
+
+### Overview
+
+The Bedrock Access Gateway provides OpenAI-compatible APIs for Amazon Bedrock, enabling:
+- Standard OpenAI SDK/API patterns for all Bedrock models
+- Streaming responses via SSE
+- Chat completions, embeddings, function calling
+- Cross-region model inference
+- Prompt caching (up to 90% cost reduction)
+
+**Extended Requirement**: Add support for [TwelveLabs Marengo](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-twelvelabs.html) video embedding models, enabling multimodal video understanding for music videos, concert footage, DJ sets, and visual content.
+
+### Marengo Integration Features
+
+| Priority | Feature | Description | Status |
+|----------|---------|-------------|--------|
+| High | Gateway Deployment | Deploy Bedrock Access Gateway (Lambda or Fargate) | Planned |
+| High | Marengo Embedding API | Extend gateway to support Marengo video embeddings | Planned |
+| High | Video Upload Pipeline | Process uploaded videos through Marengo for embedding | Planned |
+| High | Vector Storage | Store 1024-dim Marengo embeddings in vector DB | Planned |
+| Medium | Text-to-Video Search | Search videos using natural language queries | Planned |
+| Medium | Audio-to-Video Search | Find videos matching audio content | Planned |
+| Medium | Image-to-Video Search | Find videos containing similar visual content | Planned |
+| Medium | Video Similarity | Find similar videos based on embedding distance | Planned |
+| Low | Music Video Analysis | Extract scenes, moods, visual themes from music videos | Planned |
+| Low | Concert Footage Index | Index and search concert recordings | Planned |
+| Low | DJ Set Visual Sync | Match audio tracks to video moments in DJ sets | Planned |
+
+### Marengo Capabilities (v3.0)
+
+| Capability | Description | Use Case |
+|------------|-------------|----------|
+| Multi-Vector Embeddings | Separate vectors for visual, audio, speech | Fine-grained search |
+| 4-Hour Video Support | Process long-form content | Full concerts, DJ sets |
+| Sports Intelligence | Player/jersey/action tracking | Performance analysis |
+| Composed Queries | Image + text combined search | "Find videos like this but with drums" |
+| Cross-Modal Search | Any-to-any (text, image, audio, video) | Universal content discovery |
+
+### Architecture (Planned)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Client Applications                        │
+│            (Frontend, Mobile, External APIs)                 │
+└─────────────────────────┬───────────────────────────────────┘
+                          │ OpenAI-compatible API
+┌─────────────────────────▼───────────────────────────────────┐
+│              Bedrock Access Gateway                          │
+│         (API Gateway + Lambda / ALB + Fargate)              │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Extended Embedding Handler               │    │
+│  │    • Standard embeddings (text)                      │    │
+│  │    • Marengo video embeddings (extended)             │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+        ┌─────────────────┼─────────────────┐
+        ▼                 ▼                 ▼
+┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+│ Amazon Bedrock │ │ TwelveLabs    │ │ Vector Store  │
+│ (Claude, Nova) │ │ Marengo 3.0   │ │ (OpenSearch/  │
+│               │ │ (via Bedrock) │ │  Pinecone)    │
+└───────────────┘ └───────────────┘ └───────────────┘
+```
+
+### Video Processing Pipeline
+
+```
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│  Video   │───▶│   S3     │───▶│ Marengo  │───▶│  Vector  │
+│  Upload  │    │  Bucket  │    │ Embedding│    │   DB     │
+└──────────┘    └──────────┘    └──────────┘    └──────────┘
+                     │                               │
+                     ▼                               ▼
+              ┌──────────┐                    ┌──────────┐
+              │ Metadata │                    │  Search  │
+              │ Extract  │                    │  Index   │
+              └──────────┘                    └──────────┘
+```
+
+### Integration Points with Existing Features
+
+| Feature | Integration |
+|---------|-------------|
+| Creator Studio | Video creators can search/analyze their content |
+| Rights Management | Visual content identification for copyright |
+| AI Agents | Agents can search and reference video content |
+| Search & Discovery | Unified multimodal search across audio + video |
+| DJ Studio | Match visuals to audio for sync licensing |
+
+---
+
 ## Completed Features
 
 | Feature | Description | Completed |

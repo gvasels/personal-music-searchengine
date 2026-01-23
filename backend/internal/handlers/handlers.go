@@ -45,11 +45,20 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 	api.GET("/albums", h.ListAlbums)
 	api.GET("/albums/:id", h.GetAlbum)
 
-	// Artist routes
+	// Artist routes (legacy name-based)
 	api.GET("/artists", h.ListArtists)
 	api.GET("/artists/:name", h.GetArtist)
 	api.GET("/artists/:name/tracks", h.ListTracksByArtist)
 	api.GET("/artists/:name/albums", h.ListAlbumsByArtist)
+
+	// Artist entity routes (new ID-based)
+	api.POST("/artists/entity", h.CreateArtist)
+	api.GET("/artists/entity", h.ListArtistsEntity)
+	api.GET("/artists/entity/search", h.SearchArtists)
+	api.GET("/artists/entity/:id", h.GetArtistByID)
+	api.PUT("/artists/entity/:id", h.UpdateArtist)
+	api.DELETE("/artists/entity/:id", h.DeleteArtist)
+	api.GET("/artists/entity/:id/tracks", h.GetArtistTracksEntity)
 
 	// Playlist routes
 	api.GET("/playlists", h.ListPlaylists)

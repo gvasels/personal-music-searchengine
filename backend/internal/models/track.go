@@ -21,6 +21,9 @@ type Track struct {
 	UserID      string      `json:"userId" dynamodbav:"userId"`
 	Title       string      `json:"title" dynamodbav:"title"`
 	Artist      string      `json:"artist" dynamodbav:"artist"`
+	ArtistID    string      `json:"artistId,omitempty" dynamodbav:"artistId,omitempty"`                 // Reference to Artist entity
+	Artists     []ArtistContribution `json:"artists,omitempty" dynamodbav:"artists,omitempty"`          // Multi-artist support
+	ArtistLegacy string     `json:"-" dynamodbav:"artistLegacy,omitempty"`                              // Backup during migration
 	AlbumArtist string      `json:"albumArtist,omitempty" dynamodbav:"albumArtist,omitempty"`
 	Album       string      `json:"album,omitempty" dynamodbav:"album,omitempty"`
 	AlbumID     string      `json:"albumId,omitempty" dynamodbav:"albumId,omitempty"`
@@ -54,6 +57,9 @@ type Track struct {
 	HLSPlaylistKey   string    `json:"hlsPlaylistKey,omitempty" dynamodbav:"hlsPlaylistKey,omitempty"` // S3 key to master.m3u8
 	HLSJobID         string    `json:"hlsJobId,omitempty" dynamodbav:"hlsJobId,omitempty"`             // MediaConvert job ID
 	HLSTranscodedAt  *time.Time `json:"hlsTranscodedAt,omitempty" dynamodbav:"hlsTranscodedAt,omitempty"`
+
+	// DJ features
+	HotCues map[int]*HotCue `json:"hotCues,omitempty" dynamodbav:"hotCues,omitempty"` // Slot (1-8) -> HotCue
 
 	Timestamps
 }
@@ -114,12 +120,14 @@ type UpdateTrackRequest struct {
 
 // TrackResponse represents a track in API responses
 type TrackResponse struct {
-	ID           string    `json:"id"`
-	Title        string    `json:"title"`
-	Artist       string    `json:"artist"`
-	AlbumArtist  string    `json:"albumArtist,omitempty"`
-	Album        string    `json:"album,omitempty"`
-	AlbumID      string    `json:"albumId,omitempty"`
+	ID           string                `json:"id"`
+	Title        string                `json:"title"`
+	Artist       string                `json:"artist"`
+	ArtistID     string                `json:"artistId,omitempty"`
+	Artists      []ArtistContribution  `json:"artists,omitempty"`
+	AlbumArtist  string                `json:"albumArtist,omitempty"`
+	Album        string                `json:"album,omitempty"`
+	AlbumID      string                `json:"albumId,omitempty"`
 	Genre        string    `json:"genre,omitempty"`
 	Year         int       `json:"year,omitempty"`
 	TrackNumber  int       `json:"trackNumber,omitempty"`
@@ -155,6 +163,8 @@ func (t *Track) ToResponse(coverArtURL string) TrackResponse {
 		ID:           t.ID,
 		Title:        t.Title,
 		Artist:       t.Artist,
+		ArtistID:     t.ArtistID,
+		Artists:      t.Artists,
 		AlbumArtist:  t.AlbumArtist,
 		Album:        t.Album,
 		AlbumID:      t.AlbumID,

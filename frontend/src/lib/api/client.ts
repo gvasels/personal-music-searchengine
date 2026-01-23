@@ -1,8 +1,8 @@
 import axios, { AxiosError } from 'axios';
 import { fetchAuthSession } from 'aws-amplify/auth';
-import type { Track, Album, Artist, Playlist, PaginatedResponse } from '@/types';
+import type { Track, Album, Artist, ArtistSummary, Playlist, PaginatedResponse, CreateArtistRequest, UpdateArtistRequest } from '@/types';
 
-export type { Track, Album, Artist, Playlist, PaginatedResponse };
+export type { Track, Album, Artist, ArtistSummary, Playlist, PaginatedResponse, CreateArtistRequest, UpdateArtistRequest };
 
 // API error response structure from backend
 interface ApiErrorResponse {
@@ -84,8 +84,47 @@ export async function getAlbums(params?: { limit?: number }): Promise<PaginatedR
   return response.data;
 }
 
-export async function getArtists(params?: { limit?: number }): Promise<PaginatedResponse<Artist>> {
-  const response = await apiClient.get<PaginatedResponse<Artist>>('/artists', { params });
+// Legacy artist listing (aggregated from tracks/albums)
+export async function getArtists(params?: { limit?: number }): Promise<PaginatedResponse<ArtistSummary>> {
+  const response = await apiClient.get<PaginatedResponse<ArtistSummary>>('/artists', { params });
+  return response.data;
+}
+
+// ============================================================================
+// Artist Entity API (new entity-based endpoints)
+// ============================================================================
+
+export async function getArtistEntities(params?: { limit?: number; lastKey?: string; sortBy?: string; sortOrder?: string }): Promise<{ items: Artist[]; nextCursor?: string; hasMore: boolean }> {
+  const response = await apiClient.get<{ items: Artist[]; nextCursor?: string; hasMore: boolean }>('/artists/entity', { params });
+  return response.data;
+}
+
+export async function getArtistEntity(id: string): Promise<Artist> {
+  const response = await apiClient.get<Artist>(`/artists/entity/${id}`);
+  return response.data;
+}
+
+export async function createArtist(data: CreateArtistRequest): Promise<Artist> {
+  const response = await apiClient.post<Artist>('/artists/entity', data);
+  return response.data;
+}
+
+export async function updateArtist(id: string, data: UpdateArtistRequest): Promise<Artist> {
+  const response = await apiClient.put<Artist>(`/artists/entity/${id}`, data);
+  return response.data;
+}
+
+export async function deleteArtist(id: string): Promise<void> {
+  await apiClient.delete(`/artists/entity/${id}`);
+}
+
+export async function searchArtistEntities(query: string, limit?: number): Promise<{ items: Artist[]; total: number }> {
+  const response = await apiClient.get<{ items: Artist[]; total: number }>('/artists/entity/search', { params: { q: query, limit } });
+  return response.data;
+}
+
+export async function getArtistEntityTracks(id: string): Promise<{ items: Track[]; total: number }> {
+  const response = await apiClient.get<{ items: Track[]; total: number }>(`/artists/entity/${id}/tracks`);
   return response.data;
 }
 
@@ -115,6 +154,11 @@ export async function addTrackToPlaylist(playlistId: string, trackId: string): P
 
 export async function removeTrackFromPlaylist(playlistId: string, trackId: string): Promise<Playlist> {
   const response = await apiClient.delete<Playlist>(`/playlists/${playlistId}/tracks`, { data: { trackIds: [trackId] } });
+  return response.data;
+}
+
+export async function reorderPlaylistTracks(playlistId: string, trackIds: string[]): Promise<Playlist> {
+  const response = await apiClient.put<Playlist>(`/playlists/${playlistId}/reorder`, { trackIds });
   return response.data;
 }
 

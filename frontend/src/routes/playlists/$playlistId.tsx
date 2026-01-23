@@ -1,16 +1,13 @@
 /**
  * Playlist Detail Page - Wave 5
+ * With drag and drop reordering support
  */
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from '@tanstack/react-router';
-import { usePlaylistQuery, useUpdatePlaylist, useDeletePlaylist, useRemoveTracksFromPlaylist } from '../../hooks/usePlaylists';
+import { usePlaylistQuery, useUpdatePlaylist, useDeletePlaylist, useRemoveTracksFromPlaylist, useReorderPlaylistTracks } from '../../hooks/usePlaylists';
 import { usePlayerStore } from '../../lib/store/playerStore';
-
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
+import { DraggableTrackList } from '../../components/playlist/DraggableTrackList';
+import { SelectionProvider } from '../../lib/context/SelectionContext';
 
 export default function PlaylistDetailPage() {
   const navigate = useNavigate();
@@ -19,7 +16,8 @@ export default function PlaylistDetailPage() {
   const updatePlaylist = useUpdatePlaylist();
   const deletePlaylist = useDeletePlaylist();
   const removeTracksFromPlaylist = useRemoveTracksFromPlaylist();
-  const { setQueue, currentTrack, isPlaying } = usePlayerStore();
+  const reorderTracks = useReorderPlaylistTracks();
+  const { setQueue } = usePlayerStore();
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -79,8 +77,9 @@ export default function PlaylistDetailPage() {
     await removeTracksFromPlaylist.mutateAsync({ id: playlistId, trackIds: [trackId] });
   };
 
-  const handlePlayTrack = (index: number) => {
-    setQueue(tracks, index);
+  const handleReorder = (newOrder: string[]) => {
+    if (!playlistId) return;
+    reorderTracks.mutate({ id: playlistId, trackIds: newOrder });
   };
 
   return (
@@ -175,56 +174,14 @@ export default function PlaylistDetailPage() {
           <p className="text-sm mt-2">Add tracks from your library</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="table table-zebra">
-            <thead>
-              <tr>
-                <th className="w-12">#</th>
-                <th>Title</th>
-                <th>Artist</th>
-                <th>Album</th>
-                <th>Duration</th>
-                <th className="w-12"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {tracks.map((track, index) => {
-                const isCurrentTrack = currentTrack?.id === track.id;
-                return (
-                  <tr
-                    key={track.id}
-                    className={`hover cursor-pointer ${isCurrentTrack ? 'bg-primary/10' : ''}`}
-                    onClick={() => handlePlayTrack(index)}
-                  >
-                    <td>
-                      {isCurrentTrack && isPlaying ? (
-                        <span className="text-primary">▶</span>
-                      ) : (
-                        index + 1
-                      )}
-                    </td>
-                    <td className="font-medium">{track.title}</td>
-                    <td>{track.artist}</td>
-                    <td>{track.album}</td>
-                    <td>{formatDuration(track.duration)}</td>
-                    <td>
-                      <button
-                        className="btn btn-ghost btn-xs btn-circle text-error"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleRemoveTrack(track.id);
-                        }}
-                        title="Remove from playlist"
-                      >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <SelectionProvider>
+          <DraggableTrackList
+            tracks={tracks}
+            onReorder={handleReorder}
+            onRemoveTrack={(trackId) => void handleRemoveTrack(trackId)}
+            isReordering={reorderTracks.isPending}
+          />
+        </SelectionProvider>
       )}
 
       {showDeleteConfirm && (

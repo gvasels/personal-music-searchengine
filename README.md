@@ -1,377 +1,379 @@
-# Claude Code Starter Project
+# Personal Music Search Engine
 
-A ready-to-use project template with a complete SDLC (Software Development Lifecycle) workflow powered by Claude Code automation.
+A personal music library application for uploading, organizing, searching, and streaming your audio files. Built with a serverless architecture on AWS.
 
-## What's Included
+## Live Demo
 
-This starter project provides:
+- **Frontend**: https://d8wn3lkytn5qe.cloudfront.net
+- **API**: https://r1simytb2i.execute-api.us-east-1.amazonaws.com
 
-- **7-Phase SDLC Workflow** - Structured development from spec to verified deployment
-- **SDLC Plugins** - Orchestrate each development phase
-- **Specialized Agents** - Subagents for implementation, testing, security, and docs
-- **Reusable Skills** - Code review and documentation generation capabilities
-- **Slash Commands** - Quick access to common workflows
-- **MCP Server Configuration** - Pre-configured external tools
+## Features
 
-## Quick Start
+### Core Features (Implemented)
 
-### 1. Clone or Copy This Template
-
-```bash
-# Copy to your new project
-cp -r claude-code-starter-project my-new-project
-cd my-new-project
-
-# Initialize git
-git init
-```
-
-### 2. Customize CLAUDE.md
-
-Open `CLAUDE.md` and update:
-- Project name and description
-- Technology stack tables
-- Any project-specific guidelines
-
-### 3. Set Up Environment Variables
-
-This project uses [direnv](https://direnv.net/) to manage environment variables for MCP servers.
-
-```bash
-# Install direnv (macOS)
-brew install direnv
-
-# Add to your shell (add to ~/.zshrc or ~/.bashrc)
-eval "$(direnv hook zsh)"  # or bash
-
-# Copy the example file and fill in your values
-cp .envrc.example .envrc
-
-# Allow direnv to load the file
-direnv allow
-```
-
-Edit `.envrc` with your credentials:
-
-```bash
-# Required
-export GITHUB_TOKEN="your-github-personal-access-token"
-
-# AWS (for AWS MCP servers)
-export AWS_PROFILE="default"
-export AWS_REGION="us-east-1"
-
-# Optional (for Google Workspace integration)
-export GOOGLE_OAUTH_CLIENT_ID="your-client-id"
-export GOOGLE_OAUTH_CLIENT_SECRET="your-client-secret"
-```
-
-**Security Note**: `.envrc` is gitignored - never commit secrets to version control.
-
-### 4. Set Up GitHub @claude Integration (Optional)
-
-To enable `@claude` triggers in GitHub issues and PRs:
-
-1. **Get a Claude Code OAuth Token**:
-   - Sign up for [Claude Code](https://claude.com/claude-code) if you haven't
-   - Generate an OAuth token from your account settings
-
-2. **Add the secret to your repository**:
-   - Go to your GitHub repository
-   - Navigate to **Settings** → **Secrets and variables** → **Actions**
-   - Click **New repository secret**
-   - Name: `CLAUDE_CODE_OAUTH_TOKEN`
-   - Value: Your Claude Code OAuth token
-
-3. **Test the integration**:
-   - Create a new issue with `@claude` in the title or body
-   - The GitHub Action will trigger and Claude will respond
-
-The workflows are pre-configured in `.github/workflows/`:
-- `claude.yml` - Triggers on `@claude` mentions in issues/comments
-- `claude-code-review.yml` - Automatic PR code reviews
-
-### 5. Start Building
-
-Run the SDLC workflow:
-
-```bash
-# In Claude Code
-/sdlc
-```
-
-Or start with individual phases:
-- "Run the spec phase for [feature]"
-- "Write tests for this design"
-- "Implement this feature"
-- "Verify deployment"
-
-## Project Structure
-
-```
-├── CLAUDE.md                    # Project documentation for AI/humans
-├── README.md                    # This file
-├── CHANGELOG.md                 # Project changelog
-├── .mcp.json                    # MCP server configuration
-├── .envrc.example               # Environment variable template
-├── .gitignore                   # Git ignore patterns
-├── .github/
-│   └── workflows/
-│       ├── claude.yml           # @claude trigger workflow
-│       └── claude-code-review.yml # PR auto-review workflow
-│
-├── .claude/
-│   ├── plugins/                 # SDLC workflow plugins
-│   │   ├── spec-writer.md       # Phase 1: Requirements & design
-│   │   ├── test-writer.md       # Phase 2: TDD test creation
-│   │   ├── code-implementer.md  # Phase 3: Implementation
-│   │   ├── builder.md           # Phase 4: Build verification
-│   │   ├── security-checker.md  # Phase 5: Security audit
-│   │   ├── docs-generator.md    # Phase 6: Documentation
-│   │   └── deploy-verifier.md   # Phase 7: Post-deploy verification
-│   │
-│   ├── agents/                  # Specialized subagents
-│   │   ├── implementation-agent.md
-│   │   ├── test-engineer.md
-│   │   ├── code-review.md
-│   │   ├── security-auditor.md
-│   │   └── documentation-generator.md
-│   │
-│   ├── skills/                  # Reusable capabilities
-│   │   ├── code-reviewer/
-│   │   │   ├── code-reviewer.md
-│   │   │   ├── scripts/         # Analysis scripts
-│   │   │   │   ├── analyze-metrics.py
-│   │   │   │   └── compare-complexity.py
-│   │   │   └── templates/       # Review templates
-│   │   │       ├── finding-template.md
-│   │   │       └── review-checklist.md
-│   │   └── documentation-generator.md
-│   │
-│   ├── commands/                # Slash commands
-│   │   ├── sdlc.md              # /sdlc - Full workflow
-│   │   ├── update-claudemd.md   # /update-claudemd
-│   │   ├── code-review.md       # /code-review
-│   │   └── test-file.md         # /test-file
-│   │
-│   └── docs/                    # Lessons learned & patterns
-│       ├── lessons-learned-template.md  # Template for adding lessons
-│       └── common-patterns.md   # Cross-technology patterns
-│
-├── src/                         # Your source code (create as needed)
-├── tests/                       # Your tests (create as needed)
-└── docs/                        # Documentation (create as needed)
-```
-
-## SDLC Workflow
-
-The workflow follows 7 phases, executed sequentially or individually:
-
-```
-┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐         ┌─────────┐
-│ 1.SPEC  │──►│ 2.TEST  │──►│ 3.CODE  │──►│ 4.BUILD │──►│5.SECURE │──►│ 6.DOCS  │──Deploy─►│7.VERIFY │
-└─────────┘   └─────────┘   └─────────┘   └─────────┘   └─────────┘   └─────────┘         └─────────┘
-```
-
-### Phase 1: Specification
-- Gather requirements and user stories
-- Create technical design with data models
-- Define API contracts
-- Break down into implementation tasks
-
-**Artifacts**: `requirements.md`, `design.md`, `tasks.md`
-
-### Phase 2: Testing (TDD)
-- Write failing unit tests from data models
-- Write failing integration tests from API contracts
-- Verify all tests fail (Red phase)
-
-**Artifacts**: Test files in `tests/`
-
-### Phase 3: Implementation
-- Implement data models and validation
-- Implement business logic
-- Create API endpoints
-- Make all tests pass (Green phase)
-
-**Artifacts**: Source files in `src/`
-
-### Phase 4: Build Verification
-- Lint check (0 errors)
-- Type check (0 errors)
-- Test coverage (80%+)
-- Build artifacts
-
-### Phase 5: Security Audit
-- Dependency vulnerability scan
-- Secrets detection
-- SAST analysis
-- Infrastructure security (if applicable)
-
-**Gate**: 0 critical/high vulnerabilities
-
-### Phase 6: Documentation
-- Generate/update OpenAPI spec
-- Add code documentation (TSDoc/GoDoc)
-- Create/update CLAUDE.md files
-- Update CHANGELOG
-
-### Phase 7: Post-Deployment Verification
-- Health check endpoints
-- Contract validation against OpenAPI spec
-- Smoke tests on critical API paths
-- Automatic rollback on failure
-
-**Gate**: All smoke tests pass, schemas match spec
-
-**On Failure**: Automatic rollback + incident notification
-
-## Available Commands
-
-| Command | Description |
+| Feature | Description |
 |---------|-------------|
-| `/sdlc` | Start full SDLC workflow |
-| `/update-claudemd` | Update CLAUDE.md from git changes |
-| `/code-review` | Run comprehensive code review |
-| `/test-file <path>` | Generate tests for a file |
+| **Audio Upload** | Upload MP3, FLAC, WAV, AAC, OGG files with automatic metadata extraction |
+| **Metadata Extraction** | Extracts title, artist, album, year, genre, BPM, key from audio files |
+| **Cover Art** | Extracts embedded cover art and displays in library and player |
+| **Full-Text Search** | Search tracks by title, artist, album with fuzzy matching |
+| **Playlist Management** | Create, edit, delete playlists; add/remove tracks; reorder via drag-and-drop |
+| **Tag System** | Add custom tags to tracks for organization |
+| **Audio Streaming** | Secure streaming via CloudFront signed URLs |
+| **Audio Player** | Full-featured player with queue, shuffle, repeat, volume control |
+| **BPM/Key Detection** | Automatic BPM and musical key detection during upload |
+| **Mobile Responsive** | Works on desktop and mobile devices |
+| **Dark/Light Theme** | Toggle between dark and light themes |
 
-## Available Agents
+### Creator Studio Features (Phase 2 - Foundation Complete)
 
-| Agent | When to Use |
-|-------|-------------|
-| `implementation-agent` | Implementing features |
-| `test-engineer` | Writing tests, TDD |
-| `code-review` | Code quality analysis |
-| `security-auditor` | Security vulnerability checks |
-| `documentation-generator` | Generating docs |
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Feature Flags** | Tier-based feature gating (free/creator/pro) | ✅ Backend + Frontend |
+| **Subscription Tiers** | Free, Creator ($9.99), Pro ($19.99), Studio ($49.99) | ✅ Backend + Frontend |
+| **DJ Crates** | Organize tracks into DJ crates/folders | ✅ Backend + Frontend |
+| **Hot Cues** | Set up to 8 cue points per track with labels and colors | ✅ Backend + Frontend |
+| **BPM/Key Matching** | Find compatible tracks using Camelot wheel | ✅ Backend + Frontend |
+| **Waveform Display** | Visual waveform in player (UI ready, data pending) | 🔄 UI Complete |
+| **Creator Dashboard** | Stats and module cards for creator features | ✅ Frontend |
 
-Spawn agents with:
-```
-Use Task tool with subagent_type='agent-name'
-```
+### Planned Features
 
-## MCP Servers
+See [ROADMAP.md](./ROADMAP.md) for the full roadmap including:
+- AI Chatbot & Agent System
+- Rights Management System (geographic scopes)
+- Advanced DJ features (Mix Recorder, Beat Grid Editor, Live Streaming)
+- Podcaster & Producer Studio features
+- Video/Marengo integration
 
-Pre-configured servers in `.mcp.json`:
-
-| Server | Purpose | Requires |
-|--------|---------|----------|
-| `spec-workflow` | Specification management and approvals | - |
-| `context7` | Documentation lookup | - |
-| `github` | GitHub integration | `GITHUB_TOKEN` |
-| `docs-mcp-server` | Documentation indexing | - |
-| `playwright` | Browser automation and testing | - |
-| `godoc` | Go documentation lookup | `godoc-mcp` installed |
-
-**AWS MCP Servers** (require `AWS_PROFILE` or AWS credentials):
-
-| Server | Purpose |
-|--------|---------|
-| `awslabs.aws-documentation-mcp-server` | AWS documentation search |
-| `aws-knowledge-mcp-server` | AWS knowledge base |
-| `awslabs.terraform-mcp-server` | OpenTofu/Terraform for AWS |
-| `awslabs.dynamodb-mcp-server` | DynamoDB data modeling |
-| `awslabs.syntheticdata-mcp-server` | Synthetic data generation |
-| `awslabs.aws-api-mcp-server` | AWS API access |
-| `awslabs.finch-mcp-server` | Finch container operations |
-| `well-architected-security-mcp-server` | AWS Well-Architected security |
-
-**Optional Servers**:
-
-| Server | Purpose | Requires |
-|--------|---------|----------|
-| `google_workspace` | Google Workspace integration | OAuth credentials |
-
-## Customization
-
-### Adding More MCP Servers
-
-Update `.mcp.json` to add additional MCP servers for your stack. See the [MCP Registry](https://github.com/modelcontextprotocol/servers) for available servers.
-
-### Adding Custom Commands
-
-Create new commands in `.claude/commands/`:
-
-```markdown
----
-description: Your command description
 ---
 
-# Command Name
+## Technology Stack
 
-Instructions for what the command should do.
-```
+| Layer | Technologies |
+|-------|--------------|
+| **Backend** | Go 1.22+, Echo v4, AWS Lambda (ARM64), dhowden/tag |
+| **Frontend** | React 18, TanStack Router/Query, Tailwind CSS v4, DaisyUI 5, Zustand, Vite |
+| **Infrastructure** | AWS (Lambda, DynamoDB, S3, CloudFront, API Gateway, Cognito, Step Functions) |
+| **Search** | Nixiesearch (Lucene-based) |
+| **IaC** | OpenTofu 1.8+ |
 
-### Adding Custom Agents
-
-Create new agents in `.claude/agents/`:
-
-```markdown
----
-name: my-agent
-description: What this agent does
-tools: read, write, bash
 ---
 
-# My Agent
+## Repository Structure
 
-## Purpose
-...
-
-## Workflow
-...
+```
+├── backend/                 # Go Lambda services
+│   ├── cmd/
+│   │   ├── api/             # Main API Lambda
+│   │   └── processor/       # Upload processing Lambdas
+│   └── internal/
+│       ├── handlers/        # HTTP handlers (Echo)
+│       ├── models/          # Domain models
+│       ├── repository/      # DynamoDB + S3 data access
+│       ├── service/         # Business logic
+│       ├── metadata/        # Audio metadata extraction
+│       └── search/          # Nixiesearch client
+├── frontend/                # React SPA
+│   └── src/
+│       ├── components/      # Reusable React components
+│       ├── hooks/           # TanStack Query hooks
+│       ├── lib/             # API client, stores
+│       └── routes/          # TanStack Router pages
+├── infrastructure/          # OpenTofu IaC
+│   ├── global/              # Route53, ACM
+│   ├── shared/              # Cognito, shared resources
+│   ├── backend/             # Lambda, API Gateway, DynamoDB, S3
+│   └── frontend/            # S3, CloudFront
+└── .spec-workflow/          # Feature specifications
 ```
 
-## Best Practices
+---
 
-1. **Always start with a spec** for non-trivial features
-2. **Write tests before code** (TDD)
-3. **Update CLAUDE.md** when adding new modules
-4. **Run security checks** before deployment
-5. **Keep CHANGELOG updated** with changes
+## Deployment
 
-## Documentation Standards
+### Prerequisites
 
-### CLAUDE.md Files
+- AWS CLI configured with profile `gvasels-muza`
+- Go 1.22+
+- Node.js 20+
+- Account: 887395463840, Region: us-east-1
 
-Every major directory should have a `CLAUDE.md` with:
-- Overview of the directory's purpose
-- File descriptions
-- Key functions with signatures
-- Dependencies
+### Backend Deployment
 
-### CHANGELOG
+```bash
+cd backend
 
-Follow [Keep a Changelog](https://keepachangelog.com/):
+# Build all Lambda functions (ARM64)
+make build
 
-```markdown
-## [Unreleased]
+# Package as ZIP files
+make package
 
-### Added
-- New features
+# Deploy API Lambda
+aws lambda update-function-code \
+  --function-name music-library-prod-api \
+  --zip-file fileb://api.zip \
+  --region us-east-1 \
+  --profile gvasels-muza
 
-### Changed
-- Changes to existing functionality
-
-### Fixed
-- Bug fixes
+# Deploy processor Lambdas
+for fn in metadata cover-art-processor track-creator file-mover search-indexer upload-status-updater; do
+  aws lambda update-function-code \
+    --function-name music-library-prod-${fn} \
+    --zip-file fileb://cmd/processor/${fn}.zip \
+    --region us-east-1 \
+    --profile gvasels-muza
+done
 ```
 
-### Lessons Learned
+**Lambda Functions:**
 
-Capture troubleshooting patterns in `.claude/docs/`:
+| Function | Purpose |
+|----------|---------|
+| `music-library-prod-api` | Main API (Echo + Lambda adapter) |
+| `music-library-prod-metadata` | Metadata extraction from uploaded files |
+| `music-library-prod-cover-art-processor` | Cover art extraction and resizing |
+| `music-library-prod-track-creator` | Create track records in DynamoDB |
+| `music-library-prod-file-mover` | Move files from upload to media bucket |
+| `music-library-prod-search-indexer` | Index tracks in Nixiesearch |
+| `music-library-prod-upload-status-updater` | Update upload status in DynamoDB |
 
-- **Add technology-specific files**: `go-lessons.md`, `aws-lessons.md`, `typescript-lessons.md`
-- **Use the template**: See `lessons-learned-template.md` for the entry format
-- **Include actual error messages**: Helps Claude find relevant solutions
-- **Add debugging steps**: Help others investigate similar issues
+### Frontend Deployment
 
-These files are read by Claude Code when troubleshooting, providing project-specific knowledge beyond general documentation.
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Build for production
+npm run build
+
+# Deploy to S3
+aws s3 sync dist/ s3://music-library-prod-frontend \
+  --delete \
+  --profile gvasels-muza
+
+# Invalidate CloudFront cache
+aws cloudfront create-invalidation \
+  --distribution-id E2XXXXXXXXXX \
+  --paths "/*" \
+  --profile gvasels-muza
+```
+
+### Environment Variables
+
+**Backend (Lambda):**
+| Variable | Value |
+|----------|-------|
+| `DYNAMODB_TABLE_NAME` | `MusicLibrary` |
+| `MEDIA_BUCKET` | `music-library-prod-media` |
+| `CLOUDFRONT_DOMAIN` | `d8wn3lkytn5qe.cloudfront.net` |
+| `STEP_FUNCTIONS_ARN` | `arn:aws:states:us-east-1:887395463840:stateMachine:...` |
+
+**Frontend (.env.production):**
+```env
+VITE_API_URL=https://r1simytb2i.execute-api.us-east-1.amazonaws.com
+VITE_COGNITO_USER_POOL_ID=us-east-1_XXXXXXXX
+VITE_COGNITO_CLIENT_ID=XXXXXXXXXXXXXXXXXXXXXXXXXX
+VITE_COGNITO_REGION=us-east-1
+```
+
+---
+
+## Local Development
+
+### Backend
+
+```bash
+cd backend
+
+# Run tests
+go test ./...
+
+# Run tests with coverage
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+
+# Build locally
+go build -o bootstrap ./cmd/api
+```
+
+### Frontend
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Run tests
+npm test
+
+# Type check
+npm run typecheck
+
+# Lint
+npm run lint
+```
+
+---
+
+## API Endpoints
+
+All endpoints require authentication via Cognito JWT.
+
+### Tracks
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/tracks` | List tracks with pagination |
+| GET | `/api/v1/tracks/:id` | Get track by ID |
+| PUT | `/api/v1/tracks/:id` | Update track metadata |
+| DELETE | `/api/v1/tracks/:id` | Delete track |
+| POST | `/api/v1/tracks/:id/tags` | Add tags to track |
+| DELETE | `/api/v1/tracks/:id/tags/:tag` | Remove tag from track |
+
+### Albums
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/albums` | List albums |
+| GET | `/api/v1/albums/:id` | Get album with tracks |
+
+### Artists
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/artists` | List artists |
+| GET | `/api/v1/artists/:name/tracks` | Get artist's tracks |
+| GET | `/api/v1/artists/:name/albums` | Get artist's albums |
+
+### Playlists
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/playlists` | List playlists |
+| POST | `/api/v1/playlists` | Create playlist |
+| GET | `/api/v1/playlists/:id` | Get playlist with tracks |
+| PUT | `/api/v1/playlists/:id` | Update playlist |
+| DELETE | `/api/v1/playlists/:id` | Delete playlist |
+| POST | `/api/v1/playlists/:id/tracks` | Add tracks |
+| DELETE | `/api/v1/playlists/:id/tracks` | Remove tracks |
+
+### Tags
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/tags` | List tags |
+| GET | `/api/v1/tags/:name/tracks` | Get tracks by tag |
+
+### Search
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/search?q=query` | Simple search (accepts `q` or `query`) |
+| POST | `/api/v1/search` | Advanced search with filters |
+| GET | `/api/v1/autocomplete?q=query` | Search suggestions |
+
+### Upload
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/upload/presigned` | Get presigned upload URL |
+| POST | `/api/v1/upload/confirm` | Confirm upload completion |
+| GET | `/api/v1/uploads` | List upload history |
+| GET | `/api/v1/uploads/:id` | Get upload status |
+
+### Streaming
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/stream/:trackId` | Get signed streaming URL |
+| GET | `/api/v1/download/:trackId` | Get signed download URL |
+
+---
+
+## Testing
+
+### Backend Tests
+
+```bash
+cd backend
+go test ./...                    # All tests
+go test -short ./...             # Unit tests only
+go test ./internal/service/...   # Specific package
+```
+
+**Coverage**: 134 tests in service layer, targeting 80%+ coverage.
+
+### Frontend Tests
+
+```bash
+cd frontend
+npm test                         # All tests (Vitest)
+npm test -- --coverage           # With coverage
+npm test -- --watch              # Watch mode
+```
+
+**Coverage**: 400+ tests across hooks, components, routes.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        CloudFront                                │
+│                  (Static assets + API proxy)                     │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+┌───────────────┐     ┌───────────────┐     ┌───────────────┐
+│   S3 Static   │     │  API Gateway  │     │   S3 Media    │
+│   (Frontend)  │     │               │     │   (Audio)     │
+└───────────────┘     └───────┬───────┘     └───────────────┘
+                              │
+                      ┌───────▼───────┐
+                      │    Lambda     │
+                      │   (Go API)    │
+                      └───────┬───────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+┌───────────────┐     ┌───────────────┐     ┌───────────────┐
+│   DynamoDB    │     │  Nixiesearch  │     │    Cognito    │
+│ (Single-table)│     │   (Search)    │     │    (Auth)     │
+└───────────────┘     └───────────────┘     └───────────────┘
+```
+
+### Upload Processing Flow
+
+```
+Upload → S3 (upload bucket) → Step Functions → [Metadata → CoverArt → Track → Move → Index → Status]
+```
+
+---
+
+## DynamoDB Schema (Single-Table Design)
+
+| Entity | PK | SK |
+|--------|----|----|
+| User | `USER#{userId}` | `PROFILE` |
+| Track | `USER#{userId}` | `TRACK#{trackId}` |
+| Album | `USER#{userId}` | `ALBUM#{albumId}` |
+| Playlist | `USER#{userId}` | `PLAYLIST#{playlistId}` |
+| PlaylistTrack | `USER#{userId}` | `PLAYLIST#{playlistId}#TRACK#{position}` |
+| Tag | `USER#{userId}` | `TAG#{tagName}` |
+| Upload | `USER#{userId}` | `UPLOAD#{uploadId}` |
+| Crate | `USER#{userId}` | `CRATE#{crateId}` |
+| HotCue | `USER#{userId}` | `HOTCUE#{trackId}#{slot}` |
+
+---
 
 ## License
 
-This starter template is provided as-is for use in your projects.
+Private project - all rights reserved.
 
 ---
 
-Ready to start building? Run `/sdlc` in Claude Code!
+## Contributing
+
+This is a personal project. See [CLAUDE.md](./CLAUDE.md) for development guidelines and SDLC workflow.

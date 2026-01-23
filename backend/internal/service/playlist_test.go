@@ -157,6 +157,53 @@ func (m *MockPlaylistRepository) ListUploadsByStatus(ctx context.Context, status
 	return nil, nil
 }
 
+// Artist-related methods
+func (m *MockPlaylistRepository) CreateArtist(ctx context.Context, artist models.Artist) error {
+	return nil
+}
+func (m *MockPlaylistRepository) GetArtist(ctx context.Context, userID, artistID string) (*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) GetArtistByName(ctx context.Context, userID, name string) ([]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) UpdateArtist(ctx context.Context, artist models.Artist) error {
+	return nil
+}
+func (m *MockPlaylistRepository) DeleteArtist(ctx context.Context, userID, artistID string) error {
+	return nil
+}
+func (m *MockPlaylistRepository) ListArtists(ctx context.Context, userID string, filter models.ArtistFilter) (*repository.PaginatedResult[models.Artist], error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) BatchGetArtists(ctx context.Context, userID string, artistIDs []string) (map[string]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) MergeArtists(ctx context.Context, userID, primaryID string, secondaryIDs []string) error {
+	return nil
+}
+func (m *MockPlaylistRepository) GetOrCreateArtist(ctx context.Context, userID, name string) (*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) IncrementArtistStats(ctx context.Context, userID, artistID string, trackDelta, albumDelta int) error {
+	return nil
+}
+func (m *MockPlaylistRepository) GetArtistAlbumCount(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockPlaylistRepository) GetArtistTrackCount(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockPlaylistRepository) GetArtistTotalPlays(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockPlaylistRepository) SearchArtists(ctx context.Context, userID, query string, limit int) ([]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) SearchPlaylists(ctx context.Context, userID, query string, limit int) ([]models.Playlist, error) {
+	return nil, nil
+}
+
 // MockPlaylistS3Repository provides mockable S3 repository methods
 type MockPlaylistS3Repository struct {
 	mock.Mock
@@ -204,6 +251,10 @@ func (m *MockPlaylistS3Repository) GetObjectMetadata(ctx context.Context, key st
 
 func (m *MockPlaylistS3Repository) ObjectExists(ctx context.Context, key string) (bool, error) {
 	return false, nil
+}
+
+func (m *MockPlaylistS3Repository) GeneratePresignedDownloadURLWithFilename(ctx context.Context, key string, ttl time.Duration, filename string) (string, error) {
+	return "", nil
 }
 
 // =============================================================================
@@ -455,6 +506,10 @@ func TestListPlaylists_Success(t *testing.T) {
 		NextCursor: "",
 		HasMore:    false,
 	}, nil)
+
+	// Mock GetPlaylistTracks calls for track count calculation
+	mockRepo.On("GetPlaylistTracks", ctx, "playlist-1").Return([]models.PlaylistTrack{}, nil)
+	mockRepo.On("GetPlaylistTracks", ctx, "playlist-2").Return([]models.PlaylistTrack{}, nil)
 
 	filter := models.PlaylistFilter{Limit: 20}
 	resp, err := svc.ListPlaylists(ctx, "user-123", filter)

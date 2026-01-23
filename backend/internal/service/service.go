@@ -85,6 +85,7 @@ type SearchService interface {
 type Services struct {
 	Track    TrackService
 	Album    AlbumService
+	Artist   ArtistService
 	User     UserService
 	Playlist PlaylistService
 	Tag      TagService
@@ -104,6 +105,7 @@ func NewServices(
 	return &Services{
 		Track:    NewTrackService(repo, s3Repo),
 		Album:    NewAlbumService(repo, s3Repo),
+		Artist:   NewArtistService(repo, s3Repo),
 		User:     NewUserService(repo),
 		Playlist: NewPlaylistService(repo, s3Repo),
 		Tag:      NewTagService(repo),

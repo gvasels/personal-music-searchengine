@@ -189,6 +189,44 @@ func (m *MockRepository) ListUploadsByStatus(ctx context.Context, status models.
 	return nil, nil
 }
 
+// Artist-related methods for Repository interface
+func (m *MockRepository) CreateArtist(ctx context.Context, artist models.Artist) error {
+	return nil
+}
+func (m *MockRepository) GetArtist(ctx context.Context, userID, artistID string) (*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockRepository) GetArtistByName(ctx context.Context, userID, name string) ([]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockRepository) UpdateArtist(ctx context.Context, artist models.Artist) error {
+	return nil
+}
+func (m *MockRepository) DeleteArtist(ctx context.Context, userID, artistID string) error {
+	return nil
+}
+func (m *MockRepository) ListArtists(ctx context.Context, userID string, filter models.ArtistFilter) (*repository.PaginatedResult[models.Artist], error) {
+	return nil, nil
+}
+func (m *MockRepository) BatchGetArtists(ctx context.Context, userID string, artistIDs []string) (map[string]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockRepository) SearchArtists(ctx context.Context, userID, query string, limit int) ([]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockRepository) GetArtistTrackCount(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockRepository) GetArtistAlbumCount(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockRepository) GetArtistTotalPlays(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockRepository) SearchPlaylists(ctx context.Context, userID, query string, limit int) ([]models.Playlist, error) {
+	return nil, nil
+}
+
 // MockS3Repository mocks the repository.S3Repository
 type MockS3Repository struct {
 	mock.Mock
@@ -222,6 +260,9 @@ func (m *MockS3Repository) CopyObject(ctx context.Context, sourceKey, destKey st
 }
 func (m *MockS3Repository) GetObjectMetadata(ctx context.Context, key string) (map[string]string, error) {
 	return nil, nil
+}
+func (m *MockS3Repository) GeneratePresignedDownloadURLWithFilename(ctx context.Context, key string, expiry time.Duration, filename string) (string, error) {
+	return "", nil
 }
 func (m *MockS3Repository) ObjectExists(ctx context.Context, key string) (bool, error) {
 	return false, nil
@@ -343,24 +384,24 @@ func (s *testSearchService) Autocomplete(ctx context.Context, userID, query stri
 
 	for _, result := range resp.Results {
 		suggestions = append(suggestions, models.SearchSuggestion{
-			Text: result.Title,
-			Type: "track",
-			ID:   result.ID,
+			Value:   result.Title,
+			Type:    "track",
+			TrackID: result.ID,
 		})
 
 		if result.Artist != "" && !seenArtists[result.Artist] {
 			seenArtists[result.Artist] = true
 			suggestions = append(suggestions, models.SearchSuggestion{
-				Text: result.Artist,
-				Type: "artist",
+				Value: result.Artist,
+				Type:  "artist",
 			})
 		}
 
 		if result.Album != "" && !seenAlbums[result.Album] {
 			seenAlbums[result.Album] = true
 			suggestions = append(suggestions, models.SearchSuggestion{
-				Text: result.Album,
-				Type: "album",
+				Value: result.Album,
+				Type:  "album",
 			})
 		}
 
@@ -894,6 +935,44 @@ func (m *MockFilterTagsRepository) ListUploads(ctx context.Context, userID strin
 	return nil, nil
 }
 func (m *MockFilterTagsRepository) ListUploadsByStatus(ctx context.Context, status models.UploadStatus) ([]models.Upload, error) {
+	return nil, nil
+}
+
+// Artist-related methods
+func (m *MockFilterTagsRepository) CreateArtist(ctx context.Context, artist models.Artist) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) GetArtist(ctx context.Context, userID, artistID string) (*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) GetArtistByName(ctx context.Context, userID, name string) ([]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) UpdateArtist(ctx context.Context, artist models.Artist) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) DeleteArtist(ctx context.Context, userID, artistID string) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) ListArtists(ctx context.Context, userID string, filter models.ArtistFilter) (*repository.PaginatedResult[models.Artist], error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) BatchGetArtists(ctx context.Context, userID string, artistIDs []string) (map[string]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) SearchArtists(ctx context.Context, userID, query string, limit int) ([]*models.Artist, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) GetArtistTrackCount(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockFilterTagsRepository) GetArtistAlbumCount(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockFilterTagsRepository) GetArtistTotalPlays(ctx context.Context, userID, artistID string) (int, error) {
+	return 0, nil
+}
+func (m *MockFilterTagsRepository) SearchPlaylists(ctx context.Context, userID, query string, limit int) ([]models.Playlist, error) {
 	return nil, nil
 }
 

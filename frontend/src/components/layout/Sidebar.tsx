@@ -1,19 +1,22 @@
+/**
+ * Sidebar - Desktop Navigation
+ * Shows navigation menu on desktop, hidden on mobile (MobileNav handles mobile)
+ */
 import { Link } from '@tanstack/react-router';
 import { useAuth } from '../../hooks/useAuth';
 
 const navItems = [
   { to: '/', label: 'Home', icon: '🏠' },
-  { to: '/tracks', label: 'Music', icon: '🎵' },
+  { to: '/tracks', label: 'Tracks', icon: '🎵' },
+  { to: '/albums', label: 'Albums', icon: '💿' },
+  { to: '/artists', label: 'Artists', icon: '🎤' },
   { to: '/playlists', label: 'Playlists', icon: '📝' },
+  { to: '/tags', label: 'Tags', icon: '🏷️' },
   { to: '/upload', label: 'Upload', icon: '⬆️' },
+  { to: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
-interface SidebarProps {
-  isOpen?: boolean;
-  onClose?: () => void;
-}
-
-export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
+export function Sidebar() {
   const { isAuthenticated, isLoading } = useAuth();
 
   // Don't show sidebar when not authenticated or still loading
@@ -21,66 +24,28 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     return null;
   }
 
-  const handleNavClick = () => {
-    // Close sidebar on mobile after navigation
-    if (onClose) {
-      onClose();
-    }
-  };
-
   return (
-    <>
-      {/* Mobile overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={onClose}
-        />
-      )}
-
-      {/* Sidebar */}
-      <nav
-        role="navigation"
-        className={`
-          fixed md:static top-0 bottom-20 left-0 z-40
-          w-64 bg-base-100 p-4 overflow-y-auto
-          transform transition-transform duration-200 ease-in-out
-          md:transform-none md:block
-          ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        `}
-      >
-        {/* Close button for mobile */}
-        <div className="flex justify-end md:hidden mb-4">
-          <button
-            onClick={onClose}
-            className="btn btn-ghost btn-circle btn-sm"
-            aria-label="Close menu"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <ul className="menu">
-          {navItems.map((item) => (
-            <li key={item.to}>
-              <Link
-                to={item.to}
-                className="flex items-center gap-2 rounded-lg transition-colors"
-                activeProps={{
-                  className: 'flex items-center gap-2 rounded-lg transition-colors bg-primary/20 border-l-3 border-primary font-semibold',
-                  'aria-current': 'page',
-                }}
-                onClick={handleNavClick}
-              >
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-    </>
+    <nav
+      role="navigation"
+      className="hidden md:block w-64 bg-base-100 p-4 overflow-y-auto"
+    >
+      <ul className="menu">
+        {navItems.map((item) => (
+          <li key={item.to}>
+            <Link
+              to={item.to}
+              className="flex items-center gap-2 rounded-lg transition-colors"
+              activeProps={{
+                className: 'flex items-center gap-2 rounded-lg transition-colors bg-primary/20 border-l-3 border-primary font-semibold',
+                'aria-current': 'page',
+              }}
+            >
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }

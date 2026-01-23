@@ -59,3 +59,15 @@ export async function removeTrackFromPlaylist(
   });
   return response.data;
 }
+
+export interface ReorderTracksData {
+  trackIds: string[];
+}
+
+export async function reorderPlaylistTracks(
+  playlistId: string,
+  data: ReorderTracksData
+): Promise<Playlist> {
+  const response = await apiClient.put<Playlist>(`/playlists/${playlistId}/reorder`, data);
+  return response.data;
+}
