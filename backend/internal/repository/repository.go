@@ -69,6 +69,7 @@ type Repository interface {
 	AddTracksToPlaylist(ctx context.Context, playlistID string, trackIDs []string, position int) error
 	RemoveTracksFromPlaylist(ctx context.Context, playlistID string, trackIDs []string) error
 	GetPlaylistTracks(ctx context.Context, playlistID string) ([]models.PlaylistTrack, error)
+	ReorderPlaylistTracks(ctx context.Context, playlistID string, tracks []models.PlaylistTrack) error
 
 	// Tag operations
 	CreateTag(ctx context.Context, tag models.Tag) error

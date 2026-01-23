@@ -158,3 +158,28 @@ func (h *Handlers) RemoveTracksFromPlaylist(c echo.Context) error {
 
 	return success(c, playlist)
 }
+
+// ReorderPlaylistTracks reorders tracks within a playlist
+func (h *Handlers) ReorderPlaylistTracks(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == "" {
+		return handleError(c, models.ErrUnauthorized)
+	}
+
+	playlistID := c.Param("id")
+	if playlistID == "" {
+		return handleError(c, models.ErrBadRequest)
+	}
+
+	var req models.ReorderPlaylistTracksRequest
+	if err := bindAndValidate(c, &req); err != nil {
+		return handleError(c, err)
+	}
+
+	playlist, err := h.services.Playlist.ReorderTracks(c.Request().Context(), userID, playlistID, req)
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	return success(c, playlist)
+}

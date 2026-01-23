@@ -8,8 +8,10 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awslambda "github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/gvasels/personal-music-searchengine/internal/models"
+	"github.com/gvasels/personal-music-searchengine/internal/repository"
 	"github.com/gvasels/personal-music-searchengine/internal/search"
 	"github.com/gvasels/personal-music-searchengine/internal/validation"
 )
@@ -18,6 +20,7 @@ import (
 type Event struct {
 	TrackID   string                 `json:"trackId"`
 	UserID    string                 `json:"userId"`
+	UploadID  string                 `json:"uploadId"`
 	Metadata  *models.UploadMetadata `json:"metadata"`
 	S3Key     string                 `json:"s3Key"`
 	TableName string                 `json:"tableName"`
@@ -30,17 +33,25 @@ type Response struct {
 }
 
 var searchClient *search.Client
+var repo repository.Repository
 
 func init() {
-	nixieFunctionName := os.Getenv("NIXIESEARCH_FUNCTION_NAME")
-	if nixieFunctionName == "" {
-		fmt.Println("NIXIESEARCH_FUNCTION_NAME not set, search indexing disabled")
-		return
-	}
-
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		fmt.Printf("Failed to load AWS config: %v\n", err)
+		return
+	}
+
+	tableName := os.Getenv("DYNAMODB_TABLE_NAME")
+	if tableName == "" {
+		tableName = "MusicLibrary"
+	}
+	dynamoClient := dynamodb.NewFromConfig(cfg)
+	repo = repository.NewDynamoDBRepository(dynamoClient, tableName)
+
+	nixieFunctionName := os.Getenv("NIXIESEARCH_FUNCTION_NAME")
+	if nixieFunctionName == "" {
+		fmt.Println("NIXIESEARCH_FUNCTION_NAME not set, search indexing disabled")
 		return
 	}
 
@@ -112,6 +123,13 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 			Indexed: false,
 			Reason:  "index_rejected",
 		}, nil
+	}
+
+	// Update step progress
+	if event.UploadID != "" && repo != nil {
+		if err := repo.UpdateUploadStep(ctx, event.UserID, event.UploadID, models.StepIndex, true); err != nil {
+			fmt.Printf("Warning: failed to update step progress: %v\n", err)
+		}
 	}
 
 	return &Response{

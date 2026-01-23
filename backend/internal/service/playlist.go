@@ -286,3 +286,90 @@ func (s *playlistService) RemoveTracks(ctx context.Context, userID, playlistID s
 	response := playlist.ToResponse(coverArtURL)
 	return &response, nil
 }
+
+func (s *playlistService) ReorderTracks(ctx context.Context, userID, playlistID string, req models.ReorderPlaylistTracksRequest) (*models.PlaylistResponse, error) {
+	playlist, err := s.repo.GetPlaylist(ctx, userID, playlistID)
+	if err != nil {
+		if err == repository.ErrNotFound {
+			return nil, models.NewNotFoundError("Playlist", playlistID)
+		}
+		return nil, err
+	}
+
+	// Get current playlist tracks
+	playlistTracks, err := s.repo.GetPlaylistTracks(ctx, playlistID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the track to move
+	var trackToMove *models.PlaylistTrack
+	var currentPosition int
+	for i, pt := range playlistTracks {
+		if pt.TrackID == req.TrackID {
+			trackToMove = &playlistTracks[i]
+			currentPosition = i
+			break
+		}
+	}
+
+	if trackToMove == nil {
+		return nil, models.NewNotFoundError("Track in playlist", req.TrackID)
+	}
+
+	// Validate new position
+	if req.NewPosition < 0 || req.NewPosition >= len(playlistTracks) {
+		return nil, models.NewValidationError("Invalid position")
+	}
+
+	// If moving to same position, nothing to do
+	if currentPosition == req.NewPosition {
+		coverArtURL := ""
+		if playlist.CoverArtKey != "" {
+			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, playlist.CoverArtKey, 24*time.Hour)
+			if err == nil {
+				coverArtURL = url
+			}
+		}
+		response := playlist.ToResponse(coverArtURL)
+		return &response, nil
+	}
+
+	// Reorder the tracks in memory
+	// Remove track from current position
+	reordered := make([]models.PlaylistTrack, 0, len(playlistTracks))
+	for i, pt := range playlistTracks {
+		if i != currentPosition {
+			reordered = append(reordered, pt)
+		}
+	}
+
+	// Insert at new position
+	newTracks := make([]models.PlaylistTrack, 0, len(playlistTracks))
+	for i := 0; i < len(reordered); i++ {
+		if i == req.NewPosition {
+			newTracks = append(newTracks, *trackToMove)
+		}
+		newTracks = append(newTracks, reordered[i])
+	}
+	// Handle case where new position is at the end
+	if req.NewPosition >= len(reordered) {
+		newTracks = append(newTracks, *trackToMove)
+	}
+
+	// Update positions in the database
+	if err := s.repo.ReorderPlaylistTracks(ctx, playlistID, newTracks); err != nil {
+		return nil, err
+	}
+
+	coverArtURL := ""
+	if playlist.CoverArtKey != "" {
+		url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, playlist.CoverArtKey, 24*time.Hour)
+		if err == nil {
+			coverArtURL = url
+		}
+	}
+
+	response := playlist.ToResponse(coverArtURL)
+	return &response, nil
+}

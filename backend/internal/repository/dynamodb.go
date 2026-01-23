@@ -989,6 +989,89 @@ func (r *DynamoDBRepository) GetPlaylistTracks(ctx context.Context, playlistID s
 	return tracks, nil
 }
 
+func (r *DynamoDBRepository) ReorderPlaylistTracks(ctx context.Context, playlistID string, tracks []models.PlaylistTrack) error {
+	// First, delete all existing tracks for this playlist
+	existingTracks, err := r.GetPlaylistTracks(ctx, playlistID)
+	if err != nil {
+		return fmt.Errorf("failed to get existing playlist tracks: %w", err)
+	}
+
+	// Delete existing tracks
+	if len(existingTracks) > 0 {
+		deleteRequests := make([]types.WriteRequest, 0, len(existingTracks))
+		for _, track := range existingTracks {
+			deleteRequests = append(deleteRequests, types.WriteRequest{
+				DeleteRequest: &types.DeleteRequest{
+					Key: map[string]types.AttributeValue{
+						"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("PLAYLIST#%s", playlistID)},
+						"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("POSITION#%08d", track.Position)},
+					},
+				},
+			})
+		}
+
+		// Delete in batches of 25
+		for i := 0; i < len(deleteRequests); i += 25 {
+			end := i + 25
+			if end > len(deleteRequests) {
+				end = len(deleteRequests)
+			}
+
+			_, err := r.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
+				RequestItems: map[string][]types.WriteRequest{
+					r.tableName: deleteRequests[i:end],
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("failed to delete playlist tracks: %w", err)
+			}
+		}
+	}
+
+	// Insert tracks with new positions
+	if len(tracks) == 0 {
+		return nil
+	}
+
+	writeRequests := make([]types.WriteRequest, 0, len(tracks))
+	for i, track := range tracks {
+		// Update position to match array index
+		track.Position = i
+		track.PlaylistID = playlistID
+
+		item := models.NewPlaylistTrackItem(track)
+		av, err := attributevalue.MarshalMap(item)
+		if err != nil {
+			return fmt.Errorf("failed to marshal playlist track: %w", err)
+		}
+
+		writeRequests = append(writeRequests, types.WriteRequest{
+			PutRequest: &types.PutRequest{
+				Item: av,
+			},
+		})
+	}
+
+	// Write in batches of 25
+	for i := 0; i < len(writeRequests); i += 25 {
+		end := i + 25
+		if end > len(writeRequests) {
+			end = len(writeRequests)
+		}
+
+		_, err := r.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
+			RequestItems: map[string][]types.WriteRequest{
+				r.tableName: writeRequests[i:end],
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to write reordered playlist tracks: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // ============================================================================
 // Tag Operations
 // ============================================================================
