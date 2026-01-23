@@ -6,7 +6,6 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { DashboardStats, ModuleCard, studioModules } from '@/components/studio';
 
-// @ts-expect-error - Route path will be registered when route tree regenerates
 export const Route = createFileRoute('/studio/')({
   component: StudioDashboard,
 });

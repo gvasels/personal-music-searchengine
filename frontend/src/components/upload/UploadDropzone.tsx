@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, type FileRejection } from 'react-dropzone';
 
 interface UploadDropzoneProps {
   onFilesSelected: (files: File[]) => void;
@@ -21,7 +21,7 @@ export function UploadDropzone({
   const [isDragActive, setIsDragActive] = useState(false);
 
   const onDrop = useCallback(
-    (acceptedFiles: File[], rejectedFiles: { file: File; errors: { code: string; message: string }[] }[]) => {
+    (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
       if (rejectedFiles.length > 0) {
         const firstError = rejectedFiles[0].errors[0];
         if (firstError.code === 'file-too-large') {
