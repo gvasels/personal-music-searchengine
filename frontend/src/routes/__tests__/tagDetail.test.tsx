@@ -16,6 +16,7 @@ const mockNavigate = vi.fn();
 vi.mock('@tanstack/react-router', async () => ({
   useNavigate: () => mockNavigate,
   useParams: () => ({ tagName: 'rock' }),
+  useLocation: () => ({ pathname: '/tags/rock', search: '', hash: '' }),
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
     <a href={to}>{children}</a>
   ),

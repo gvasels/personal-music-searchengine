@@ -12,6 +12,7 @@ vi.mock('../../hooks/useUpload', () => ({
 
 vi.mock('@tanstack/react-router', async () => ({
   useNavigate: () => vi.fn(),
+  useLocation: () => ({ pathname: '/upload', search: '', hash: '' }),
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 

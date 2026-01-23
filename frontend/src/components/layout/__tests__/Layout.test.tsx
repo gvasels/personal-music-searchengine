@@ -9,6 +9,7 @@ vi.mock('@tanstack/react-router', () => ({
     <a href={to} {...props}>{children}</a>
   )),
   useNavigate: vi.fn(() => vi.fn()),
+  useLocation: vi.fn(() => ({ pathname: '/', search: '', hash: '' })),
 }));
 
 vi.mock('@/lib/store/themeStore', () => ({

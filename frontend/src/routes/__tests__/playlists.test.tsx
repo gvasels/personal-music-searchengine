@@ -15,6 +15,7 @@ vi.mock('../../hooks/usePlaylists', () => ({
 const mockNavigate = vi.fn();
 vi.mock('@tanstack/react-router', async () => ({
   useNavigate: () => mockNavigate,
+  useLocation: () => ({ pathname: '/playlists', search: '', hash: '' }),
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
     <a href={to}>{children}</a>
   ),

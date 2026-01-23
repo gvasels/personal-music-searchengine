@@ -7,15 +7,27 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const mockUseTracks = vi.fn();
+const mockDeleteTrack = vi.fn();
 vi.mock('../../hooks/useTracks', () => ({
   useTracksQuery: () => mockUseTracks(),
+  useDeleteTrack: () => ({ mutateAsync: mockDeleteTrack, isPending: false }),
   trackKeys: { lists: () => ['tracks', 'list'] },
+}));
+
+vi.mock('@/lib/store/playerStore', () => ({
+  usePlayerStore: () => ({
+    currentTrack: null,
+    isPlaying: false,
+    setQueue: vi.fn(),
+    pause: vi.fn(),
+  }),
 }));
 
 const mockNavigate = vi.fn();
 vi.mock('@tanstack/react-router', async () => ({
   useNavigate: () => mockNavigate,
   useSearch: () => ({ sortBy: undefined, sortOrder: undefined, page: 1 }),
+  useLocation: () => ({ pathname: '/tracks', search: '', hash: '' }),
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
 
