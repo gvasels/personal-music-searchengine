@@ -104,7 +104,7 @@ describe('Playlists API (Wave 5)', () => {
       const result = await addTrackToPlaylist('playlist-1', 'track-1');
 
       expect(apiClient.post).toHaveBeenCalledWith('/playlists/playlist-1/tracks', {
-        trackId: 'track-1',
+        trackIds: ['track-1'],
       });
       expect(result).toEqual(mockResponse);
     });
@@ -117,7 +117,9 @@ describe('Playlists API (Wave 5)', () => {
 
       const result = await removeTrackFromPlaylist('playlist-1', 'track-1');
 
-      expect(apiClient.delete).toHaveBeenCalledWith('/playlists/playlist-1/tracks/track-1');
+      expect(apiClient.delete).toHaveBeenCalledWith('/playlists/playlist-1/tracks', {
+        data: { trackIds: ['track-1'] },
+      });
       expect(result).toEqual(mockResponse);
     });
   });
