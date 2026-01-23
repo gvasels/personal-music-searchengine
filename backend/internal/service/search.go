@@ -94,6 +94,20 @@ func (s *searchServiceImpl) Search(ctx context.Context, userID string, req model
 	// Enrich with cover art URLs
 	s.enrichTracksWithCoverArt(ctx, userID, tracks)
 
+	// Search playlists by name
+	playlistResults, err := s.repo.SearchPlaylists(ctx, userID, req.Query, 5)
+	if err != nil {
+		// Log but don't fail the search if playlist search fails
+		fmt.Printf("Warning: playlist search failed: %v\n", err)
+		playlistResults = []models.Playlist{}
+	}
+
+	// Convert playlists to response format
+	playlists := make([]models.PlaylistResponse, 0, len(playlistResults))
+	for _, p := range playlistResults {
+		playlists = append(playlists, p.ToResponse(""))
+	}
+
 	// Determine total count (filtered count when tags applied)
 	totalResults := resp.Total
 	hasMore := resp.NextCursor != ""
@@ -108,6 +122,7 @@ func (s *searchServiceImpl) Search(ctx context.Context, userID string, req model
 		Query:        req.Query,
 		TotalResults: totalResults,
 		Tracks:       tracks,
+		Playlists:    playlists,
 		Limit:        limit,
 		NextCursor:   resp.NextCursor,
 		HasMore:      hasMore,
@@ -172,9 +187,24 @@ func (s *searchServiceImpl) Autocomplete(ctx context.Context, userID, query stri
 			})
 		}
 
-		// Limit total suggestions
-		if len(suggestions) >= 10 {
+		// Limit total suggestions from tracks
+		if len(suggestions) >= 8 {
 			break
+		}
+	}
+
+	// Search playlists and add to suggestions
+	playlistResults, err := s.repo.SearchPlaylists(ctx, userID, query, 3)
+	if err == nil {
+		for _, playlist := range playlistResults {
+			suggestions = append(suggestions, models.SearchSuggestion{
+				Value:      playlist.Name,
+				Type:       "playlist",
+				PlaylistID: playlist.ID,
+			})
+			if len(suggestions) >= 12 {
+				break
+			}
 		}
 	}
 

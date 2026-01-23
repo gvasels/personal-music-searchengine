@@ -57,3 +57,23 @@ func (h *Handlers) AdvancedSearch(c echo.Context) error {
 
 	return success(c, resp)
 }
+
+// Autocomplete provides search suggestions for the query
+func (h *Handlers) Autocomplete(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == "" {
+		return handleError(c, models.ErrUnauthorized)
+	}
+
+	query := c.QueryParam("q")
+	if query == "" {
+		return handleError(c, models.NewValidationError("query parameter 'q' is required"))
+	}
+
+	resp, err := h.services.Search.Autocomplete(c.Request().Context(), userID, query)
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	return success(c, resp)
+}

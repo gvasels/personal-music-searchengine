@@ -40,11 +40,11 @@ export function PlayerBar() {
       <div className="flex items-center gap-3 w-1/4">
         {currentTrack && (
           <>
-            {currentTrack.artworkS3Key ? (
+            {currentTrack.coverArtUrl ? (
               <img
-                src={currentTrack.artworkS3Key}
+                src={currentTrack.coverArtUrl}
                 alt={currentTrack.album}
-                className="w-14 h-14 rounded"
+                className="w-14 h-14 rounded object-cover"
               />
             ) : (
               <div className="w-14 h-14 bg-base-300 rounded flex items-center justify-center">

@@ -18,12 +18,13 @@ describe('Search API (Wave 4)', () => {
   });
 
   const mockSearchResults = {
-    items: [
+    query: 'test',
+    tracks: [
       { id: 'track-1', title: 'Test Song', artist: 'Test Artist', album: 'Test Album' },
     ],
-    total: 1,
+    totalResults: 1,
     limit: 20,
-    offset: 0,
+    hasMore: false,
   };
 
   describe('searchTracks', () => {
@@ -33,7 +34,7 @@ describe('Search API (Wave 4)', () => {
       const result = await searchTracks({ query: 'test' });
 
       expect(apiClient.get).toHaveBeenCalledWith('/search', { params: { query: 'test' } });
-      expect(result.items).toHaveLength(1);
+      expect(result.tracks).toHaveLength(1);
     });
 
     it('should search with filters', async () => {

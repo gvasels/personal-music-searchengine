@@ -164,10 +164,17 @@ func (s *playlistService) ListPlaylists(ctx context.Context, userID string, filt
 		}
 		resp := playlist.ToResponse(coverArtURL)
 
-		// Calculate actual track count from playlist-track associations
+		// Calculate actual track count from existing tracks only
 		playlistTracks, err := s.repo.GetPlaylistTracks(ctx, playlist.ID)
 		if err == nil {
-			resp.TrackCount = len(playlistTracks)
+			existingCount := 0
+			for _, pt := range playlistTracks {
+				// Only count tracks that still exist
+				if _, err := s.repo.GetTrack(ctx, userID, pt.TrackID); err == nil {
+					existingCount++
+				}
+			}
+			resp.TrackCount = existingCount
 		}
 
 		responses = append(responses, resp)

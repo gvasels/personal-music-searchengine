@@ -78,9 +78,22 @@ func NewSigner(domain, keyPairID string, privateKeyPEM []byte) (*Signer, error) 
 	}, nil
 }
 
+// SignedURLOptions contains options for generating signed URLs.
+type SignedURLOptions struct {
+	// ForceDownload adds response-content-disposition header to force browser download
+	ForceDownload bool
+	// FileName is the filename to use when ForceDownload is true
+	FileName string
+}
+
 // GenerateSignedURL generates a CloudFront signed URL with a canned policy.
 // The expiry duration must be between MinExpiration (5 minutes) and MaxExpiration (7 days).
 func (s *Signer) GenerateSignedURL(ctx context.Context, key string, expiry time.Duration) (string, error) {
+	return s.GenerateSignedURLWithOptions(ctx, key, expiry, nil)
+}
+
+// GenerateSignedURLWithOptions generates a CloudFront signed URL with options.
+func (s *Signer) GenerateSignedURLWithOptions(ctx context.Context, key string, expiry time.Duration, opts *SignedURLOptions) (string, error) {
 	// Validate expiration bounds
 	if expiry < MinExpiration {
 		return "", ErrExpirationTooShort
@@ -93,10 +106,27 @@ func (s *Signer) GenerateSignedURL(ctx context.Context, key string, expiry time.
 
 	// Build the URL
 	key = strings.TrimPrefix(key, "/")
-	url := fmt.Sprintf("https://%s/%s", s.domain, key)
+	baseURL := fmt.Sprintf("https://%s/%s", s.domain, key)
 
-	// Create canned policy
-	policy := fmt.Sprintf(`{"Statement":[{"Resource":"%s","Condition":{"DateLessThan":{"AWS:EpochTime":%d}}}]}`, url, expiresAt)
+	// Add query parameters if needed
+	resourceURL := baseURL
+	queryParams := ""
+	if opts != nil && opts.ForceDownload {
+		filename := opts.FileName
+		if filename == "" {
+			// Extract filename from key
+			parts := strings.Split(key, "/")
+			filename = parts[len(parts)-1]
+		}
+		// URL-encode the filename for Content-Disposition header
+		encodedFilename := strings.ReplaceAll(filename, " ", "%20")
+		encodedFilename = strings.ReplaceAll(encodedFilename, "\"", "%22")
+		queryParams = fmt.Sprintf("response-content-disposition=attachment%%3B%%20filename%%3D%%22%s%%22", encodedFilename)
+		resourceURL = baseURL + "?" + queryParams
+	}
+
+	// Create canned policy - use URL with query params for signature
+	policy := fmt.Sprintf(`{"Statement":[{"Resource":"%s","Condition":{"DateLessThan":{"AWS:EpochTime":%d}}}]}`, resourceURL, expiresAt)
 
 	// Sign the policy
 	signature, err := s.signPolicy(policy)
@@ -104,13 +134,24 @@ func (s *Signer) GenerateSignedURL(ctx context.Context, key string, expiry time.
 		return "", fmt.Errorf("failed to sign policy: %w", err)
 	}
 
-	// Build signed URL with canned policy
-	signedURL := fmt.Sprintf("%s?Expires=%d&Signature=%s&Key-Pair-Id=%s",
-		url,
-		expiresAt,
-		encodeBase64ForURL(signature),
-		s.keyPairID,
-	)
+	// Build signed URL
+	var signedURL string
+	if queryParams != "" {
+		signedURL = fmt.Sprintf("%s?%s&Expires=%d&Signature=%s&Key-Pair-Id=%s",
+			baseURL,
+			queryParams,
+			expiresAt,
+			encodeBase64ForURL(signature),
+			s.keyPairID,
+		)
+	} else {
+		signedURL = fmt.Sprintf("%s?Expires=%d&Signature=%s&Key-Pair-Id=%s",
+			baseURL,
+			expiresAt,
+			encodeBase64ForURL(signature),
+			s.keyPairID,
+		)
+	}
 
 	return signedURL, nil
 }
@@ -124,6 +165,16 @@ func (s *Signer) SignStreamURL(ctx context.Context, userID, trackID string, expi
 // SignDownloadURL generates a signed URL for direct file download.
 func (s *Signer) SignDownloadURL(ctx context.Context, s3Key string, expiry time.Duration) (string, error) {
 	return s.GenerateSignedURL(ctx, s3Key, expiry)
+}
+
+// GenerateSignedDownloadURL generates a signed URL with Content-Disposition: attachment header
+// to force the browser to download the file instead of playing it.
+func (s *Signer) GenerateSignedDownloadURL(ctx context.Context, key string, expiry time.Duration, filename string) (string, error) {
+	opts := &SignedURLOptions{
+		ForceDownload: true,
+		FileName:      filename,
+	}
+	return s.GenerateSignedURLWithOptions(ctx, key, expiry, opts)
 }
 
 // SignCoverArtURL generates a signed URL for cover art.

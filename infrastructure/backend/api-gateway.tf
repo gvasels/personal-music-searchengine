@@ -6,7 +6,7 @@ resource "aws_apigatewayv2_api" "api" {
   description   = "Personal Music Search Engine API"
 
   cors_configuration {
-    allow_origins     = ["http://localhost:5173", "http://localhost:3000", "https://d8wn3lkytn5qe.cloudfront.net"]
+    allow_origins     = ["http://localhost:5173", "http://localhost:3000", "https://d8wn3lkytn5qe.cloudfront.net", "https://music.vasels.com"]
     allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers     = ["Authorization", "Content-Type", "X-User-ID"]
     expose_headers    = ["X-Request-Id"]
@@ -165,6 +165,14 @@ resource "aws_apigatewayv2_route" "get_album" {
 resource "aws_apigatewayv2_route" "list_artists" {
   api_id             = aws_apigatewayv2_api.api.id
   route_key          = "GET /api/v1/artists"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_artist" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/artists/{name}"
   target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
@@ -370,6 +378,14 @@ resource "aws_apigatewayv2_route" "simple_search" {
 resource "aws_apigatewayv2_route" "advanced_search" {
   api_id             = aws_apigatewayv2_api.api.id
   route_key          = "POST /api/v1/search"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "autocomplete" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/search/autocomplete"
   target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

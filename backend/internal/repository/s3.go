@@ -80,6 +80,24 @@ func (r *S3RepositoryImpl) GeneratePresignedDownloadURL(ctx context.Context, key
 	return request.URL, nil
 }
 
+// GeneratePresignedDownloadURLWithFilename generates a presigned URL with Content-Disposition header
+// to force the browser to download the file with the specified filename
+func (r *S3RepositoryImpl) GeneratePresignedDownloadURLWithFilename(ctx context.Context, key string, expiry time.Duration, filename string) (string, error) {
+	contentDisposition := fmt.Sprintf("attachment; filename=\"%s\"", filename)
+	request, err := r.presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket:                     aws.String(r.bucketName),
+		Key:                        aws.String(key),
+		ResponseContentDisposition: aws.String(contentDisposition),
+	}, func(opts *s3.PresignOptions) {
+		opts.Expires = expiry
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to generate presigned download URL: %w", err)
+	}
+
+	return request.URL, nil
+}
+
 // InitiateMultipartUpload starts a multipart upload and returns the upload ID
 func (r *S3RepositoryImpl) InitiateMultipartUpload(ctx context.Context, key, contentType string) (string, error) {
 	result, err := r.client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{

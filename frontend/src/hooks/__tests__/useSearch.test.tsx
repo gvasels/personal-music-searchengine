@@ -56,16 +56,17 @@ describe('useSearch Hooks (Wave 4)', () => {
 
     it('should fetch search results', async () => {
       vi.mocked(searchApi.searchTracks).mockResolvedValue({
-        items: [{ id: 'track-1', title: 'Test' }] as any,
-        total: 1,
+        query: 'test',
+        tracks: [{ id: 'track-1', title: 'Test' }] as any,
+        totalResults: 1,
         limit: 20,
-        offset: 0,
+        hasMore: false,
       });
 
       const { result } = renderHook(() => useSearchQuery({ query: 'test' }), { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(result.current.data?.items).toHaveLength(1);
+        expect(result.current.data?.tracks).toHaveLength(1);
       });
     });
 

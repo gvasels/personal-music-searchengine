@@ -43,6 +43,12 @@ type Track struct {
 	LastPlayed  *time.Time  `json:"lastPlayed,omitempty" dynamodbav:"lastPlayed,omitempty"`
 	Tags        []string    `json:"tags,omitempty" dynamodbav:"tags,omitempty"`
 
+	// Audio analysis fields
+	BPM         int    `json:"bpm,omitempty" dynamodbav:"bpm,omitempty"`                 // Beats per minute (20-300)
+	MusicalKey  string `json:"musicalKey,omitempty" dynamodbav:"musicalKey,omitempty"`   // e.g., "Am", "C", "F#m"
+	KeyMode     string `json:"keyMode,omitempty" dynamodbav:"keyMode,omitempty"`         // "major" or "minor"
+	KeyCamelot  string `json:"keyCamelot,omitempty" dynamodbav:"keyCamelot,omitempty"`   // e.g., "8A", "11B"
+
 	// HLS streaming fields
 	HLSStatus        HLSStatus `json:"hlsStatus,omitempty" dynamodbav:"hlsStatus,omitempty"`
 	HLSPlaylistKey   string    `json:"hlsPlaylistKey,omitempty" dynamodbav:"hlsPlaylistKey,omitempty"` // S3 key to master.m3u8
@@ -127,6 +133,10 @@ type TrackResponse struct {
 	PlayCount    int       `json:"playCount"`
 	LastPlayed   *time.Time `json:"lastPlayed,omitempty"`
 	Tags         []string  `json:"tags"`
+	BPM          int       `json:"bpm,omitempty"`
+	MusicalKey   string    `json:"musicalKey,omitempty"`
+	KeyMode      string    `json:"keyMode,omitempty"`
+	KeyCamelot   string    `json:"keyCamelot,omitempty"`
 	HLSStatus    string    `json:"hlsStatus,omitempty"`
 	HLSReady     bool      `json:"hlsReady"`
 	CreatedAt    time.Time `json:"createdAt"`
@@ -161,6 +171,10 @@ func (t *Track) ToResponse(coverArtURL string) TrackResponse {
 		PlayCount:    t.PlayCount,
 		LastPlayed:   t.LastPlayed,
 		Tags:         tags,
+		BPM:          t.BPM,
+		MusicalKey:   t.MusicalKey,
+		KeyMode:      t.KeyMode,
+		KeyCamelot:   t.KeyCamelot,
 		HLSStatus:    string(t.HLSStatus),
 		HLSReady:     t.HLSStatus == HLSStatusReady,
 		CreatedAt:    t.CreatedAt,
@@ -175,8 +189,11 @@ type TrackFilter struct {
 	Genre       string   `query:"genre"`
 	Year        int      `query:"year"`
 	Tags        []string `query:"tags"`
-	SortBy      string   `query:"sortBy"`    // title, artist, album, createdAt, playCount
-	SortOrder   string   `query:"sortOrder"` // asc, desc
+	BPMMin      int      `query:"bpmMin"`      // Minimum BPM filter
+	BPMMax      int      `query:"bpmMax"`      // Maximum BPM filter
+	MusicalKey  string   `query:"musicalKey"`  // Filter by musical key (e.g., "Am", "C")
+	SortBy      string   `query:"sortBy"`      // title, artist, album, createdAt, playCount, bpm
+	SortOrder   string   `query:"sortOrder"`   // asc, desc
 	Limit       int      `query:"limit"`
 	LastKey     string   `query:"lastKey"`
 	GlobalScope bool     `query:"-"` // If true, return tracks from all users (requires GLOBAL permission)

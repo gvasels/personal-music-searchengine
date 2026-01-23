@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -276,8 +277,10 @@ func (r *DynamoDBRepository) listAllTracks(ctx context.Context, limit int, filte
 
 func (r *DynamoDBRepository) ListTracksByArtist(ctx context.Context, userID, artist string) ([]models.Track, error) {
 	keyCondition := expression.Key("GSI1PK").Equal(expression.Value(fmt.Sprintf("USER#%s#ARTIST#%s", userID, artist)))
+	// Filter to only return tracks (not albums which share the same GSI1PK)
+	filter := expression.Name("Type").Equal(expression.Value("TRACK"))
 
-	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition).WithFilter(filter)
 	expr, err := builder.Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build expression: %w", err)
@@ -287,6 +290,7 @@ func (r *DynamoDBRepository) ListTracksByArtist(ctx context.Context, userID, art
 		TableName:                 aws.String(r.tableName),
 		IndexName:                 aws.String("GSI1"),
 		KeyConditionExpression:    expr.KeyCondition(),
+		FilterExpression:          expr.Filter(),
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 	})
@@ -813,6 +817,51 @@ func (r *DynamoDBRepository) ListPlaylists(ctx context.Context, userID string, f
 		NextCursor: nextCursor,
 		HasMore:    hasMore,
 	}, nil
+}
+
+func (r *DynamoDBRepository) SearchPlaylists(ctx context.Context, userID, query string, limit int) ([]models.Playlist, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	// Query all playlists for the user
+	keyCondition := expression.Key("PK").Equal(expression.Value(fmt.Sprintf("USER#%s", userID))).
+		And(expression.Key("SK").BeginsWith("PLAYLIST#"))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query playlists: %w", err)
+	}
+
+	var items []models.PlaylistItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal playlists: %w", err)
+	}
+
+	// Filter by name (case-insensitive contains)
+	queryLower := strings.ToLower(query)
+	playlists := make([]models.Playlist, 0)
+	for _, item := range items {
+		if strings.Contains(strings.ToLower(item.Name), queryLower) {
+			playlists = append(playlists, item.Playlist)
+			if len(playlists) >= limit {
+				break
+			}
+		}
+	}
+
+	return playlists, nil
 }
 
 func (r *DynamoDBRepository) AddTracksToPlaylist(ctx context.Context, playlistID string, trackIDs []string, position int) error {

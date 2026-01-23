@@ -97,16 +97,22 @@ describe('usePlaylists (Wave 5)', () => {
   });
 
   describe('usePlaylistQuery', () => {
-    it('should fetch a single playlist', async () => {
-      const mockPlaylist = {
-        id: 'playlist-1',
-        name: 'Favorites',
-        trackIds: ['track-1', 'track-2'],
-        trackCount: 2,
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
+    it('should fetch a single playlist with tracks', async () => {
+      const mockPlaylistWithTracks = {
+        playlist: {
+          id: 'playlist-1',
+          name: 'Favorites',
+          trackIds: ['track-1', 'track-2'],
+          trackCount: 2,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
+        tracks: [
+          { id: 'track-1', title: 'Song 1', artist: 'Artist 1', album: 'Album 1', duration: 180, format: 'mp3', fileSize: 1000, s3Key: 'key1', tags: [], createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+          { id: 'track-2', title: 'Song 2', artist: 'Artist 2', album: 'Album 2', duration: 200, format: 'mp3', fileSize: 1200, s3Key: 'key2', tags: [], createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+        ],
       };
-      vi.mocked(playlistsApi.getPlaylist).mockResolvedValue(mockPlaylist);
+      vi.mocked(playlistsApi.getPlaylist).mockResolvedValue(mockPlaylistWithTracks);
 
       const { result } = renderHook(() => usePlaylistQuery('playlist-1'), {
         wrapper: createWrapper(),
@@ -116,7 +122,9 @@ describe('usePlaylists (Wave 5)', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data).toEqual(mockPlaylist);
+      expect(result.current.data).toEqual(mockPlaylistWithTracks);
+      expect(result.current.data?.playlist.name).toBe('Favorites');
+      expect(result.current.data?.tracks).toHaveLength(2);
       expect(playlistsApi.getPlaylist).toHaveBeenCalledWith('playlist-1');
     });
 

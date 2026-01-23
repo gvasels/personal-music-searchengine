@@ -33,7 +33,7 @@ export function TrackList({ tracks, isLoading, showDownload = false, showAddedDa
 
   const handleArtistClick = (e: React.MouseEvent, artist: string) => {
     e.stopPropagation();
-    navigate({ to: '/search', search: { q: artist } });
+    navigate({ to: '/artists/$artistName', params: { artistName: artist } });
   };
 
   const handleAlbumClick = (e: React.MouseEvent, album: string) => {
@@ -110,17 +110,19 @@ export function TrackList({ tracks, isLoading, showDownload = false, showAddedDa
               )}
             </td>
             <td className="font-medium">{track.title}</td>
-            <td>
+            <td onClick={(e) => e.stopPropagation()}>
               <button
-                className="text-base-content/70 hover:text-primary hover:underline"
+                type="button"
+                className="text-base-content/70 hover:text-primary hover:underline cursor-pointer"
                 onClick={(e) => handleArtistClick(e, track.artist)}
               >
                 {track.artist}
               </button>
             </td>
-            <td>
+            <td onClick={(e) => e.stopPropagation()}>
               <button
-                className="text-base-content/70 hover:text-primary hover:underline"
+                type="button"
+                className="text-base-content/70 hover:text-primary hover:underline cursor-pointer"
                 onClick={(e) => handleAlbumClick(e, track.album)}
               >
                 {track.album}

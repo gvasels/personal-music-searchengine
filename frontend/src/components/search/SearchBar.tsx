@@ -105,6 +105,11 @@ export function SearchBar() {
           // Search for the artist
           navigate({ to: '/search', search: { q: suggestion.value } });
           break;
+        case 'playlist':
+          if (suggestion.playlistId) {
+            navigate({ to: '/playlists/$playlistId', params: { playlistId: suggestion.playlistId } });
+          }
+          break;
       }
     },
     [navigate]
@@ -191,6 +196,7 @@ export function SearchBar() {
       track: 'Tracks',
       artist: 'Artists',
       album: 'Albums',
+      playlist: 'Playlists',
     };
 
     const startIndex = flatSuggestions.findIndex(
@@ -251,7 +257,7 @@ export function SearchBar() {
         </div>
       ) : (
         <>
-          {['track', 'artist', 'album'].map(
+          {['track', 'artist', 'album', 'playlist'].map(
             (type) =>
               groupedSuggestions[type]?.length > 0 &&
               renderSuggestionGroup(type, groupedSuggestions[type])

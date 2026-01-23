@@ -104,24 +104,15 @@ func (s *streamService) GetDownloadURL(ctx context.Context, userID, trackID stri
 		return nil, err
 	}
 
-	// Generate download URL
-	var downloadURL string
-	if s.cloudfront != nil {
-		// Use CloudFront for download
-		downloadURL, err = s.cloudfront.GenerateSignedURL(ctx, track.S3Key, downloadURLExpiry)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate download URL: %w", err)
-		}
-	} else {
-		// Fallback to S3 presigned URL
-		downloadURL, err = s.s3Repo.GeneratePresignedDownloadURL(ctx, track.S3Key, downloadURLExpiry)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate download URL: %w", err)
-		}
-	}
-
 	// Generate friendly filename
 	fileName := fmt.Sprintf("%s - %s%s", track.Artist, track.Title, getExtensionFromFormat(track.Format))
+
+	// Use S3 presigned URL for downloads - it supports Content-Disposition header natively
+	// CloudFront would require query string forwarding configuration to support this
+	downloadURL, err := s.s3Repo.GeneratePresignedDownloadURLWithFilename(ctx, track.S3Key, downloadURLExpiry, fileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate download URL: %w", err)
+	}
 
 	return &models.DownloadResponse{
 		TrackID:     trackID,

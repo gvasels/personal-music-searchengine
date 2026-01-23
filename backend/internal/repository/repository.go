@@ -52,6 +52,7 @@ type Repository interface {
 	UpdatePlaylist(ctx context.Context, playlist models.Playlist) error
 	DeletePlaylist(ctx context.Context, userID, playlistID string) error
 	ListPlaylists(ctx context.Context, userID string, filter models.PlaylistFilter) (*PaginatedResult[models.Playlist], error)
+	SearchPlaylists(ctx context.Context, userID, query string, limit int) ([]models.Playlist, error)
 	AddTracksToPlaylist(ctx context.Context, playlistID string, trackIDs []string, position int) error
 	RemoveTracksFromPlaylist(ctx context.Context, playlistID string, trackIDs []string) error
 	GetPlaylistTracks(ctx context.Context, playlistID string) ([]models.PlaylistTrack, error)
@@ -82,6 +83,7 @@ type S3Repository interface {
 	// Presigned URL operations
 	GeneratePresignedUploadURL(ctx context.Context, key, contentType string, expiry time.Duration) (string, error)
 	GeneratePresignedDownloadURL(ctx context.Context, key string, expiry time.Duration) (string, error)
+	GeneratePresignedDownloadURLWithFilename(ctx context.Context, key string, expiry time.Duration, filename string) (string, error)
 
 	// Multipart upload operations
 	InitiateMultipartUpload(ctx context.Context, key, contentType string) (string, error)
@@ -99,4 +101,5 @@ type S3Repository interface {
 // CloudFrontSigner defines signed URL operations for streaming
 type CloudFrontSigner interface {
 	GenerateSignedURL(ctx context.Context, key string, expiry time.Duration) (string, error)
+	GenerateSignedDownloadURL(ctx context.Context, key string, expiry time.Duration, filename string) (string, error)
 }

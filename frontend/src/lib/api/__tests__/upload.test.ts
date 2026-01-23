@@ -59,33 +59,49 @@ describe('Upload API (Wave 4)', () => {
   describe('getUploadStatus', () => {
     it('should get upload processing status', async () => {
       const mockResponse = {
-        uploadId: 'upload-123',
-        status: 'completed',
+        id: 'upload-123',
+        fileName: 'test.mp3',
+        status: 'COMPLETED',
         trackId: 'track-456',
-        error: null,
+        errorMsg: null,
+        steps: {
+          metadataExtracted: true,
+          coverArtExtracted: true,
+          trackCreated: true,
+          indexed: true,
+          fileMoved: true,
+        },
       };
       vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await getUploadStatus('upload-123');
 
       expect(apiClient.get).toHaveBeenCalledWith('/uploads/upload-123');
-      expect(result.status).toBe('completed');
+      expect(result.status).toBe('COMPLETED');
       expect(result.trackId).toBe('track-456');
     });
 
     it('should return error status on failure', async () => {
       const mockResponse = {
-        uploadId: 'upload-123',
-        status: 'failed',
+        id: 'upload-123',
+        fileName: 'test.mp3',
+        status: 'FAILED',
         trackId: null,
-        error: 'Invalid audio format',
+        errorMsg: 'Invalid audio format',
+        steps: {
+          metadataExtracted: false,
+          coverArtExtracted: false,
+          trackCreated: false,
+          indexed: false,
+          fileMoved: false,
+        },
       };
       vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await getUploadStatus('upload-123');
 
-      expect(result.status).toBe('failed');
-      expect(result.error).toBe('Invalid audio format');
+      expect(result.status).toBe('FAILED');
+      expect(result.errorMsg).toBe('Invalid audio format');
     });
   });
 });

@@ -1,8 +1,8 @@
 /**
  * Tracks List Page - Wave 2
- * Updated with play button, tags column, and actions
+ * Updated with play button, tags column, actions, and sortable columns
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useTracksQuery, useDeleteTrack } from '../../hooks/useTracks';
 import { usePlayerStore } from '@/lib/store/playerStore';
@@ -10,6 +10,9 @@ import { TagsCell } from '@/components/library/TagsCell';
 import { AddToPlaylistDropdown } from '@/components/library';
 import { getDownloadUrl } from '@/lib/api/client';
 import type { Track } from '../../types';
+
+type SortField = 'title' | 'artist' | 'album' | 'duration' | 'createdAt';
+type SortOrder = 'asc' | 'desc';
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -32,6 +35,67 @@ export default function TracksPage() {
   const { currentTrack, isPlaying, setQueue, pause } = usePlayerStore();
   const deleteTrackMutation = useDeleteTrack();
   const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
+  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
+  // Sort tracks client-side
+  const sortedTracks = useMemo(() => {
+    if (!data?.items) return [];
+
+    return [...data.items].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortField) {
+        case 'title':
+          comparison = a.title.localeCompare(b.title);
+          break;
+        case 'artist':
+          comparison = a.artist.localeCompare(b.artist);
+          break;
+        case 'album':
+          comparison = (a.album || '').localeCompare(b.album || '');
+          break;
+        case 'duration':
+          comparison = a.duration - b.duration;
+          break;
+        case 'createdAt':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [data?.items, sortField, sortOrder]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle order if same field
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to ascending (except createdAt which defaults to desc)
+      setSortField(field);
+      setSortOrder(field === 'createdAt' ? 'desc' : 'asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return (
+        <svg className="w-4 h-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      );
+    }
+    return sortOrder === 'asc' ? (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+      </svg>
+    ) : (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    );
+  };
 
   const handleTrackClick = (track: Track) => {
     void navigate({
@@ -52,16 +116,10 @@ export default function TracksPage() {
       }
     } else {
       // Play new track, queue all tracks starting from this one
-      setQueue(data?.items || [], index);
+      setQueue(sortedTracks, index);
     }
   };
 
-  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    void navigate({
-      to: '/tracks',
-      search: { sortBy: e.target.value },
-    });
-  };
 
   const handleDownload = async (e: React.MouseEvent, track: Track) => {
     e.stopPropagation();
@@ -127,19 +185,6 @@ export default function TracksPage() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">{data.total} tracks</h1>
-        <label className="form-control w-auto">
-          <select
-            className="select select-bordered select-sm"
-            onChange={handleSortChange}
-            aria-label="Sort by"
-          >
-            <option value="">Sort by...</option>
-            <option value="title">Title</option>
-            <option value="artist">Artist</option>
-            <option value="album">Album</option>
-            <option value="createdAt">Date Added</option>
-          </select>
-        </label>
       </div>
 
       <div className="overflow-x-auto">
@@ -147,17 +192,57 @@ export default function TracksPage() {
           <thead>
             <tr>
               <th className="w-12"></th>
-              <th>Title</th>
-              <th>Artist</th>
-              <th>Album</th>
+              <th>
+                <button
+                  className="flex items-center gap-1 hover:text-primary transition-colors"
+                  onClick={() => handleSort('title')}
+                >
+                  Title
+                  <SortIcon field="title" />
+                </button>
+              </th>
+              <th>
+                <button
+                  className="flex items-center gap-1 hover:text-primary transition-colors"
+                  onClick={() => handleSort('artist')}
+                >
+                  Artist
+                  <SortIcon field="artist" />
+                </button>
+              </th>
+              <th>
+                <button
+                  className="flex items-center gap-1 hover:text-primary transition-colors"
+                  onClick={() => handleSort('album')}
+                >
+                  Album
+                  <SortIcon field="album" />
+                </button>
+              </th>
               <th>Tags</th>
-              <th>Duration</th>
-              <th>Uploaded</th>
+              <th>
+                <button
+                  className="flex items-center gap-1 hover:text-primary transition-colors"
+                  onClick={() => handleSort('duration')}
+                >
+                  Duration
+                  <SortIcon field="duration" />
+                </button>
+              </th>
+              <th>
+                <button
+                  className="flex items-center gap-1 hover:text-primary transition-colors"
+                  onClick={() => handleSort('createdAt')}
+                >
+                  Uploaded
+                  <SortIcon field="createdAt" />
+                </button>
+              </th>
               <th className="w-24">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {data.items.map((track, index) => {
+            {sortedTracks.map((track, index) => {
               const isCurrentTrack = currentTrack?.id === track.id;
               const isCurrentlyPlaying = isCurrentTrack && isPlaying;
 

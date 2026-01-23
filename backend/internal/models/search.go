@@ -27,15 +27,16 @@ type SearchSort struct {
 
 // SearchResponse represents search results
 type SearchResponse struct {
-	Query        string          `json:"query"`
-	TotalResults int             `json:"totalResults"`
-	Tracks       []TrackResponse `json:"tracks"`
-	Albums       []AlbumResponse `json:"albums,omitempty"`
-	Artists      []ArtistSummary `json:"artists,omitempty"`
-	Facets       SearchFacets    `json:"facets,omitempty"`
-	Limit        int             `json:"limit"`
-	NextCursor   string          `json:"nextCursor,omitempty"` // Next page cursor (empty if no more results)
-	HasMore      bool            `json:"hasMore"`
+	Query        string             `json:"query"`
+	TotalResults int                `json:"totalResults"`
+	Tracks       []TrackResponse    `json:"tracks"`
+	Albums       []AlbumResponse    `json:"albums,omitempty"`
+	Artists      []ArtistSummary    `json:"artists,omitempty"`
+	Playlists    []PlaylistResponse `json:"playlists,omitempty"`
+	Facets       SearchFacets       `json:"facets,omitempty"`
+	Limit        int                `json:"limit"`
+	NextCursor   string             `json:"nextCursor,omitempty"` // Next page cursor (empty if no more results)
+	HasMore      bool               `json:"hasMore"`
 }
 
 // SearchFacets represents aggregated facets for filtering
@@ -56,11 +57,12 @@ type FacetItem struct {
 
 // SearchSuggestion represents an autocomplete suggestion
 type SearchSuggestion struct {
-	Value    string `json:"value"`
-	Type     string `json:"type"` // track, artist, album, tag
-	TrackID  string `json:"trackId,omitempty"`
-	AlbumID  string `json:"albumId,omitempty"`
-	ImageURL string `json:"imageUrl,omitempty"`
+	Value      string `json:"value"`
+	Type       string `json:"type"` // track, artist, album, playlist, tag
+	TrackID    string `json:"trackId,omitempty"`
+	AlbumID    string `json:"albumId,omitempty"`
+	PlaylistID string `json:"playlistId,omitempty"`
+	ImageURL   string `json:"imageUrl,omitempty"`
 }
 
 // AutocompleteResponse represents autocomplete suggestions

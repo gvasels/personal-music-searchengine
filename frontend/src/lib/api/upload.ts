@@ -21,11 +21,21 @@ export interface UploadConfirmResponse {
   trackId: string | null;
 }
 
+export interface UploadSteps {
+  metadataExtracted: boolean;
+  coverArtExtracted: boolean;
+  trackCreated: boolean;
+  indexed: boolean;
+  fileMoved: boolean;
+}
+
 export interface UploadStatusResponse {
-  uploadId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  id: string;
+  fileName: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   trackId: string | null;
-  error: string | null;
+  errorMsg: string | null;
+  steps: UploadSteps;
 }
 
 export async function getPresignedUploadUrl(data: PresignedUploadRequest): Promise<PresignedUploadResponse> {

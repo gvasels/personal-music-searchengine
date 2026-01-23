@@ -11,7 +11,7 @@ export interface Track {
   format: string;
   fileSize: number;
   s3Key: string;
-  artworkS3Key?: string;
+  coverArtUrl?: string;
   tags: string[];
   bpm?: number;           // Beats per minute (20-300)
   musicalKey?: string;    // e.g., "Am", "C", "F#m"

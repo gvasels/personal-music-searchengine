@@ -2,7 +2,7 @@
  * Search API Module - Wave 4
  */
 import { apiClient } from './client';
-import type { Track, PaginatedResponse } from '../../types';
+import type { Track, Playlist } from '../../types';
 
 export interface SearchParams {
   query: string;
@@ -13,18 +13,29 @@ export interface SearchParams {
 }
 
 export interface AutocompleteSuggestion {
-  type: 'track' | 'artist' | 'album';
+  type: 'track' | 'artist' | 'album' | 'playlist';
   value: string;
   trackId?: string;
   albumId?: string;
+  playlistId?: string;
 }
 
 export interface AutocompleteResponse {
   suggestions: AutocompleteSuggestion[];
 }
 
-export async function searchTracks(params: SearchParams): Promise<PaginatedResponse<Track>> {
-  const response = await apiClient.get<PaginatedResponse<Track>>('/search', { params });
+export interface SearchResponse {
+  query: string;
+  totalResults: number;
+  tracks: Track[];
+  playlists?: Playlist[];
+  limit: number;
+  nextCursor?: string;
+  hasMore: boolean;
+}
+
+export async function searchTracks(params: SearchParams): Promise<SearchResponse> {
+  const response = await apiClient.get<SearchResponse>('/search', { params });
   return response.data;
 }
 

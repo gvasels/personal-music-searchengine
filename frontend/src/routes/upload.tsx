@@ -41,29 +41,38 @@ export default function UploadPage() {
           {uploads.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between p-3 bg-base-200 rounded-lg"
+              className="p-4 bg-base-200 rounded-lg space-y-3"
             >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🎵</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🎵</span>
+                  <div>
+                    <p className="font-medium">{item.filename}</p>
+                    <p className="text-sm text-base-content/60">{item.currentStep}</p>
+                  </div>
+                </div>
                 <div>
-                  <p className="font-medium">{item.filename}</p>
-                  <p className="text-sm text-base-content/60 capitalize">{item.status}</p>
+                  {item.status === 'completed' && (
+                    <span className="badge badge-success">Completed</span>
+                  )}
+                  {item.status === 'failed' && (
+                    <span className="badge badge-error">Failed</span>
+                  )}
+                  {(item.status === 'uploading' || item.status === 'processing') && (
+                    <span className="text-sm font-medium">{item.progress}%</span>
+                  )}
                 </div>
               </div>
-              <div>
-                {item.status === 'completed' && (
-                  <span className="badge badge-success">Completed</span>
-                )}
-                {item.status === 'processing' && (
-                  <span className="badge badge-warning">Processing</span>
-                )}
-                {item.status === 'uploading' && (
-                  <span className="loading loading-spinner loading-sm" />
-                )}
-                {item.status === 'failed' && (
-                  <span className="badge badge-error">Failed</span>
-                )}
-              </div>
+              {(item.status === 'uploading' || item.status === 'processing') && (
+                <progress
+                  className="progress progress-primary w-full"
+                  value={item.progress}
+                  max={100}
+                />
+              )}
+              {item.error && (
+                <p className="text-sm text-error">{item.error}</p>
+              )}
             </div>
           ))}
         </div>
