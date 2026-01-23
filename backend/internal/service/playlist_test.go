@@ -71,6 +71,11 @@ func (m *MockPlaylistRepository) GetPlaylistTracks(ctx context.Context, playlist
 	return args.Get(0).([]models.PlaylistTrack), args.Error(1)
 }
 
+func (m *MockPlaylistRepository) ReorderPlaylistTracks(ctx context.Context, playlistID string, tracks []models.PlaylistTrack) error {
+	args := m.Called(ctx, playlistID, tracks)
+	return args.Error(0)
+}
+
 func (m *MockPlaylistRepository) GetTrack(ctx context.Context, userID, trackID string) (*models.Track, error) {
 	args := m.Called(ctx, userID, trackID)
 	if args.Get(0) == nil {
