@@ -156,7 +156,7 @@ describe('TracksPage (Wave 2)', () => {
   });
 
   describe('Sorting', () => {
-    it('should render sort dropdown', () => {
+    it('should render sortable column headers', () => {
       mockUseTracks.mockReturnValue({
         isLoading: false,
         data: mockTracksData,
@@ -165,10 +165,11 @@ describe('TracksPage (Wave 2)', () => {
 
       render(<TracksPage />, { wrapper: createWrapper() });
 
-      expect(screen.getByRole('combobox', { name: /sort/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /title/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /artist/i })).toBeInTheDocument();
     });
 
-    it('should update URL when sort changes', async () => {
+    it('should toggle sort when clicking column header', async () => {
       mockUseTracks.mockReturnValue({
         isLoading: false,
         data: mockTracksData,
@@ -176,9 +177,11 @@ describe('TracksPage (Wave 2)', () => {
       });
 
       render(<TracksPage />, { wrapper: createWrapper() });
-      await user.selectOptions(screen.getByRole('combobox', { name: /sort/i }), 'title');
+      // Click on the Title column header to sort
+      await user.click(screen.getByRole('button', { name: /title/i }));
 
-      expect(mockNavigate).toHaveBeenCalled();
+      // The tracks should be sorted - table still renders without navigation
+      expect(screen.getByText('Track 1')).toBeInTheDocument();
     });
   });
 

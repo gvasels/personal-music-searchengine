@@ -151,14 +151,15 @@ describe('UploadPage (Wave 4)', () => {
         progress: 0,
         error: null,
         uploads: [
-          { id: 'upload-1', filename: 'song.mp3', status: 'processing', trackId: null },
+          { id: 'upload-1', filename: 'song.mp3', status: 'processing', trackId: null, currentStep: 'Processing metadata', progress: 45 },
         ],
         reset: vi.fn(),
       });
 
       render(<UploadPage />, { wrapper: createWrapper() });
 
-      expect(screen.getByText('Processing')).toBeInTheDocument();
+      expect(screen.getByText('Processing metadata')).toBeInTheDocument();
+      expect(screen.getByText('45%')).toBeInTheDocument();
     });
   });
 });

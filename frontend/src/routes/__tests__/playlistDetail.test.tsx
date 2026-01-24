@@ -7,8 +7,16 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const mockUsePlaylistQuery = vi.fn();
+const mockUpdatePlaylist = vi.fn();
+const mockDeletePlaylist = vi.fn();
+const mockRemoveTracks = vi.fn();
+const mockReorderTracks = vi.fn();
 vi.mock('../../hooks/usePlaylists', () => ({
   usePlaylistQuery: () => mockUsePlaylistQuery(),
+  useUpdatePlaylist: () => ({ mutateAsync: mockUpdatePlaylist, isPending: false }),
+  useDeletePlaylist: () => ({ mutateAsync: mockDeletePlaylist, isPending: false }),
+  useRemoveTracksFromPlaylist: () => ({ mutateAsync: mockRemoveTracks, isPending: false }),
+  useReorderPlaylistTracks: () => ({ mutateAsync: mockReorderTracks, isPending: false }),
   playlistKeys: { all: ['playlists'], detail: (id: string) => ['playlists', 'detail', id] },
 }));
 
@@ -50,12 +58,16 @@ describe('PlaylistDetailPage (Wave 5)', () => {
     vi.clearAllMocks();
   });
 
-  const mockPlaylist = {
-    id: 'playlist-1',
-    name: 'Favorites',
-    description: 'My favorite songs',
-    trackIds: ['track-1', 'track-2'],
-    trackCount: 2,
+  const mockPlaylistData = {
+    playlist: {
+      id: 'playlist-1',
+      name: 'Favorites',
+      description: 'My favorite songs',
+      trackIds: ['track-1', 'track-2'],
+      trackCount: 2,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-02T00:00:00Z',
+    },
     tracks: [
       {
         id: 'track-1',
@@ -72,8 +84,6 @@ describe('PlaylistDetailPage (Wave 5)', () => {
         duration: 240,
       },
     ],
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-02T00:00:00Z',
   };
 
   describe('Loading state', () => {
@@ -105,7 +115,7 @@ describe('PlaylistDetailPage (Wave 5)', () => {
     it('should render playlist name', () => {
       mockUsePlaylistQuery.mockReturnValue({
         isLoading: false,
-        data: mockPlaylist,
+        data: mockPlaylistData,
         isError: false,
       });
 
@@ -117,7 +127,7 @@ describe('PlaylistDetailPage (Wave 5)', () => {
     it('should render playlist description', () => {
       mockUsePlaylistQuery.mockReturnValue({
         isLoading: false,
-        data: mockPlaylist,
+        data: mockPlaylistData,
         isError: false,
       });
 
@@ -129,7 +139,7 @@ describe('PlaylistDetailPage (Wave 5)', () => {
     it('should render track count', () => {
       mockUsePlaylistQuery.mockReturnValue({
         isLoading: false,
-        data: mockPlaylist,
+        data: mockPlaylistData,
         isError: false,
       });
 
@@ -141,7 +151,7 @@ describe('PlaylistDetailPage (Wave 5)', () => {
     it('should render tracks list', () => {
       mockUsePlaylistQuery.mockReturnValue({
         isLoading: false,
-        data: mockPlaylist,
+        data: mockPlaylistData,
         isError: false,
       });
 
@@ -156,7 +166,7 @@ describe('PlaylistDetailPage (Wave 5)', () => {
     it('should have play all button', () => {
       mockUsePlaylistQuery.mockReturnValue({
         isLoading: false,
-        data: mockPlaylist,
+        data: mockPlaylistData,
         isError: false,
       });
 
@@ -168,14 +178,14 @@ describe('PlaylistDetailPage (Wave 5)', () => {
     it('should set queue when play all clicked', async () => {
       mockUsePlaylistQuery.mockReturnValue({
         isLoading: false,
-        data: mockPlaylist,
+        data: mockPlaylistData,
         isError: false,
       });
 
       render(<PlaylistDetailPage />, { wrapper: createWrapper() });
       await user.click(screen.getByRole('button', { name: /play all/i }));
 
-      expect(mockSetQueue).toHaveBeenCalledWith(mockPlaylist.tracks, 0);
+      expect(mockSetQueue).toHaveBeenCalledWith(mockPlaylistData.tracks, 0);
     });
   });
 
@@ -183,7 +193,7 @@ describe('PlaylistDetailPage (Wave 5)', () => {
     it('should have back button', () => {
       mockUsePlaylistQuery.mockReturnValue({
         isLoading: false,
-        data: mockPlaylist,
+        data: mockPlaylistData,
         isError: false,
       });
 
@@ -197,7 +207,7 @@ describe('PlaylistDetailPage (Wave 5)', () => {
     it('should have edit button', () => {
       mockUsePlaylistQuery.mockReturnValue({
         isLoading: false,
-        data: mockPlaylist,
+        data: mockPlaylistData,
         isError: false,
       });
 
@@ -211,7 +221,7 @@ describe('PlaylistDetailPage (Wave 5)', () => {
     it('should have delete button', () => {
       mockUsePlaylistQuery.mockReturnValue({
         isLoading: false,
-        data: mockPlaylist,
+        data: mockPlaylistData,
         isError: false,
       });
 

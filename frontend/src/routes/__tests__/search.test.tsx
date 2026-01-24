@@ -40,12 +40,11 @@ describe('SearchPage (Wave 4)', () => {
   });
 
   const mockSearchResults = {
-    items: [
+    tracks: [
       { id: 'track-1', title: 'Test Track', artist: 'Test Artist', album: 'Test Album', duration: 180 },
     ],
-    total: 1,
-    limit: 20,
-    offset: 0,
+    playlists: [],
+    totalResults: 1,
   };
 
   describe('Loading state', () => {
@@ -77,18 +76,18 @@ describe('SearchPage (Wave 4)', () => {
     it('should show no results message', () => {
       mockUseSearch.mockReturnValue({
         isLoading: false,
-        data: { items: [], total: 0, limit: 20, offset: 0 },
+        data: { tracks: [], playlists: [], totalResults: 0 },
         isError: false,
       });
 
       render(<SearchPage />, { wrapper: createWrapper() });
 
-      expect(screen.getByText(/no results/i)).toBeInTheDocument();
+      expect(screen.getByText(/no results found/i)).toBeInTheDocument();
     });
   });
 
   describe('Results display', () => {
-    it('should show search query', () => {
+    it('should show search query in heading', () => {
       mockUseSearch.mockReturnValue({
         isLoading: false,
         data: mockSearchResults,
@@ -97,7 +96,7 @@ describe('SearchPage (Wave 4)', () => {
 
       render(<SearchPage />, { wrapper: createWrapper() });
 
-      expect(screen.getByText(/test query/i)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /search results for "test query"/i })).toBeInTheDocument();
     });
 
     it('should show result count', () => {
@@ -109,7 +108,7 @@ describe('SearchPage (Wave 4)', () => {
 
       render(<SearchPage />, { wrapper: createWrapper() });
 
-      expect(screen.getByText(/1 result/i)).toBeInTheDocument();
+      expect(screen.getByText('1 result')).toBeInTheDocument();
     });
 
     it('should render search results', () => {
@@ -122,7 +121,7 @@ describe('SearchPage (Wave 4)', () => {
       render(<SearchPage />, { wrapper: createWrapper() });
 
       expect(screen.getByText('Test Track')).toBeInTheDocument();
-      expect(screen.getByText('Test Artist')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Test Artist' })).toBeInTheDocument();
     });
 
     it('should navigate to track when clicking result', async () => {
