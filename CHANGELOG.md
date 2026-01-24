@@ -8,6 +8,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Stream A: Audio Features
+- **Waveform Generation** (`backend/cmd/processor/waveform/`)
+  - FFmpeg-based waveform peak extraction at 100 samples/second
+  - Normalized peak values (0.0-1.0) for consistent visualization
+  - Support for MP3, FLAC, WAV, AAC, OGG, M4A formats
+  - Fallback synthetic waveform when FFmpeg processing fails
+  - JSON serialization for S3 storage
+- **Beat Grid Calculation** (`backend/cmd/processor/beatgrid/`)
+  - Beat timestamp calculation from BPM (20-300 BPM range)
+  - Downbeat markers (every 4th beat) for DJ features
+  - Binary search for efficient beat-at-time lookup
+  - Variable BPM flag support
+- **Track Model Enhancements**
+  - `WaveformURL` - S3 URL to waveform JSON data
+  - `BeatGrid` - Array of beat timestamps in milliseconds
+  - `AnalysisStatus` - PENDING, ANALYZING, COMPLETED, FAILED
+  - `AnalyzedAt` - Analysis completion timestamp
+
 #### Epic 6: Distribution & Polish
 - Frontend S3 bucket (`music-library-prod-frontend`) for SPA hosting
   - Versioning enabled for rollback capability
