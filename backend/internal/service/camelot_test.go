@@ -151,7 +151,7 @@ func TestGetBPMCompatibility_OutOfTolerance(t *testing.T) {
 }
 
 func TestGetBPMCompatibility_HalfTime(t *testing.T) {
-	diff, compatible := GetBPMCompatibility(140, 70, 5)
+	_, compatible := GetBPMCompatibility(140, 70, 5)
 	assert.True(t, compatible, "140 BPM should be compatible with 70 BPM (half time)")
 }
 
