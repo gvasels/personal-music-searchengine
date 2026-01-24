@@ -8,6 +8,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Stream B: Platform Features
+- **Playlist Reorder Endpoint** (`PUT /playlists/:id/tracks/reorder`)
+  - Reorder tracks within a playlist by specifying new positions
+  - Validates track ownership and playlist membership
+  - Atomic position updates with batch write
+- **Audio Analysis Module** (`backend/internal/analysis/`)
+  - BPM detection using multi-segment autocorrelation algorithm
+  - Bass-emphasis filter targeting kick drum frequencies (~200Hz)
+  - Octave error correction for double/half time detection
+  - Genre-aware BPM preference (house 115-135, trance 135-150, hip-hop 85-95)
+  - Input validation for command injection prevention
+  - File extension whitelist for security
+- **Analyzer Lambda** (`backend/cmd/processor/analyzer/`)
+  - Step Functions integration for upload processing pipeline
+  - Graceful degradation - analysis failures don't block uploads
+  - 25-second timeout with context handling
+- **Bedrock Gateway** (`infrastructure/backend/bedrock-gateway.tf`)
+  - OpenAI-compatible API gateway for AWS Bedrock
+  - API key authentication via Secrets Manager
+  - CORS restricted to frontend CloudFront and localhost
+- **Migration Service** (`backend/internal/service/migration.go`)
+  - Idempotent artist entity migration
+  - Batch processing with error handling
+
 #### Stream A: Audio Features
 - **Waveform Generation** (`backend/cmd/processor/waveform/`)
   - FFmpeg-based waveform peak extraction at 100 samples/second
