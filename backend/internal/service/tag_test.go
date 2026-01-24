@@ -141,6 +141,9 @@ func (m *MockTagRepository) RemoveTracksFromPlaylist(ctx context.Context, playli
 func (m *MockTagRepository) GetPlaylistTracks(ctx context.Context, playlistID string) ([]models.PlaylistTrack, error) {
 	return nil, nil
 }
+func (m *MockTagRepository) ReorderPlaylistTracks(ctx context.Context, playlistID string, tracks []models.PlaylistTrack) error {
+	return nil
+}
 func (m *MockTagRepository) GetTrackTags(ctx context.Context, userID, trackID string) ([]string, error) {
 	return nil, nil
 }

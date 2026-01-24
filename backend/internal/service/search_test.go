@@ -144,6 +144,9 @@ func (m *MockRepository) RemoveTracksFromPlaylist(ctx context.Context, playlistI
 func (m *MockRepository) GetPlaylistTracks(ctx context.Context, playlistID string) ([]models.PlaylistTrack, error) {
 	return nil, nil
 }
+func (m *MockRepository) ReorderPlaylistTracks(ctx context.Context, playlistID string, tracks []models.PlaylistTrack) error {
+	return nil
+}
 func (m *MockRepository) CreateTag(ctx context.Context, tag models.Tag) error { return nil }
 func (m *MockRepository) GetTag(ctx context.Context, userID, tagName string) (*models.Tag, error) {
 	return nil, nil
@@ -894,6 +897,9 @@ func (m *MockFilterTagsRepository) RemoveTracksFromPlaylist(ctx context.Context,
 }
 func (m *MockFilterTagsRepository) GetPlaylistTracks(ctx context.Context, playlistID string) ([]models.PlaylistTrack, error) {
 	return nil, nil
+}
+func (m *MockFilterTagsRepository) ReorderPlaylistTracks(ctx context.Context, playlistID string, tracks []models.PlaylistTrack) error {
+	return nil
 }
 func (m *MockFilterTagsRepository) CreateTag(ctx context.Context, tag models.Tag) error {
 	return nil
