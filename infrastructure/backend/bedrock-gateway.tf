@@ -175,7 +175,7 @@ resource "aws_apigatewayv2_route" "models" {
 }
 
 # GET /health
-resource "aws_apigatewayv2_route" "health" {
+resource "aws_apigatewayv2_route" "bedrock_health" {
   api_id    = aws_apigatewayv2_api.bedrock_gateway.id
   route_key = "GET /health"
   target    = "integrations/${aws_apigatewayv2_integration.bedrock_gateway.id}"
