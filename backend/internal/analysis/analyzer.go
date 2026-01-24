@@ -42,11 +42,43 @@ func NewAnalyzer() *Analyzer {
 		ffprobePath = "ffprobe"
 	}
 
+	// Validate binary paths to prevent command injection
+	ffmpegPath = validateBinaryPath(ffmpegPath, "ffmpeg")
+	ffprobePath = validateBinaryPath(ffprobePath, "ffprobe")
+
 	return &Analyzer{
 		ffmpegPath:  ffmpegPath,
 		ffprobePath: ffprobePath,
 		sampleRate:  22050, // 22kHz is enough for beat detection
 	}
+}
+
+// validateBinaryPath ensures the binary path is safe and falls back to default if not
+func validateBinaryPath(path, defaultName string) string {
+	// If it's just the binary name (no path), it's safe - will use PATH lookup
+	if path == defaultName {
+		return path
+	}
+
+	// Check for dangerous characters that could enable command injection
+	dangerousChars := []string{";", "|", "&", "$", "`", "(", ")", "{", "}", "<", ">", "\n", "\r", " "}
+	for _, char := range dangerousChars {
+		if strings.Contains(path, char) {
+			// Fall back to default binary name
+			return defaultName
+		}
+	}
+
+	// Verify it's an absolute path if it contains a slash
+	if strings.Contains(path, "/") {
+		if !filepath.IsAbs(path) {
+			return defaultName
+		}
+		// Clean the path to remove any .. traversal
+		path = filepath.Clean(path)
+	}
+
+	return path
 }
 
 // Analyze performs BPM and key detection on an audio stream
@@ -55,10 +87,7 @@ func (a *Analyzer) Analyze(ctx context.Context, reader io.Reader, fileName strin
 
 	// Create temp file for the audio
 	tempDir := os.TempDir()
-	ext := filepath.Ext(fileName)
-	if ext == "" {
-		ext = ".mp3"
-	}
+	ext := sanitizeExtension(filepath.Ext(fileName))
 	tempFile, err := os.CreateTemp(tempDir, "audio-*"+ext)
 	if err != nil {
 		return result, fmt.Errorf("failed to create temp file: %w", err)
@@ -93,6 +122,29 @@ func (a *Analyzer) Analyze(ctx context.Context, reader io.Reader, fileName strin
 	// Would require pitch/chroma analysis
 
 	return result, nil
+}
+
+// sanitizeExtension ensures file extension is safe (alphanumeric only)
+func sanitizeExtension(ext string) string {
+	// Allowed audio extensions
+	allowedExts := map[string]bool{
+		".mp3":  true,
+		".flac": true,
+		".wav":  true,
+		".aac":  true,
+		".m4a":  true,
+		".ogg":  true,
+		".wma":  true,
+		".aiff": true,
+	}
+
+	ext = strings.ToLower(ext)
+	if allowedExts[ext] {
+		return ext
+	}
+
+	// Default to .mp3 if extension is invalid or not in allowlist
+	return ".mp3"
 }
 
 // validateInputPath checks that the path is safe for FFmpeg execution

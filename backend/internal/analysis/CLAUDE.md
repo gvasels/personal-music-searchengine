@@ -55,9 +55,20 @@ Example mappings:
 - Octave error correction for double/half time detection
 - Genre-based bonuses (house/techno 115-135, trance/D&B 135-150, hip-hop 85-95)
 - Confidence scoring requiring multiple segment agreement
-- Input path validation to prevent command injection
 
 **Key Detection**: Not yet implemented - would require pitch/chroma analysis.
+
+## Security Features
+
+**Input Validation**:
+- `validateInputPath`: Blocks command injection characters (`;|&$\`(){}><\n\r`) in file paths
+- `validateBinaryPath`: Validates FFmpeg binary paths from environment variables
+  - Rejects paths with dangerous characters
+  - Requires absolute paths if path contains `/`
+  - Falls back to default binary name if validation fails
+- `sanitizeExtension`: Whitelists allowed audio extensions (mp3, flac, wav, aac, m4a, ogg, wma, aiff)
+  - Falls back to `.mp3` for invalid/unknown extensions
+  - Prevents path traversal via malicious extensions
 
 **Audio Formats**: Supports MP3, FLAC, WAV, AAC, OGG via FFmpeg integration.
 

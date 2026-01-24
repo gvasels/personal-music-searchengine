@@ -67,6 +67,76 @@ func TestNewAnalyzer(t *testing.T) {
 		assert.Equal(t, "/custom/ffmpeg", analyzer.ffmpegPath)
 		assert.Equal(t, "/custom/ffprobe", analyzer.ffprobePath)
 	})
+
+	t.Run("rejects malicious ffmpeg path from env", func(t *testing.T) {
+		t.Setenv("FFMPEG_PATH", "/custom/ffmpeg; rm -rf /")
+		t.Setenv("FFPROBE_PATH", "/custom/ffprobe | cat /etc/passwd")
+
+		analyzer := NewAnalyzer()
+		require.NotNil(t, analyzer)
+		// Should fall back to default due to dangerous characters
+		assert.Equal(t, "ffmpeg", analyzer.ffmpegPath)
+		assert.Equal(t, "ffprobe", analyzer.ffprobePath)
+	})
+}
+
+func TestValidateBinaryPath(t *testing.T) {
+	tests := []struct {
+		name        string
+		path        string
+		defaultName string
+		expected    string
+	}{
+		{"default name unchanged", "ffmpeg", "ffmpeg", "ffmpeg"},
+		{"valid absolute path", "/usr/bin/ffmpeg", "ffmpeg", "/usr/bin/ffmpeg"},
+		{"valid custom path", "/opt/ffmpeg/bin/ffmpeg", "ffmpeg", "/opt/ffmpeg/bin/ffmpeg"},
+		{"semicolon injection", "/usr/bin/ffmpeg; rm -rf /", "ffmpeg", "ffmpeg"},
+		{"pipe injection", "/usr/bin/ffmpeg | cat", "ffmpeg", "ffmpeg"},
+		{"ampersand injection", "/usr/bin/ffmpeg & malicious", "ffmpeg", "ffmpeg"},
+		{"dollar sign injection", "$HOME/ffmpeg", "ffmpeg", "ffmpeg"},
+		{"backtick injection", "`whoami`/ffmpeg", "ffmpeg", "ffmpeg"},
+		{"newline injection", "/usr/bin/ffmpeg\nrm", "ffmpeg", "ffmpeg"},
+		{"space injection", "/usr/bin/ffmpeg -malicious", "ffmpeg", "ffmpeg"},
+		{"relative path with slash", "./ffmpeg", "ffmpeg", "ffmpeg"},
+		{"path traversal", "/usr/../../../etc/passwd", "ffmpeg", "/etc/passwd"}, // Clean removes traversal
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validateBinaryPath(tt.path, tt.defaultName)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestSanitizeExtension(t *testing.T) {
+	tests := []struct {
+		name     string
+		ext      string
+		expected string
+	}{
+		{"valid mp3", ".mp3", ".mp3"},
+		{"valid MP3 uppercase", ".MP3", ".mp3"},
+		{"valid flac", ".flac", ".flac"},
+		{"valid wav", ".wav", ".wav"},
+		{"valid aac", ".aac", ".aac"},
+		{"valid m4a", ".m4a", ".m4a"},
+		{"valid ogg", ".ogg", ".ogg"},
+		{"valid wma", ".wma", ".wma"},
+		{"valid aiff", ".aiff", ".aiff"},
+		{"invalid extension", ".exe", ".mp3"},
+		{"empty extension", "", ".mp3"},
+		{"injection attempt", ".mp3; rm", ".mp3"},
+		{"unknown extension", ".xyz", ".mp3"},
+		{"double extension", ".mp3.bak", ".mp3"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := sanitizeExtension(tt.ext)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 func TestGetCamelotNotation(t *testing.T) {
