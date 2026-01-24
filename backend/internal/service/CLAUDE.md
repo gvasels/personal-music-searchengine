@@ -22,6 +22,8 @@ Business logic layer implementing domain operations for the Personal Music Searc
 | `search_test.go` | Unit tests for SearchService including filterByTags (8 tests) |
 | `transcode.go` | TranscodeService - MediaConvert HLS transcoding |
 | `transcode_test.go` | Unit tests for TranscodeService |
+| `migration.go` | MigrationService - artist migration from string to entity model |
+| `migration_test.go` | Unit tests for MigrationService |
 
 ## Service Interfaces
 
@@ -96,6 +98,10 @@ Business logic layer implementing domain operations for the Personal Music Searc
 - `StartTranscode` - Create MediaConvert job for HLS transcoding
 - `GetTranscodeStatus` - Get status of a MediaConvert job
 - `buildJobSettings` - Build MediaConvert job settings for HLS output
+
+### MigrationService
+- `MigrateArtists` - Migrate string-based artists to entity model (idempotent)
+- `GetMigrationStatus` - Get migration status (not_started, partial, completed)
 
 ## Dependencies
 

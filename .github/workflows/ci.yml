@@ -38,9 +38,9 @@ jobs:
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
           echo "Total coverage: ${COVERAGE}%"
           # TODO: Increase threshold to 80% as coverage improves
-          # Temporarily lowered to 19% to accommodate new features with pending tests
-          if (( $(echo "$COVERAGE < 19" | bc -l) )); then
-            echo "::error::Coverage ${COVERAGE}% is below 19% threshold"
+          # Current: 24% after adding analyzer, migration, and matching tests
+          if (( $(echo "$COVERAGE < 24" | bc -l) )); then
+            echo "::error::Coverage ${COVERAGE}% is below 24% threshold"
             exit 1
           fi
 
@@ -49,6 +49,29 @@ jobs:
         with:
           name: backend-coverage
           path: backend/coverage.out
+
+  backend-lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: backend/go.sum
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.56
+          working-directory: backend
+          args: --timeout=5m
 
   frontend-tests:
     name: Frontend Tests

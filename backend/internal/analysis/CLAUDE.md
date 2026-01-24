@@ -49,13 +49,17 @@ Example mappings:
 
 ## Implementation Status
 
-**Current**: Placeholder implementation that returns empty results.
+**BPM Detection**: Fully implemented using multi-segment autocorrelation algorithm with:
+- Bass-emphasis low-pass filter targeting ~200Hz for kick drum detection
+- Adaptive onset detection with local mean thresholding
+- Octave error correction for double/half time detection
+- Genre-based bonuses (house/techno 115-135, trance/D&B 135-150, hip-hop 85-95)
+- Confidence scoring requiring multiple segment agreement
+- Input path validation to prevent command injection
 
-**Future enhancements**:
-1. BPM detection using beat tracking algorithm
-2. Key detection using chroma/pitch analysis
-3. FFmpeg integration for audio decoding
-4. Support for all audio formats (MP3, FLAC, WAV, AAC, OGG)
+**Key Detection**: Not yet implemented - would require pitch/chroma analysis.
+
+**Audio Formats**: Supports MP3, FLAC, WAV, AAC, OGG via FFmpeg integration.
 
 ## Usage
 
@@ -70,8 +74,8 @@ fmt.Printf("BPM: %d, Key: %s (%s)\n", result.BPM, result.MusicalKey, result.KeyC
 
 ## Dependencies
 
-- Standard library only (for now)
-- Future: ffmpeg binary or go-audio libraries
+- Standard library (bytes, context, encoding/binary, fmt, io, math, os, os/exec, path/filepath, sort, strings)
+- FFmpeg binary (required for audio decoding)
 
 ## Integration
 

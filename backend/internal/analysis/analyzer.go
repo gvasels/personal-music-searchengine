@@ -95,8 +95,30 @@ func (a *Analyzer) Analyze(ctx context.Context, reader io.Reader, fileName strin
 	return result, nil
 }
 
+// validateInputPath checks that the path is safe for FFmpeg execution
+func validateInputPath(path string) error {
+	// Check for command injection characters
+	dangerousChars := []string{";", "|", "&", "$", "`", "(", ")", "{", "}", "<", ">", "\n", "\r"}
+	for _, char := range dangerousChars {
+		if strings.Contains(path, char) {
+			return fmt.Errorf("invalid characters in path")
+		}
+	}
+
+	// Verify path is not empty
+	if path == "" {
+		return fmt.Errorf("empty path")
+	}
+
+	return nil
+}
+
 // decodeToMono uses FFmpeg to decode audio to mono 16-bit PCM
 func (a *Analyzer) decodeToMono(ctx context.Context, inputPath string) ([]float64, error) {
+	if err := validateInputPath(inputPath); err != nil {
+		return nil, fmt.Errorf("invalid input path: %w", err)
+	}
+
 	// FFmpeg command to decode to raw mono PCM
 	args := []string{
 		"-i", inputPath,
