@@ -92,10 +92,13 @@ func TestSearch_WithFilters(t *testing.T) {
 
 	// Verify user filter was added
 	var req NixiesearchRequest
-	json.Unmarshal(mockClient.lastInput.Payload, &req)
-	queryPayload, _ := json.Marshal(req.Payload)
+	err = json.Unmarshal(mockClient.lastInput.Payload, &req)
+	require.NoError(t, err)
+	queryPayload, err := json.Marshal(req.Payload)
+	require.NoError(t, err)
 	var query SearchQuery
-	json.Unmarshal(queryPayload, &query)
+	err = json.Unmarshal(queryPayload, &query)
+	require.NoError(t, err)
 	assert.Equal(t, "user-123", query.Filters.UserID)
 }
 

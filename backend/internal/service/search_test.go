@@ -451,9 +451,8 @@ func (s *testSearchService) RemoveTrack(ctx context.Context, trackID string) err
 		return err
 	}
 
-	if !resp.Deleted {
-		// Log but don't fail
-	}
+	// Note: resp.Deleted is not checked - delete is best-effort in tests
+	_ = resp.Deleted
 
 	return nil
 }

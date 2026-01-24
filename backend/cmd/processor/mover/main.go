@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -115,15 +114,6 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 	}
 
 	return &Response{NewKey: destKey}, nil
-}
-
-// getFileExtension extracts file extension from a path
-func getFileExtension(path string) string {
-	parts := strings.Split(path, ".")
-	if len(parts) > 1 {
-		return "." + parts[len(parts)-1]
-	}
-	return ""
 }
 
 func main() {
