@@ -51,6 +51,12 @@ variable "project_name" {
   default     = "music-library"
 }
 
+variable "frontend_cloudfront_domain" {
+  description = "Frontend CloudFront distribution domain for CORS (set after frontend deployment)"
+  type        = string
+  default     = ""
+}
+
 # Data sources for shared resources
 data "terraform_remote_state" "shared" {
   backend = "s3"

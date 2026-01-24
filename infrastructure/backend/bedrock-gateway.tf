@@ -121,16 +121,25 @@ resource "aws_secretsmanager_secret" "bedrock_gateway_api_key" {
 }
 
 # API Gateway HTTP API for Bedrock Gateway
+# Security: API key validation happens in Lambda (reads from Secrets Manager)
+# Requests must include Authorization: Bearer <api-key> header
 resource "aws_apigatewayv2_api" "bedrock_gateway" {
   name          = "${local.name_prefix}-bedrock-gateway"
   protocol_type = "HTTP"
   description   = "OpenAI-compatible API gateway for Bedrock"
 
   cors_configuration {
-    allow_headers = ["*"]
+    allow_headers = ["Authorization", "Content-Type", "X-Request-ID"]
     allow_methods = ["GET", "POST", "OPTIONS"]
-    allow_origins = ["*"]
-    max_age       = 3600
+    # Restrict CORS to frontend CloudFront and localhost for development
+    # Set frontend_cloudfront_domain variable after frontend deployment
+    # Development: localhost:5173 (Vite default) and localhost:3000
+    allow_origins = compact([
+      var.frontend_cloudfront_domain != "" ? "https://${var.frontend_cloudfront_domain}" : null,
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ])
+    max_age = 3600
   }
 }
 
