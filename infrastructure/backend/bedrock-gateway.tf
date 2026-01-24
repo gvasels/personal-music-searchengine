@@ -190,17 +190,17 @@ resource "aws_apigatewayv2_stage" "bedrock_gateway" {
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.bedrock_gateway_api.arn
     format = jsonencode({
-      requestId         = "$context.requestId"
-      ip                = "$context.identity.sourceIp"
-      requestTime       = "$context.requestTime"
-      httpMethod        = "$context.httpMethod"
-      routeKey          = "$context.routeKey"
-      status            = "$context.status"
-      protocol          = "$context.protocol"
-      responseLength    = "$context.responseLength"
-      integrationError  = "$context.integrationErrorMessage"
-      errorMessage      = "$context.error.message"
-      latency           = "$context.responseLatency"
+      requestId        = "$context.requestId"
+      ip               = "$context.identity.sourceIp"
+      requestTime      = "$context.requestTime"
+      httpMethod       = "$context.httpMethod"
+      routeKey         = "$context.routeKey"
+      status           = "$context.status"
+      protocol         = "$context.protocol"
+      responseLength   = "$context.responseLength"
+      integrationError = "$context.integrationErrorMessage"
+      errorMessage     = "$context.error.message"
+      latency          = "$context.responseLatency"
     })
   }
 

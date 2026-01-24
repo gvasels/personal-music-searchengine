@@ -61,12 +61,12 @@ resource "aws_cloudwatch_log_group" "cover_art_processor" {
 # FFmpeg Lambda layer for audio processing (ARM64)
 # Placeholder - actual layer code deployed via CI/CD
 resource "aws_lambda_layer_version" "ffmpeg" {
-  layer_name          = "${local.name_prefix}-ffmpeg"
-  filename            = data.archive_file.placeholder.output_path
-  source_code_hash    = data.archive_file.placeholder.output_base64sha256
-  compatible_runtimes = ["provided.al2023"]
+  layer_name               = "${local.name_prefix}-ffmpeg"
+  filename                 = data.archive_file.placeholder.output_path
+  source_code_hash         = data.archive_file.placeholder.output_base64sha256
+  compatible_runtimes      = ["provided.al2023"]
   compatible_architectures = ["arm64"]
-  description         = "FFmpeg static binaries for ARM64"
+  description              = "FFmpeg static binaries for ARM64"
 }
 
 # Audio Analyzer Lambda (BPM and Key Detection)
@@ -80,8 +80,8 @@ resource "aws_lambda_function" "audio_analyzer" {
   filename         = data.archive_file.placeholder.output_path
   source_code_hash = data.archive_file.placeholder.output_base64sha256
 
-  memory_size = 1024  # Audio analysis may need more memory
-  timeout     = 60    # Allow more time for FFmpeg processing
+  memory_size = 1024 # Audio analysis may need more memory
+  timeout     = 60   # Allow more time for FFmpeg processing
 
   # Custom FFmpeg Lambda layer for audio processing (ARM64)
   layers = [aws_lambda_layer_version.ffmpeg.arn]
