@@ -61,6 +61,12 @@ type Track struct {
 	// DJ features
 	HotCues map[int]*HotCue `json:"hotCues,omitempty" dynamodbav:"hotCues,omitempty"` // Slot (1-8) -> HotCue
 
+	// Waveform and analysis fields
+	WaveformURL    string     `json:"waveformUrl,omitempty" dynamodbav:"waveformUrl,omitempty"`       // S3 URL to waveform JSON
+	BeatGrid       []int64    `json:"beatGrid,omitempty" dynamodbav:"beatGrid,omitempty"`             // Beat timestamps in milliseconds
+	AnalysisStatus string     `json:"analysisStatus,omitempty" dynamodbav:"analysisStatus,omitempty"` // PENDING, ANALYZING, COMPLETED, FAILED
+	AnalyzedAt     *time.Time `json:"analyzedAt,omitempty" dynamodbav:"analyzedAt,omitempty"`         // When analysis completed
+
 	Timestamps
 }
 
@@ -145,10 +151,13 @@ type TrackResponse struct {
 	MusicalKey   string    `json:"musicalKey,omitempty"`
 	KeyMode      string    `json:"keyMode,omitempty"`
 	KeyCamelot   string    `json:"keyCamelot,omitempty"`
-	HLSStatus    string    `json:"hlsStatus,omitempty"`
-	HLSReady     bool      `json:"hlsReady"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	HLSStatus      string     `json:"hlsStatus,omitempty"`
+	HLSReady       bool       `json:"hlsReady"`
+	WaveformURL    string     `json:"waveformUrl,omitempty"`
+	AnalysisStatus string     `json:"analysisStatus,omitempty"`
+	AnalyzedAt     *time.Time `json:"analyzedAt,omitempty"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
 }
 
 // ToResponse converts a Track to a TrackResponse
@@ -185,10 +194,13 @@ func (t *Track) ToResponse(coverArtURL string) TrackResponse {
 		MusicalKey:   t.MusicalKey,
 		KeyMode:      t.KeyMode,
 		KeyCamelot:   t.KeyCamelot,
-		HLSStatus:    string(t.HLSStatus),
-		HLSReady:     t.HLSStatus == HLSStatusReady,
-		CreatedAt:    t.CreatedAt,
-		UpdatedAt:    t.UpdatedAt,
+		HLSStatus:      string(t.HLSStatus),
+		HLSReady:       t.HLSStatus == HLSStatusReady,
+		WaveformURL:    t.WaveformURL,
+		AnalysisStatus: t.AnalysisStatus,
+		AnalyzedAt:     t.AnalyzedAt,
+		CreatedAt:      t.CreatedAt,
+		UpdatedAt:      t.UpdatedAt,
 	}
 }
 

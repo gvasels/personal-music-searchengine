@@ -8,6 +8,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Stream A: Audio Features
+- **Waveform Generation** (`backend/cmd/processor/waveform/`)
+  - FFmpeg-based waveform peak extraction at 100 samples/second
+  - Normalized peak values (0.0-1.0) for consistent visualization
+  - Support for MP3, FLAC, WAV, AAC, OGG, M4A formats
+  - Fallback synthetic waveform when FFmpeg processing fails
+  - JSON serialization for S3 storage
+- **Beat Grid Calculation** (`backend/cmd/processor/beatgrid/`)
+  - Beat timestamp calculation from BPM (20-300 BPM range)
+  - Downbeat markers (every 4th beat) for DJ features
+  - Binary search for efficient beat-at-time lookup
+  - Variable BPM flag support
+- **Track Model Enhancements**
+  - `WaveformURL` - S3 URL to waveform JSON data
+  - `BeatGrid` - Array of beat timestamps in milliseconds
+  - `AnalysisStatus` - PENDING, ANALYZING, COMPLETED, FAILED
+  - `AnalyzedAt` - Analysis completion timestamp
+
+#### Stream C: Search Enhancements (Semantic Search)
+- EmbeddingService for Bedrock Titan text embeddings
+  - `ComposeEmbedText` - Track metadata to embedding text composition
+  - `GenerateTrackEmbedding` - 1024-dim embedding from track metadata
+  - `GenerateQueryEmbedding` - Search query embedding generation
+  - `BatchGenerateEmbeddings` - Batch processing with partial failure handling
+  - Truncation to 8000 chars (Titan model limit)
+- Camelot key compatibility utilities for DJ mixing
+  - `IsKeyCompatible` - Check if two keys can be mixed harmonically
+  - `GetCompatibleKeys` - Get all 4 compatible keys per Camelot key
+  - `GetKeyTransition` - Describe transition type (Perfect Match, Smooth, Relative)
+  - `GetBPMCompatibility` - BPM compatibility with half/double time support
+- SimilarityService for finding similar and mixable tracks
+  - `FindSimilarTracks` - Semantic + feature-based similarity search
+  - `FindMixableTracks` - DJ-compatible tracks by BPM + key
+  - `CosineSimilarity` - Vector similarity calculation
+  - Three modes: semantic, features, combined (default 60/40 weight)
+- Semantic search specifications
+  - `.spec-workflow/specs/semantic-search/requirements.md`
+  - `.spec-workflow/specs/semantic-search/design.md`
+  - `.spec-workflow/specs/semantic-search/tasks.md`
+- Unit tests for embedding service (20 tests)
+- Unit tests for Camelot utilities
+
 #### Epic 6: Distribution & Polish
 - Frontend S3 bucket (`music-library-prod-frontend`) for SPA hosting
   - Versioning enabled for rollback capability
