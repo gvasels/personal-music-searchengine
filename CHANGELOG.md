@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Stream D: DevOps & CI/CD Improvements
+- **Backend Lint Job** (`.github/workflows/ci.yml`)
+  - Added golangci-lint v1.61 with 5-minute timeout
+  - Fixed unchecked json.Unmarshal errors in client_test.go
+  - Removed unused getFileExtension function from mover/main.go
+  - Fixed empty if branch in search_test.go
+- **Security Scan Improvements**
+  - Added fetch-depth: 0 for gitleaks full history scan
+- **Coverage Threshold**
+  - Backend coverage threshold at 19% (temporary, to be increased to 80%)
+
 #### Stream A: Audio Features
 - **Waveform Generation** (`backend/cmd/processor/waveform/`)
   - FFmpeg-based waveform peak extraction at 100 samples/second
