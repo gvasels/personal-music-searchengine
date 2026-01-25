@@ -26,7 +26,9 @@ export function useWaveform(trackId: string | undefined) {
   return useQuery({
     queryKey: ['waveform', trackId],
     queryFn: () => fetchWaveform(trackId!),
-    enabled: !!trackId,
+    // Disabled until backend waveform endpoint is implemented
+    // TODO: Enable when GET /api/v1/tracks/{id}/waveform is available
+    enabled: false,
     staleTime: Infinity, // Waveform data doesn't change
     gcTime: 1000 * 60 * 30, // Keep in cache for 30 minutes
   });

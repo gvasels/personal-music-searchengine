@@ -38,7 +38,7 @@ export function PlayerBar() {
   return (
     <div
       data-testid="player-bar"
-      className="fixed bottom-0 left-0 right-0 h-20 bg-base-100 border-t border-base-300 flex items-center px-4 z-50"
+      className="fixed bottom-0 left-0 right-0 h-24 bg-base-100 border-t border-base-300 flex items-center px-4 z-50"
     >
       {/* Track Info */}
       <div className="flex items-center gap-3 w-1/4">
@@ -148,7 +148,7 @@ export function PlayerBar() {
 
       {/* EQ Panel */}
       {showEQ && (
-        <div className="absolute bottom-20 right-4 z-50">
+        <div className="absolute bottom-24 right-4 z-50">
           <div className="relative">
             <button
               className="absolute -top-2 -right-2 btn btn-circle btn-xs btn-ghost"

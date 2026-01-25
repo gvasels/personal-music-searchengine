@@ -18,8 +18,7 @@ resource "aws_lambda_function" "bedrock_gateway" {
 
   environment {
     variables = {
-      AWS_REGION = var.aws_region
-      API_KEY    = aws_secretsmanager_secret.bedrock_gateway_api_key.name
+      API_KEY = aws_secretsmanager_secret.bedrock_gateway_api_key.name
     }
   }
 
