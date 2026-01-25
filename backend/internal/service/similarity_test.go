@@ -178,6 +178,9 @@ func (m *MockSimilarityRepository) AddTracksToPlaylist(ctx context.Context, play
 func (m *MockSimilarityRepository) RemoveTracksFromPlaylist(ctx context.Context, playlistID string, trackIDs []string) error {
 	return nil
 }
+func (m *MockSimilarityRepository) ReorderPlaylistTracks(ctx context.Context, playlistID string, tracks []models.PlaylistTrack) error {
+	return nil
+}
 func (m *MockSimilarityRepository) GetPlaylistTracks(ctx context.Context, playlistID string) ([]models.PlaylistTrack, error) {
 	return nil, nil
 }
