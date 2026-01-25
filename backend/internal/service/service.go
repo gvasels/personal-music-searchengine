@@ -41,6 +41,7 @@ type PlaylistService interface {
 	ListPlaylists(ctx context.Context, userID string, filter models.PlaylistFilter) (*repository.PaginatedResult[models.PlaylistResponse], error)
 	AddTracks(ctx context.Context, userID, playlistID string, req models.AddTracksToPlaylistRequest) (*models.PlaylistResponse, error)
 	RemoveTracks(ctx context.Context, userID, playlistID string, req models.RemoveTracksFromPlaylistRequest) (*models.PlaylistResponse, error)
+	ReorderTracks(ctx context.Context, userID, playlistID string, req models.ReorderPlaylistTracksRequest) (*models.PlaylistResponse, error)
 }
 
 // TagService defines tag management operations

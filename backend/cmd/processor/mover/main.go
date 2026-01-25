@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
+	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
 	"github.com/gvasels/personal-music-searchengine/internal/validation"
 )
@@ -105,6 +106,11 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 	track.S3Key = destKey
 	if err := repo.UpdateTrack(ctx, *track); err != nil {
 		return nil, fmt.Errorf("failed to update track S3 key: %w", err)
+	}
+
+	// Update step progress
+	if err := repo.UpdateUploadStep(ctx, event.UserID, event.UploadID, models.StepMoveFile, true); err != nil {
+		fmt.Printf("Warning: failed to update step progress: %v\n", err)
 	}
 
 	return &Response{NewKey: destKey}, nil

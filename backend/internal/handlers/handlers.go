@@ -68,6 +68,7 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 	api.DELETE("/playlists/:id", h.DeletePlaylist)
 	api.POST("/playlists/:id/tracks", h.AddTracksToPlaylist)
 	api.DELETE("/playlists/:id/tracks", h.RemoveTracksFromPlaylist)
+	api.PUT("/playlists/:id/reorder", h.ReorderPlaylistTracks)
 
 	// Tag routes
 	api.GET("/tags", h.ListTags)

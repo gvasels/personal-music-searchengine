@@ -24,6 +24,7 @@ type Event struct {
 	FileName   string                 `json:"fileName"`
 	Metadata   *models.UploadMetadata `json:"metadata"`
 	CoverArt   *CoverArtResult        `json:"coverArt"`
+	Analysis   *AnalysisResult        `json:"analysis"`
 	BucketName string                 `json:"bucketName"`
 	TableName  string                 `json:"tableName"`
 }
@@ -31,6 +32,16 @@ type Event struct {
 // CoverArtResult represents the cover art extraction result
 type CoverArtResult struct {
 	CoverArtKey string `json:"coverArtKey"`
+}
+
+// AnalysisResult represents the audio analysis result
+type AnalysisResult struct {
+	BPM        int    `json:"bpm,omitempty"`
+	MusicalKey string `json:"musicalKey,omitempty"`
+	KeyMode    string `json:"keyMode,omitempty"`
+	KeyCamelot string `json:"keyCamelot,omitempty"`
+	Analyzed   bool   `json:"analyzed"`
+	Error      string `json:"error,omitempty"`
 }
 
 // Response represents the output to Step Functions
@@ -100,6 +111,14 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 		track.CoverArtKey = event.CoverArt.CoverArtKey
 	}
 
+	// Set audio analysis results if available
+	if event.Analysis != nil && event.Analysis.Analyzed {
+		track.BPM = event.Analysis.BPM
+		track.MusicalKey = event.Analysis.MusicalKey
+		track.KeyMode = event.Analysis.KeyMode
+		track.KeyCamelot = event.Analysis.KeyCamelot
+	}
+
 	// Set additional metadata fields if available
 	if event.Metadata != nil {
 		track.Bitrate = event.Metadata.Bitrate
@@ -108,6 +127,11 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 	// Create the track
 	if err := repo.CreateTrack(ctx, track); err != nil {
 		return nil, fmt.Errorf("failed to create track: %w", err)
+	}
+
+	// Update step progress
+	if err := repo.UpdateUploadStep(ctx, event.UserID, event.UploadID, models.StepCreateTrack, true); err != nil {
+		fmt.Printf("Warning: failed to update step progress: %v\n", err)
 	}
 
 	response := &Response{TrackID: trackID}
