@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Stream D: DevOps & CI/CD Improvements
+- **Backend Lint Job** (`.github/workflows/ci.yml`)
+  - Added golangci-lint v1.61 with 5-minute timeout
+  - Fixed unchecked json.Unmarshal errors in client_test.go
+  - Removed unused getFileExtension function from mover/main.go
+  - Fixed empty if branch in search_test.go
+- **Security Scan Improvements**
+  - Added fetch-depth: 0 for gitleaks full history scan
+- **Coverage Threshold**
+  - Backend coverage threshold at 19% (temporary, to be increased to 80%)
+
 #### Stream B: Platform Features
 - **Playlist Reorder Endpoint** (`PUT /playlists/:id/tracks/reorder`)
   - Reorder tracks within a playlist by specifying new positions
@@ -49,6 +60,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - `BeatGrid` - Array of beat timestamps in milliseconds
   - `AnalysisStatus` - PENDING, ANALYZING, COMPLETED, FAILED
   - `AnalyzedAt` - Analysis completion timestamp
+
+#### Stream C: Search Enhancements (Semantic Search)
+- EmbeddingService for Bedrock Titan text embeddings
+  - `ComposeEmbedText` - Track metadata to embedding text composition
+  - `GenerateTrackEmbedding` - 1024-dim embedding from track metadata
+  - `GenerateQueryEmbedding` - Search query embedding generation
+  - `BatchGenerateEmbeddings` - Batch processing with partial failure handling
+  - Truncation to 8000 chars (Titan model limit)
+- Camelot key compatibility utilities for DJ mixing
+  - `IsKeyCompatible` - Check if two keys can be mixed harmonically
+  - `GetCompatibleKeys` - Get all 4 compatible keys per Camelot key
+  - `GetKeyTransition` - Describe transition type (Perfect Match, Smooth, Relative)
+  - `GetBPMCompatibility` - BPM compatibility with half/double time support
+- SimilarityService for finding similar and mixable tracks
+  - `FindSimilarTracks` - Semantic + feature-based similarity search
+  - `FindMixableTracks` - DJ-compatible tracks by BPM + key
+  - `CosineSimilarity` - Vector similarity calculation
+  - Three modes: semantic, features, combined (default 60/40 weight)
+- Semantic search specifications
+  - `.spec-workflow/specs/semantic-search/requirements.md`
+  - `.spec-workflow/specs/semantic-search/design.md`
+  - `.spec-workflow/specs/semantic-search/tasks.md`
+- Unit tests for embedding service (20 tests)
+- Unit tests for Camelot utilities
 
 #### Epic 6: Distribution & Polish
 - Frontend S3 bucket (`music-library-prod-frontend`) for SPA hosting

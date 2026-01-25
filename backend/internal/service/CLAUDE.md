@@ -24,6 +24,11 @@ Business logic layer implementing domain operations for the Personal Music Searc
 | `transcode_test.go` | Unit tests for TranscodeService |
 | `migration.go` | MigrationService - artist migration from string to entity model |
 | `migration_test.go` | Unit tests for MigrationService |
+| `embedding.go` | EmbeddingService - Bedrock Titan text embeddings |
+| `embedding_test.go` | Unit tests for EmbeddingService (20 tests) |
+| `camelot.go` | Camelot key compatibility utilities for DJ mixing |
+| `camelot_test.go` | Unit tests for Camelot utilities |
+| `similarity.go` | SimilarityService - similar/mixable tracks for DJs |
 
 ## Service Interfaces
 
@@ -102,6 +107,23 @@ Business logic layer implementing domain operations for the Personal Music Searc
 ### MigrationService
 - `MigrateArtists` - Migrate string-based artists to entity model (idempotent)
 - `GetMigrationStatus` - Get migration status (not_started, partial, completed)
+
+### EmbeddingService
+- `ComposeEmbedText` - Create text representation of track for embedding
+- `GenerateTrackEmbedding` - Generate 1024-dim embedding for track metadata
+- `GenerateQueryEmbedding` - Generate embedding for search query
+- `BatchGenerateEmbeddings` - Batch embed multiple tracks with partial failure handling
+
+### SimilarityService
+- `FindSimilarTracks` - Find tracks similar by semantic/features
+- `FindMixableTracks` - Find DJ-compatible tracks (BPM + key)
+- `CosineSimilarity` - Calculate vector similarity
+
+### Camelot Key Utilities
+- `IsKeyCompatible` - Check if two keys can be mixed harmonically
+- `GetCompatibleKeys` - Get all compatible keys for a key
+- `GetKeyTransition` - Describe the mixing transition type
+- `GetBPMCompatibility` - Check BPM compatibility with half/double time
 
 ## Dependencies
 
