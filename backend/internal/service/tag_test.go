@@ -578,14 +578,19 @@ func TestAddTagsToTrack_Success(t *testing.T) {
 		Tags:   []string{"existing-tag"},
 	}, nil)
 
-	// One tag exists, one doesn't
+	// One tag doesn't exist (will be created with TrackCount=1)
 	mockRepo.On("GetTag", ctx, "user-123", "favorites").Return(nil, repository.ErrNotFound)
 	mockRepo.On("CreateTag", ctx, mock.MatchedBy(func(tag models.Tag) bool {
-		return tag.Name == "favorites"
+		return tag.Name == "favorites" && tag.TrackCount == 1
 	})).Return(nil)
-	mockRepo.On("GetTag", ctx, "user-123", "rock").Return(&models.Tag{Name: "rock"}, nil)
 
-	mockRepo.On("AddTagsToTrack", ctx, "user-123", "track-1", []string{"favorites", "rock"}).Return(nil)
+	// One tag exists (TrackCount will be incremented)
+	mockRepo.On("GetTag", ctx, "user-123", "rock").Return(&models.Tag{Name: "rock", TrackCount: 5}, nil)
+	mockRepo.On("UpdateTag", ctx, mock.MatchedBy(func(tag models.Tag) bool {
+		return tag.Name == "rock" && tag.TrackCount == 6
+	})).Return(nil)
+
+	mockRepo.On("AddTagsToTrack", ctx, "user-123", "track-1", mock.Anything).Return(nil)
 	mockRepo.On("UpdateTrack", ctx, mock.Anything).Return(nil)
 
 	req := models.AddTagsToTrackRequest{Tags: []string{"favorites", "rock"}}
@@ -635,6 +640,11 @@ func TestRemoveTagFromTrack_Success(t *testing.T) {
 		Tags:   []string{"favorites", "rock"},
 	}, nil)
 	mockRepo.On("RemoveTagFromTrack", ctx, "user-123", "track-1", "favorites").Return(nil)
+	// Tag TrackCount should be decremented
+	mockRepo.On("GetTag", ctx, "user-123", "favorites").Return(&models.Tag{Name: "favorites", TrackCount: 3}, nil)
+	mockRepo.On("UpdateTag", ctx, mock.MatchedBy(func(tag models.Tag) bool {
+		return tag.Name == "favorites" && tag.TrackCount == 2
+	})).Return(nil)
 	mockRepo.On("UpdateTrack", ctx, mock.MatchedBy(func(track models.Track) bool {
 		return len(track.Tags) == 1 && track.Tags[0] == "rock"
 	})).Return(nil)
@@ -770,12 +780,15 @@ func TestAddTagsToTrack_NormalizesNames(t *testing.T) {
 	// Tags should be looked up/created as lowercase
 	mockRepo.On("GetTag", ctx, "user-123", "rock").Return(nil, repository.ErrNotFound)
 	mockRepo.On("CreateTag", ctx, mock.MatchedBy(func(tag models.Tag) bool {
-		return tag.Name == "rock" // lowercase
+		return tag.Name == "rock" && tag.TrackCount == 1 // lowercase with count
 	})).Return(nil)
-	mockRepo.On("GetTag", ctx, "user-123", "favorites").Return(&models.Tag{Name: "favorites"}, nil)
+	mockRepo.On("GetTag", ctx, "user-123", "favorites").Return(&models.Tag{Name: "favorites", TrackCount: 2}, nil)
+	mockRepo.On("UpdateTag", ctx, mock.MatchedBy(func(tag models.Tag) bool {
+		return tag.Name == "favorites" && tag.TrackCount == 3
+	})).Return(nil)
 
 	// Should add with normalized names
-	mockRepo.On("AddTagsToTrack", ctx, "user-123", "track-1", []string{"rock", "favorites"}).Return(nil)
+	mockRepo.On("AddTagsToTrack", ctx, "user-123", "track-1", mock.Anything).Return(nil)
 	mockRepo.On("UpdateTrack", ctx, mock.Anything).Return(nil)
 
 	req := models.AddTagsToTrackRequest{Tags: []string{"ROCK", "Favorites"}} // mixed case
@@ -800,6 +813,10 @@ func TestRemoveTagFromTrack_NormalizesName(t *testing.T) {
 		Tags:   []string{"rock", "favorites"},
 	}, nil)
 	mockRepo.On("RemoveTagFromTrack", ctx, "user-123", "track-1", "rock").Return(nil)
+	mockRepo.On("GetTag", ctx, "user-123", "rock").Return(&models.Tag{Name: "rock", TrackCount: 5}, nil)
+	mockRepo.On("UpdateTag", ctx, mock.MatchedBy(func(tag models.Tag) bool {
+		return tag.Name == "rock" && tag.TrackCount == 4
+	})).Return(nil)
 	mockRepo.On("UpdateTrack", ctx, mock.MatchedBy(func(track models.Track) bool {
 		return len(track.Tags) == 1 && track.Tags[0] == "favorites"
 	})).Return(nil)

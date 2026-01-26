@@ -155,47 +155,65 @@ func (s *tagService) AddTagsToTrack(ctx context.Context, userID, trackID string,
 		normalizedTags = append(normalizedTags, normalizeTagName(tagName))
 	}
 
-	// Create tags that don't exist
+	// Build set of existing tags on this track
+	existingTagSet := make(map[string]bool)
+	for _, t := range track.Tags {
+		existingTagSet[t] = true
+	}
+
+	// Determine which tags are actually new (not already on track)
+	newTagsToAdd := make([]string, 0)
 	for _, tagName := range normalizedTags {
-		_, err := s.repo.GetTag(ctx, userID, tagName)
-		if err == repository.ErrNotFound {
-			now := time.Now()
-			tag := models.Tag{
-				UserID:     userID,
-				Name:       tagName,
-				TrackCount: 0,
-			}
-			tag.CreatedAt = now
-			tag.UpdatedAt = now
-			_ = s.repo.CreateTag(ctx, tag) // Ignore errors, tag might have been created by another request
+		if !existingTagSet[tagName] {
+			newTagsToAdd = append(newTagsToAdd, tagName)
 		}
 	}
 
-	// Add tags to track
-	if err := s.repo.AddTagsToTrack(ctx, userID, trackID, normalizedTags); err != nil {
-		return nil, err
+	// Create tags that don't exist and increment TrackCount for new associations
+	for _, tagName := range newTagsToAdd {
+		tag, err := s.repo.GetTag(ctx, userID, tagName)
+		if err == repository.ErrNotFound {
+			// Create new tag with TrackCount = 1
+			now := time.Now()
+			newTag := models.Tag{
+				UserID:     userID,
+				Name:       tagName,
+				TrackCount: 1,
+			}
+			newTag.CreatedAt = now
+			newTag.UpdatedAt = now
+			_ = s.repo.CreateTag(ctx, newTag) // Ignore errors, tag might have been created by another request
+		} else if err == nil {
+			// Tag exists, increment TrackCount
+			tag.TrackCount++
+			tag.UpdatedAt = time.Now()
+			_ = s.repo.UpdateTag(ctx, *tag)
+		}
+	}
+
+	// Add tags to track (only if there are new tags to add)
+	if len(newTagsToAdd) > 0 {
+		if err := s.repo.AddTagsToTrack(ctx, userID, trackID, newTagsToAdd); err != nil {
+			return nil, err
+		}
 	}
 
 	// Update track's tags list
-	existingTags := make(map[string]bool)
-	for _, t := range track.Tags {
-		existingTags[t] = true
-	}
 	for _, t := range normalizedTags {
-		existingTags[t] = true
+		existingTagSet[t] = true
 	}
 
-	newTags := make([]string, 0, len(existingTags))
-	for t := range existingTags {
-		newTags = append(newTags, t)
+	allTags := make([]string, 0, len(existingTagSet))
+	for t := range existingTagSet {
+		allTags = append(allTags, t)
 	}
 
-	track.Tags = newTags
+	track.Tags = allTags
 	if err := s.repo.UpdateTrack(ctx, *track); err != nil {
 		return nil, err
 	}
 
-	return newTags, nil
+	return allTags, nil
 }
 
 func (s *tagService) RemoveTagFromTrack(ctx context.Context, userID, trackID, tagName string) error {
@@ -210,9 +228,31 @@ func (s *tagService) RemoveTagFromTrack(ctx context.Context, userID, trackID, ta
 		return err
 	}
 
+	// Check if track actually has this tag
+	hasTag := false
+	for _, t := range track.Tags {
+		if t == normalizedName {
+			hasTag = true
+			break
+		}
+	}
+
+	if !hasTag {
+		// Tag not on track, nothing to do
+		return nil
+	}
+
 	// Remove tag association
 	if err := s.repo.RemoveTagFromTrack(ctx, userID, trackID, normalizedName); err != nil {
 		return err
+	}
+
+	// Decrement TrackCount on the tag
+	tag, err := s.repo.GetTag(ctx, userID, normalizedName)
+	if err == nil && tag.TrackCount > 0 {
+		tag.TrackCount--
+		tag.UpdatedAt = time.Now()
+		_ = s.repo.UpdateTag(ctx, *tag)
 	}
 
 	// Update track's tags list
