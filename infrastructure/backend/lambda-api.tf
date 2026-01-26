@@ -23,6 +23,7 @@ resource "aws_lambda_function" "api" {
       CLOUDFRONT_DOMAIN             = aws_cloudfront_distribution.media.domain_name
       CLOUDFRONT_KEY_PAIR_ID        = aws_cloudfront_public_key.signing.id
       CLOUDFRONT_SIGNING_KEY_SECRET = aws_secretsmanager_secret.cloudfront_signing_key.name
+      COGNITO_USER_POOL_ID          = local.cognito_user_pool_id
     }
   }
 

@@ -98,6 +98,7 @@ type Services struct {
 	Upload   UploadService
 	Stream   StreamService
 	Search   SearchService
+	Admin    AdminService
 }
 
 // NewServices creates a new Services instance with all dependencies

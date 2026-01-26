@@ -27,6 +27,9 @@ type Config struct {
 	CloudFrontKeyPairID  string
 	CloudFrontPrivateKey string
 
+	// Cognito (for admin operations)
+	CognitoUserPoolID string
+
 	// Server (for local development)
 	ServerPort string
 }
@@ -42,6 +45,7 @@ func LoadConfig() (*Config, error) {
 		CloudFrontDomain:        os.Getenv("CLOUDFRONT_DOMAIN"),
 		CloudFrontKeyPairID:     os.Getenv("CLOUDFRONT_KEY_PAIR_ID"),
 		CloudFrontPrivateKey:    os.Getenv("CLOUDFRONT_PRIVATE_KEY"),
+		CognitoUserPoolID:       os.Getenv("COGNITO_USER_POOL_ID"),
 		ServerPort:              getEnvOrDefault("PORT", "8080"),
 	}
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awslambda "github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -79,6 +80,7 @@ func setupEcho() (*echo.Echo, error) {
 	var s3Client *s3.Client
 	var sfnClient *sfn.Client
 	var lambdaClient *awslambda.Client
+	var cognitoClient *cognitoidentityprovider.Client
 
 	if localEndpoint != "" {
 		// LocalStack configuration
@@ -95,11 +97,15 @@ func setupEcho() (*echo.Echo, error) {
 		lambdaClient = awslambda.NewFromConfig(awsCfg, func(o *awslambda.Options) {
 			o.BaseEndpoint = &localEndpoint
 		})
+		cognitoClient = cognitoidentityprovider.NewFromConfig(awsCfg, func(o *cognitoidentityprovider.Options) {
+			o.BaseEndpoint = &localEndpoint
+		})
 	} else {
 		dynamoClient = dynamodb.NewFromConfig(awsCfg)
 		s3Client = s3.NewFromConfig(awsCfg)
 		sfnClient = sfn.NewFromConfig(awsCfg)
 		lambdaClient = awslambda.NewFromConfig(awsCfg)
+		cognitoClient = cognitoidentityprovider.NewFromConfig(awsCfg)
 	}
 
 	// Create repositories
@@ -135,6 +141,12 @@ func setupEcho() (*echo.Echo, error) {
 		services.Search = service.NewSearchService(searchClient, repo, s3Repo)
 	}
 
+	// Initialize admin service if Cognito User Pool ID is configured
+	if appCfg.CognitoUserPoolID != "" {
+		cognitoSvc := service.NewCognitoClient(cognitoClient, appCfg.CognitoUserPoolID)
+		services.Admin = service.NewAdminService(repo, cognitoSvc)
+	}
+
 	// Create handlers
 	h := handlers.NewHandlers(services)
 
@@ -150,6 +162,12 @@ func setupEcho() (*echo.Echo, error) {
 
 	// Register routes
 	h.RegisterRoutes(e)
+
+	// Register admin routes if admin service is configured
+	if services.Admin != nil {
+		adminHandler := handlers.NewAdminHandler(services.Admin)
+		handlers.RegisterAdminRoutes(e, adminHandler)
+	}
 
 	// Health check endpoint
 	e.GET("/health", func(c echo.Context) error {
