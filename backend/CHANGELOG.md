@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Global User Type Feature** (Role-Based Access Control)
+  - User roles: `guest`, `subscriber`, `artist`, `admin` with Cognito Groups integration
+  - Permission system with 12 granular permissions (browse, listen, upload, publish, etc.)
+  - Artist profile service with CRUD operations and catalog linking
+  - Follow service for user-to-artist-profile relationships
+  - Authorization middleware (`internal/handlers/middleware/auth.go`) with role extraction
+  - Playlist visibility: `private`, `unlisted`, `public` visibility levels
+  - Public playlist discovery endpoint (`GET /playlists/public`)
+  - New models: `ArtistProfile`, `Follow`, `UserRole`, `Permission`, `PlaylistVisibility`
+  - New handlers: artist profile CRUD, follow/unfollow, role management
+  - New services: `ArtistProfileService`, `FollowService`, `RoleService`
+  - Comprehensive test coverage for new services (role, artist profile, follow)
 - Audio analysis package (`internal/analysis/`) with BPM detection using multi-segment autocorrelation algorithm
 - Camelot wheel mapping for harmonic mixing support (24 key mappings including enharmonic equivalents)
 - Analyzer Lambda processor (`cmd/processor/analyzer/`) for Step Functions integration

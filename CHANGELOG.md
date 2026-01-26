@@ -8,6 +8,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Global User Type Feature (Role-Based Access Control)
+- **Backend Services**
+  - User roles: `guest`, `subscriber`, `artist`, `admin` with Cognito Groups integration
+  - Permission system: 12 granular permissions (browse, listen, upload, publish, etc.)
+  - Artist profile service: CRUD operations, catalog linking, search
+  - Follow service: follow/unfollow artists, followers/following lists
+  - Authorization middleware with role extraction from JWT claims
+  - Playlist visibility: `private`, `unlisted`, `public` levels
+  - Public playlist discovery endpoint
+- **Frontend Components**
+  - `ArtistProfileCard` - Display artist profile with follow button
+  - `EditArtistProfileModal` - Create/edit artist profile form
+  - `FollowButton` - Follow/unfollow toggle button
+  - `FollowersList` - Display artist followers
+  - `FollowingList` - Display artists user is following
+  - `VisibilitySelector` - Playlist visibility dropdown/radio group
+  - `VisibilityBadge` - Display visibility status
+- **Infrastructure**
+  - Cognito user groups: `admin`, `artist`, `subscriber`
+  - DynamoDB entities: `ARTIST_PROFILE`, `FOLLOW`
+- **API Endpoints**
+  - `POST/GET/PUT/DELETE /artists/entity` - Artist profile CRUD
+  - `POST/DELETE /artists/entity/:id/follow` - Follow/unfollow
+  - `GET /artists/entity/:id/followers` - List followers
+  - `GET /users/me/following` - List following
+  - `PUT /playlists/:id/visibility` - Update playlist visibility
+  - `GET /playlists/public` - List public playlists
+
 #### Stream D: DevOps & CI/CD Improvements
 - **Backend Lint Job** (`.github/workflows/ci.yml`)
   - Added golangci-lint v1.61 with 5-minute timeout
