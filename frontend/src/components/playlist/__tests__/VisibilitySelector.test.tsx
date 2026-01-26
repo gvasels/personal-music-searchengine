@@ -8,7 +8,6 @@ import {
   VisibilityBadge,
   VisibilityRadioGroup,
 } from '../VisibilitySelector';
-import type { PlaylistVisibility } from '../../../types';
 
 describe('VisibilitySelector', () => {
   it('should render select with all visibility options', () => {
