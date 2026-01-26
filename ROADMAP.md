@@ -472,10 +472,24 @@ Comprehensive content rights management across geographic scopes - from local ve
 | Priority | Item | Description | Status |
 |----------|------|-------------|--------|
 | High | Test Coverage | Increase backend test coverage to 80%+ | In Progress |
+| High | GitHub Actions Fix | Fix deployment workflow - currently failing on push to main | Planned |
 | Medium | Error Handling | Standardize error responses across all endpoints | Planned |
 | Medium | Logging | Structured logging with correlation IDs | Planned |
 | Medium | Route Warnings | Fix TanStack Router export warnings | Planned |
 | Low | Bundle Size | Code splitting to reduce initial JS bundle | Planned |
+
+---
+
+## Future Enhancements (Roadmap)
+
+### Admin Panel & User Management
+
+| Priority | Item | Description | Status |
+|----------|------|-------------|--------|
+| Medium | DynamoDB User Sync | Power user management from DynamoDB with Cognito sync | Planned |
+| Medium | User Creation Trigger | Lambda trigger on Cognito signup to create DynamoDB user record | Planned |
+| Medium | Bulk User Operations | Admin batch operations for user role updates | Planned |
+| Low | User Activity Logs | Track admin actions on user accounts | Planned |
 
 ---
 
