@@ -116,6 +116,20 @@
   - _Requirements: 5.2, 5.3_
   - _Prompt: Role: React Developer with expertise in state management and API integration | Task: Implement feature-specific components following requirements 5.2 and 5.3, using API hooks from src/hooks/useApi.ts and extending BaseComponent patterns | Restrictions: Must use existing state management patterns, handle loading and error states properly, maintain component performance | Success: Components are fully functional with proper state management, API integration works smoothly, user experience is responsive and intuitive_
 
+- [ ] 5.3 Create page/route components and register routes
+  - Create page component in routes/ directory
+  - **IMPORTANT: Check if project uses file-based or code-based routing**
+    - File-based: Routes auto-discovered from routes/ directory (check routeTree.gen.ts)
+    - Code-based: Routes must be manually registered in main.tsx or router config
+  - If code-based routing (routes defined in main.tsx):
+    - Import the new page component in main.tsx
+    - Create route using createRoute() with path and component
+    - Add route to routeTree.addChildren([...])
+  - Add route protection (auth guards) if needed
+  - _Leverage: existing route patterns in main.tsx or routes/ directory_
+  - _Requirements: 5.3_
+  - _Prompt: Role: Frontend Developer | Task: Create page component and register route. FIRST check main.tsx to see if routes are defined there (code-based) or auto-generated (file-based). If code-based, add import and route registration. | Restrictions: Follow existing routing pattern exactly, add auth guards for protected routes | Success: Route is accessible, page renders correctly, navigation works_
+
 - [ ] 6. Integration and testing
   - Plan integration approach
   - _Leverage: src/utils/integrationUtils.ts, tests/helpers/testUtils.ts_
