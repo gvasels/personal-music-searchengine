@@ -30,8 +30,17 @@ var validRoles = map[UserRole]bool{
 type Permission string
 
 const (
+	// PermissionBrowse allows browsing public content (discovery, artist profiles).
+	PermissionBrowse Permission = "browse"
+
+	// PermissionListen allows streaming and listening to music.
+	PermissionListen Permission = "listen"
+
 	// PermissionUploadTracks allows uploading audio tracks.
 	PermissionUploadTracks Permission = "upload_tracks"
+
+	// PermissionPublishTracks allows publishing tracks (making them public/discoverable).
+	PermissionPublishTracks Permission = "publish_tracks"
 
 	// PermissionCreatePlaylists allows creating playlists.
 	PermissionCreatePlaylists Permission = "create_playlists"
@@ -57,15 +66,22 @@ const (
 
 // RolePermissions maps roles to their allowed permissions.
 var RolePermissions = map[UserRole]map[Permission]bool{
-	RoleGuest: {},
+	RoleGuest: {
+		PermissionBrowse: true, // Guests can browse public content
+	},
 	RoleSubscriber: {
+		PermissionBrowse:                true,
+		PermissionListen:                true,
 		PermissionCreatePlaylists:       true,
 		PermissionCreatePublicPlaylists: true,
 		PermissionFollowArtists:         true,
 		PermissionManageOwnContent:      true,
 	},
 	RoleArtist: {
+		PermissionBrowse:                true,
+		PermissionListen:                true,
 		PermissionUploadTracks:          true,
+		PermissionPublishTracks:         true,
 		PermissionCreatePlaylists:       true,
 		PermissionCreatePublicPlaylists: true,
 		PermissionFollowArtists:         true,
@@ -73,7 +89,10 @@ var RolePermissions = map[UserRole]map[Permission]bool{
 		PermissionManageOwnContent:      true,
 	},
 	RoleAdmin: {
+		PermissionBrowse:                true,
+		PermissionListen:                true,
 		PermissionUploadTracks:          true,
+		PermissionPublishTracks:         true,
 		PermissionCreatePlaylists:       true,
 		PermissionCreatePublicPlaylists: true,
 		PermissionFollowArtists:         true,

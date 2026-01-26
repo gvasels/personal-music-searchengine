@@ -148,6 +148,7 @@ func (ap *ArtistProfile) ToResponse() ArtistProfileResponse {
 
 // CreateArtistProfileRequest represents a request to create an artist profile.
 type CreateArtistProfileRequest struct {
+	DisplayName string            `json:"displayName" validate:"required,min=1,max=100"`
 	Bio         string            `json:"bio,omitempty" validate:"omitempty,max=2000"`
 	SocialLinks map[string]string `json:"socialLinks,omitempty"`
 	Genres      []string          `json:"genres,omitempty" validate:"omitempty,max=10,dive,max=50"`
