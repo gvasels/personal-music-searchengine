@@ -9,10 +9,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const mockUseTrack = vi.fn();
 const mockUpdateTrack = vi.fn();
 const mockDeleteTrack = vi.fn();
+const mockUpdateVisibility = vi.fn();
 vi.mock('../../hooks/useTracks', () => ({
   useTrackQuery: () => mockUseTrack(),
   useUpdateTrack: () => ({ mutateAsync: mockUpdateTrack, isPending: false }),
   useDeleteTrack: () => ({ mutateAsync: mockDeleteTrack, isPending: false }),
+  useUpdateTrackVisibility: () => ({ mutateAsync: mockUpdateVisibility, isPending: false }),
   trackKeys: { detail: (id: string) => ['tracks', 'detail', id] },
 }));
 

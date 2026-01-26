@@ -322,7 +322,9 @@ func TestAdminService_UpdateUserRole(t *testing.T) {
 	})
 
 	t.Run("prevents changing own role", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), "userID", "admin-123")
+		// Note: The userID context key check is done at handler level, not service level.
+		// This test verifies the UpdateUserRoleByAdmin method prevents self-modification.
+		ctx := context.Background()
 		mockRepo := new(MockAdminRepository)
 		mockCognito := new(MockCognitoClient)
 
