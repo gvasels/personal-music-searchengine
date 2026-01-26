@@ -1,13 +1,13 @@
 /**
  * useFeatureFlags Hook
- * Fetches and caches user features with subscription tier awareness
+ * Fetches and caches user features with role-based access
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { getUserFeatures } from '@/lib/api/features';
 import { useFeatureFlagStore } from '@/lib/store/featureFlagStore';
-import type { FeatureKey, SubscriptionTier } from '@/types';
+import type { FeatureKey, UserRole } from '@/types';
 
 // Query key factory
 export const featureKeys = {
@@ -16,9 +16,9 @@ export const featureKeys = {
 };
 
 export function useFeatureFlags() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const queryClient = useQueryClient();
-  const { tier, features, isLoaded, setFeatures, isEnabled: storeIsEnabled, reset } = useFeatureFlagStore();
+  const { role, features, isLoaded, setFeatures, isEnabled: storeIsEnabled, reset } = useFeatureFlagStore();
 
   // Fetch features when authenticated
   const query = useQuery({
@@ -29,12 +29,19 @@ export function useFeatureFlags() {
     gcTime: 1000 * 60 * 30, // 30 minutes
   });
 
-  // Update store when data changes
+  // Update store when data changes - map tier to role for backward compatibility
   useEffect(() => {
     if (query.data) {
-      setFeatures(query.data.tier, query.data.features);
+      // Map subscription tier to role (backward compatibility during migration)
+      const roleFromTier: UserRole =
+        query.data.tier === 'pro' ? 'artist' :
+        query.data.tier === 'creator' ? 'artist' :
+        'subscriber';
+      // Use actual role from user if available, otherwise infer from tier
+      const actualRole = (user?.role as UserRole) || roleFromTier;
+      setFeatures(actualRole, query.data.features);
     }
-  }, [query.data, setFeatures]);
+  }, [query.data, setFeatures, user?.role]);
 
   // Reset store on logout
   useEffect(() => {
@@ -49,27 +56,27 @@ export function useFeatureFlags() {
     return storeIsEnabled(feature);
   };
 
-  // Check if user has at least a certain tier
-  const hasTier = (minTier: SubscriptionTier): boolean => {
-    const tierOrder: SubscriptionTier[] = ['free', 'creator', 'pro'];
-    const userTierIndex = tierOrder.indexOf(tier);
-    const requiredTierIndex = tierOrder.indexOf(minTier);
-    return userTierIndex >= requiredTierIndex;
+  // Check if user has at least a certain role level
+  const hasRole = (minRole: UserRole): boolean => {
+    const roleOrder: UserRole[] = ['guest', 'subscriber', 'artist', 'admin'];
+    const userRoleIndex = roleOrder.indexOf(role);
+    const requiredRoleIndex = roleOrder.indexOf(minRole);
+    return userRoleIndex >= requiredRoleIndex;
   };
 
-  // Invalidate features cache (call after subscription change)
+  // Invalidate features cache (call after role change)
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: featureKeys.all });
   };
 
   return {
-    tier,
+    role,
     features,
     isLoading: query.isLoading,
     isError: query.isError,
     isLoaded,
     isEnabled,
-    hasTier,
+    hasRole,
     invalidate,
     refetch: query.refetch,
   };
@@ -77,12 +84,13 @@ export function useFeatureFlags() {
 
 // Hook for feature-gated components
 export function useFeatureGate(feature: FeatureKey) {
-  const { isEnabled, isLoading, tier } = useFeatureFlags();
+  const { isEnabled, isLoading, role } = useFeatureFlags();
 
   return {
     isEnabled: isEnabled(feature),
     isLoading,
-    tier,
-    showUpgrade: !isEnabled(feature) && !isLoading,
+    role,
+    // Feature is locked if not enabled and not loading
+    isLocked: !isEnabled(feature) && !isLoading,
   };
 }

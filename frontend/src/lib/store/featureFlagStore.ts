@@ -1,29 +1,29 @@
 /**
  * Feature Flag Store
- * Zustand store for managing feature flags and subscription state
+ * Zustand store for managing feature flags with role-based access
  */
 import { create } from 'zustand';
-import type { SubscriptionTier, FeatureKey } from '@/types';
+import type { UserRole, FeatureKey } from '@/types';
 
 interface FeatureFlagState {
   // State
-  tier: SubscriptionTier;
+  role: UserRole;
   features: Record<string, boolean>;
   isLoaded: boolean;
 
   // Actions
-  setFeatures: (tier: SubscriptionTier, features: Record<string, boolean>) => void;
+  setFeatures: (role: UserRole, features: Record<string, boolean>) => void;
   isEnabled: (feature: FeatureKey) => boolean;
   reset: () => void;
 }
 
 export const useFeatureFlagStore = create<FeatureFlagState>((set, get) => ({
-  tier: 'free',
+  role: 'subscriber',
   features: {},
   isLoaded: false,
 
-  setFeatures: (tier, features) => {
-    set({ tier, features, isLoaded: true });
+  setFeatures: (role, features) => {
+    set({ role, features, isLoaded: true });
   },
 
   isEnabled: (feature) => {
@@ -32,6 +32,6 @@ export const useFeatureFlagStore = create<FeatureFlagState>((set, get) => ({
   },
 
   reset: () => {
-    set({ tier: 'free', features: {}, isLoaded: false });
+    set({ role: 'subscriber', features: {}, isLoaded: false });
   },
 }));

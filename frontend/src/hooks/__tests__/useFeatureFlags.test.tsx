@@ -1,5 +1,6 @@
 /**
  * useFeatureFlags Hook Tests - WS4 Creator Studio
+ * Updated for role-based access control
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
@@ -17,7 +18,7 @@ vi.mock('../../lib/api/features', () => ({
 vi.mock('../useAuth', () => ({
   useAuth: vi.fn(() => ({
     isAuthenticated: true,
-    user: { id: 'user-1' },
+    user: { id: 'user-1', role: 'subscriber' },
   })),
 }));
 
@@ -70,7 +71,8 @@ describe('useFeatureFlags (WS4 Creator Studio)', () => {
         expect(result.current.isLoaded).toBe(true);
       });
 
-      expect(result.current.tier).toBe('creator');
+      // Role is mapped from tier (creator -> artist)
+      expect(result.current.role).toBe('subscriber'); // User role from auth mock
       expect(result.current.features).toEqual(mockFeatures.features);
       expect(featuresApi.getUserFeatures).toHaveBeenCalled();
     });
@@ -148,14 +150,17 @@ describe('useFeatureFlags (WS4 Creator Studio)', () => {
       });
     });
 
-    describe('hasTier', () => {
-      it('should return true when user has required tier', async () => {
+    describe('hasRole', () => {
+      it('should return true when user has required role', async () => {
         const mockFeatures = {
           tier: 'pro' as const,
           features: {},
         };
         vi.mocked(featuresApi.getUserFeatures).mockResolvedValue(mockFeatures);
 
+        // Set the store directly to test hasRole
+        useFeatureFlagStore.getState().setFeatures('admin', {});
+
         const { result } = renderHook(() => useFeatureFlags(), {
           wrapper: createWrapper(),
         });
@@ -164,18 +169,22 @@ describe('useFeatureFlags (WS4 Creator Studio)', () => {
           expect(result.current.isLoaded).toBe(true);
         });
 
-        expect(result.current.hasTier('free')).toBe(true);
-        expect(result.current.hasTier('creator')).toBe(true);
-        expect(result.current.hasTier('pro')).toBe(true);
+        expect(result.current.hasRole('guest')).toBe(true);
+        expect(result.current.hasRole('subscriber')).toBe(true);
+        expect(result.current.hasRole('artist')).toBe(true);
+        expect(result.current.hasRole('admin')).toBe(true);
       });
 
-      it('should return false when user lacks required tier', async () => {
+      it('should return false when user lacks required role', async () => {
         const mockFeatures = {
           tier: 'free' as const,
           features: {},
         };
         vi.mocked(featuresApi.getUserFeatures).mockResolvedValue(mockFeatures);
 
+        // Set the store directly to test hasRole
+        useFeatureFlagStore.getState().setFeatures('subscriber', {});
+
         const { result } = renderHook(() => useFeatureFlags(), {
           wrapper: createWrapper(),
         });
@@ -184,18 +193,22 @@ describe('useFeatureFlags (WS4 Creator Studio)', () => {
           expect(result.current.isLoaded).toBe(true);
         });
 
-        expect(result.current.hasTier('free')).toBe(true);
-        expect(result.current.hasTier('creator')).toBe(false);
-        expect(result.current.hasTier('pro')).toBe(false);
+        expect(result.current.hasRole('guest')).toBe(true);
+        expect(result.current.hasRole('subscriber')).toBe(true);
+        expect(result.current.hasRole('artist')).toBe(false);
+        expect(result.current.hasRole('admin')).toBe(false);
       });
 
-      it('should handle creator tier correctly', async () => {
+      it('should handle artist role correctly', async () => {
         const mockFeatures = {
           tier: 'creator' as const,
           features: {},
         };
         vi.mocked(featuresApi.getUserFeatures).mockResolvedValue(mockFeatures);
 
+        // Set the store directly to test hasRole
+        useFeatureFlagStore.getState().setFeatures('artist', {});
+
         const { result } = renderHook(() => useFeatureFlags(), {
           wrapper: createWrapper(),
         });
@@ -204,9 +217,10 @@ describe('useFeatureFlags (WS4 Creator Studio)', () => {
           expect(result.current.isLoaded).toBe(true);
         });
 
-        expect(result.current.hasTier('free')).toBe(true);
-        expect(result.current.hasTier('creator')).toBe(true);
-        expect(result.current.hasTier('pro')).toBe(false);
+        expect(result.current.hasRole('guest')).toBe(true);
+        expect(result.current.hasRole('subscriber')).toBe(true);
+        expect(result.current.hasRole('artist')).toBe(true);
+        expect(result.current.hasRole('admin')).toBe(false);
       });
     });
 
@@ -255,10 +269,10 @@ describe('useFeatureFlags (WS4 Creator Studio)', () => {
         expect(result.current.isEnabled).toBe(true);
       });
 
-      expect(result.current.showUpgrade).toBe(false);
+      expect(result.current.isLocked).toBe(false);
     });
 
-    it('should return showUpgrade true when feature is disabled', async () => {
+    it('should return isLocked true when feature is disabled', async () => {
       const mockFeatures = {
         tier: 'free' as const,
         features: { CRATES: false },
@@ -274,10 +288,10 @@ describe('useFeatureFlags (WS4 Creator Studio)', () => {
       });
 
       expect(result.current.isEnabled).toBe(false);
-      expect(result.current.showUpgrade).toBe(true);
+      expect(result.current.isLocked).toBe(true);
     });
 
-    it('should not show upgrade while loading', () => {
+    it('should not show locked state while loading', () => {
       vi.mocked(featuresApi.getUserFeatures).mockReturnValue(new Promise(() => {}));
 
       const { result } = renderHook(() => useFeatureGate('CRATES'), {
@@ -285,10 +299,10 @@ describe('useFeatureFlags (WS4 Creator Studio)', () => {
       });
 
       expect(result.current.isLoading).toBe(true);
-      expect(result.current.showUpgrade).toBe(false);
+      expect(result.current.isLocked).toBe(false);
     });
 
-    it('should return the user tier', async () => {
+    it('should return the user role', async () => {
       const mockFeatures = {
         tier: 'creator' as const,
         features: { CRATES: true },
@@ -300,7 +314,7 @@ describe('useFeatureFlags (WS4 Creator Studio)', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.tier).toBe('creator');
+        expect(result.current.role).toBe('subscriber'); // From auth mock
       });
     });
   });
@@ -313,24 +327,24 @@ describe('featureFlagStore', () => {
 
   it('should start with default state', () => {
     const state = useFeatureFlagStore.getState();
-    expect(state.tier).toBe('free');
+    expect(state.role).toBe('subscriber');
     expect(state.features).toEqual({});
     expect(state.isLoaded).toBe(false);
   });
 
   it('should setFeatures correctly', () => {
     const store = useFeatureFlagStore.getState();
-    store.setFeatures('pro', { CRATES: true, HOT_CUES: true });
+    store.setFeatures('artist', { CRATES: true, HOT_CUES: true });
 
     const newState = useFeatureFlagStore.getState();
-    expect(newState.tier).toBe('pro');
+    expect(newState.role).toBe('artist');
     expect(newState.features).toEqual({ CRATES: true, HOT_CUES: true });
     expect(newState.isLoaded).toBe(true);
   });
 
   it('should check isEnabled correctly', () => {
     const store = useFeatureFlagStore.getState();
-    store.setFeatures('creator', { CRATES: true, HOT_CUES: false });
+    store.setFeatures('artist', { CRATES: true, HOT_CUES: false });
 
     const state = useFeatureFlagStore.getState();
     expect(state.isEnabled('CRATES')).toBe(true);
@@ -340,12 +354,12 @@ describe('featureFlagStore', () => {
 
   it('should reset correctly', () => {
     const store = useFeatureFlagStore.getState();
-    store.setFeatures('pro', { CRATES: true });
+    store.setFeatures('admin', { CRATES: true });
 
     store.reset();
 
     const newState = useFeatureFlagStore.getState();
-    expect(newState.tier).toBe('free');
+    expect(newState.role).toBe('subscriber');
     expect(newState.features).toEqual({});
     expect(newState.isLoaded).toBe(false);
   });

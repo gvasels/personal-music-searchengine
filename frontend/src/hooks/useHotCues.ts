@@ -19,7 +19,7 @@ export const hotCueKeys = {
 };
 
 export function useHotCues(trackId: string | undefined) {
-  const { isEnabled, showUpgrade } = useFeatureGate('HOT_CUES');
+  const { isEnabled, isLocked } = useFeatureGate('HOT_CUES');
 
   const query = useQuery({
     queryKey: hotCueKeys.track(trackId || ''),
@@ -31,7 +31,7 @@ export function useHotCues(trackId: string | undefined) {
   return {
     ...query,
     isFeatureEnabled: isEnabled,
-    showUpgrade,
+    isLocked,
   };
 }
 

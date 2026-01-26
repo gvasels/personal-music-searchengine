@@ -24,7 +24,7 @@ interface HotCueBarProps {
 }
 
 export function HotCueBar({ trackId, currentPosition, onSeek }: HotCueBarProps) {
-  const { data, isLoading, isFeatureEnabled, showUpgrade } = useHotCues(trackId);
+  const { data, isLoading, isFeatureEnabled, isLocked } = useHotCues(trackId);
   const setHotCue = useSetHotCue();
   const deleteHotCue = useDeleteHotCue();
 
@@ -32,13 +32,11 @@ export function HotCueBar({ trackId, currentPosition, onSeek }: HotCueBarProps) 
     return null;
   }
 
-  if (!isFeatureEnabled && showUpgrade) {
+  if (!isFeatureEnabled && isLocked) {
     return (
       <div className="flex items-center gap-2 p-2 bg-base-200 rounded">
         <span className="text-xs text-base-content/50">Hot Cues</span>
-        <a href="/subscription" className="btn btn-xs btn-outline">
-          Upgrade
-        </a>
+        <span className="badge badge-outline badge-xs">Artist role required</span>
       </div>
     );
   }
