@@ -630,6 +630,95 @@ func (r *DynamoDBRepository) UpdateUserStats(ctx context.Context, userID string,
 	return nil
 }
 
+// UpdateUserRole updates a user's role
+func (r *DynamoDBRepository) UpdateUserRole(ctx context.Context, userID string, role models.UserRole) error {
+	update := expression.Set(
+		expression.Name("role"), expression.Value(role),
+	).Set(
+		expression.Name("updatedAt"), expression.Value(time.Now().Format(time.RFC3339)),
+	)
+
+	expr, err := expression.NewBuilder().WithUpdate(update).Build()
+	if err != nil {
+		return fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	_, err = r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: "PROFILE"},
+		},
+		UpdateExpression:          expr.Update(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ConditionExpression:       aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update user role: %w", err)
+	}
+
+	return nil
+}
+
+// ListUsersByRole lists users with a specific role (requires GSI on role field)
+func (r *DynamoDBRepository) ListUsersByRole(ctx context.Context, role models.UserRole, limit int, cursor string) (*PaginatedResult[models.User], error) {
+	// Note: This requires a GSI on the role field to be efficient
+	// For now, we'll do a scan with filter (not ideal for production)
+	filter := expression.Name("role").Equal(expression.Value(role)).
+		And(expression.Name("Type").Equal(expression.Value("USER")))
+
+	builder := expression.NewBuilder().WithFilter(filter)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	input := &dynamodb.ScanInput{
+		TableName:                 aws.String(r.tableName),
+		FilterExpression:          expr.Filter(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit)),
+	}
+
+	if cursor != "" {
+		startKey, err := decodeCursor(cursor)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		input.ExclusiveStartKey = startKey
+	}
+
+	result, err := r.client.Scan(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list users by role: %w", err)
+	}
+
+	users := make([]models.User, 0, len(result.Items))
+	for _, item := range result.Items {
+		var userItem models.UserItem
+		if err := attributevalue.UnmarshalMap(item, &userItem); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal user: %w", err)
+		}
+		users = append(users, userItem.User)
+	}
+
+	var nextCursor string
+	if result.LastEvaluatedKey != nil {
+		nextCursor, err = encodeCursor(result.LastEvaluatedKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode cursor: %w", err)
+		}
+	}
+
+	return &PaginatedResult[models.User]{
+		Items:      users,
+		NextCursor: nextCursor,
+		HasMore:    result.LastEvaluatedKey != nil,
+	}, nil
+}
+
 // ============================================================================
 // Playlist Operations
 // ============================================================================
@@ -1070,6 +1159,91 @@ func (r *DynamoDBRepository) ReorderPlaylistTracks(ctx context.Context, playlist
 	}
 
 	return nil
+}
+
+// UpdatePlaylistVisibility updates a playlist's visibility
+func (r *DynamoDBRepository) UpdatePlaylistVisibility(ctx context.Context, userID, playlistID string, visibility models.PlaylistVisibility) error {
+	// Get the existing playlist
+	playlist, err := r.GetPlaylist(ctx, userID, playlistID)
+	if err != nil {
+		return err
+	}
+
+	playlist.Visibility = visibility
+	playlist.UpdatedAt = time.Now()
+
+	// Update the item with new visibility and potentially new GSI2 keys
+	item := models.NewPlaylistItem(*playlist)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal playlist: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String(r.tableName),
+		Item:      av,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update playlist visibility: %w", err)
+	}
+
+	return nil
+}
+
+// ListPublicPlaylists lists all public playlists via GSI2
+func (r *DynamoDBRepository) ListPublicPlaylists(ctx context.Context, limit int, cursor string) (*PaginatedResult[models.Playlist], error) {
+	keyCondition := expression.Key("GSI2PK").Equal(expression.Value("PUBLIC_PLAYLIST"))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	input := &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		IndexName:                 aws.String("GSI2"),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit)),
+	}
+
+	if cursor != "" {
+		startKey, err := decodeCursor(cursor)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		input.ExclusiveStartKey = startKey
+	}
+
+	result, err := r.client.Query(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list public playlists: %w", err)
+	}
+
+	playlists := make([]models.Playlist, 0, len(result.Items))
+	for _, item := range result.Items {
+		var playlistItem models.PlaylistItem
+		if err := attributevalue.UnmarshalMap(item, &playlistItem); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal playlist: %w", err)
+		}
+		playlists = append(playlists, playlistItem.Playlist)
+	}
+
+	var nextCursor string
+	if result.LastEvaluatedKey != nil {
+		nextCursor, err = encodeCursor(result.LastEvaluatedKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode cursor: %w", err)
+		}
+	}
+
+	return &PaginatedResult[models.Playlist]{
+		Items:      playlists,
+		NextCursor: nextCursor,
+		HasMore:    result.LastEvaluatedKey != nil,
+	}, nil
 }
 
 // ============================================================================
@@ -1612,6 +1786,44 @@ func cursorToAttributeValue(cursor models.PaginationCursor) map[string]types.Att
 	}
 
 	return av
+}
+
+// encodeCursor encodes a DynamoDB LastEvaluatedKey to a cursor string
+func encodeCursor(key map[string]types.AttributeValue) (string, error) {
+	if key == nil {
+		return "", nil
+	}
+
+	cursor := models.PaginationCursor{}
+
+	if pk, ok := key["PK"].(*types.AttributeValueMemberS); ok {
+		cursor.PK = pk.Value
+	}
+	if sk, ok := key["SK"].(*types.AttributeValueMemberS); ok {
+		cursor.SK = sk.Value
+	}
+	if gsi1pk, ok := key["GSI1PK"].(*types.AttributeValueMemberS); ok {
+		cursor.GSI1PK = gsi1pk.Value
+	}
+	if gsi1sk, ok := key["GSI1SK"].(*types.AttributeValueMemberS); ok {
+		cursor.GSI1SK = gsi1sk.Value
+	}
+
+	return models.EncodeCursor(cursor), nil
+}
+
+// decodeCursor decodes a cursor string to DynamoDB ExclusiveStartKey
+func decodeCursor(cursor string) (map[string]types.AttributeValue, error) {
+	if cursor == "" {
+		return nil, nil
+	}
+
+	paginationCursor, err := models.DecodeCursor(cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	return cursorToAttributeValue(paginationCursor), nil
 }
 
 // generateAlbumID creates a consistent album ID from name and artist

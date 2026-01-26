@@ -207,6 +207,62 @@ func (m *MockTagRepository) SearchPlaylists(ctx context.Context, userID, query s
 	return nil, nil
 }
 
+// User role methods
+func (m *MockTagRepository) UpdateUserRole(ctx context.Context, userID string, role models.UserRole) error {
+	return nil
+}
+func (m *MockTagRepository) ListUsersByRole(ctx context.Context, role models.UserRole, limit int, cursor string) (*repository.PaginatedResult[models.User], error) {
+	return nil, nil
+}
+
+// Playlist visibility methods
+func (m *MockTagRepository) UpdatePlaylistVisibility(ctx context.Context, userID, playlistID string, visibility models.PlaylistVisibility) error {
+	return nil
+}
+func (m *MockTagRepository) ListPublicPlaylists(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.Playlist], error) {
+	return nil, nil
+}
+
+// ArtistProfile methods
+func (m *MockTagRepository) CreateArtistProfile(ctx context.Context, profile models.ArtistProfile) error {
+	return nil
+}
+func (m *MockTagRepository) GetArtistProfile(ctx context.Context, userID string) (*models.ArtistProfile, error) {
+	return nil, nil
+}
+func (m *MockTagRepository) UpdateArtistProfile(ctx context.Context, profile models.ArtistProfile) error {
+	return nil
+}
+func (m *MockTagRepository) DeleteArtistProfile(ctx context.Context, userID string) error {
+	return nil
+}
+func (m *MockTagRepository) ListArtistProfiles(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.ArtistProfile], error) {
+	return nil, nil
+}
+func (m *MockTagRepository) IncrementArtistFollowerCount(ctx context.Context, userID string, delta int) error {
+	return nil
+}
+
+// Follow methods
+func (m *MockTagRepository) CreateFollow(ctx context.Context, follow models.Follow) error {
+	return nil
+}
+func (m *MockTagRepository) DeleteFollow(ctx context.Context, followerID, followedID string) error {
+	return nil
+}
+func (m *MockTagRepository) GetFollow(ctx context.Context, followerID, followedID string) (*models.Follow, error) {
+	return nil, nil
+}
+func (m *MockTagRepository) ListFollowers(ctx context.Context, userID string, limit int, cursor string) (*repository.PaginatedResult[models.Follow], error) {
+	return nil, nil
+}
+func (m *MockTagRepository) ListFollowing(ctx context.Context, userID string, limit int, cursor string) (*repository.PaginatedResult[models.Follow], error) {
+	return nil, nil
+}
+func (m *MockTagRepository) IncrementUserFollowingCount(ctx context.Context, userID string, delta int) error {
+	return nil
+}
+
 // =============================================================================
 // CreateTag Tests
 // =============================================================================

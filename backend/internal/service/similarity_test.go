@@ -194,6 +194,62 @@ func (m *MockSimilarityRepository) ListUploadsByStatus(ctx context.Context, stat
 	return nil, nil
 }
 
+// User role methods
+func (m *MockSimilarityRepository) UpdateUserRole(ctx context.Context, userID string, role models.UserRole) error {
+	return nil
+}
+func (m *MockSimilarityRepository) ListUsersByRole(ctx context.Context, role models.UserRole, limit int, cursor string) (*repository.PaginatedResult[models.User], error) {
+	return nil, nil
+}
+
+// Playlist visibility methods
+func (m *MockSimilarityRepository) UpdatePlaylistVisibility(ctx context.Context, userID, playlistID string, visibility models.PlaylistVisibility) error {
+	return nil
+}
+func (m *MockSimilarityRepository) ListPublicPlaylists(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.Playlist], error) {
+	return nil, nil
+}
+
+// ArtistProfile methods
+func (m *MockSimilarityRepository) CreateArtistProfile(ctx context.Context, profile models.ArtistProfile) error {
+	return nil
+}
+func (m *MockSimilarityRepository) GetArtistProfile(ctx context.Context, userID string) (*models.ArtistProfile, error) {
+	return nil, nil
+}
+func (m *MockSimilarityRepository) UpdateArtistProfile(ctx context.Context, profile models.ArtistProfile) error {
+	return nil
+}
+func (m *MockSimilarityRepository) DeleteArtistProfile(ctx context.Context, userID string) error {
+	return nil
+}
+func (m *MockSimilarityRepository) ListArtistProfiles(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.ArtistProfile], error) {
+	return nil, nil
+}
+func (m *MockSimilarityRepository) IncrementArtistFollowerCount(ctx context.Context, userID string, delta int) error {
+	return nil
+}
+
+// Follow methods
+func (m *MockSimilarityRepository) CreateFollow(ctx context.Context, follow models.Follow) error {
+	return nil
+}
+func (m *MockSimilarityRepository) DeleteFollow(ctx context.Context, followerID, followedID string) error {
+	return nil
+}
+func (m *MockSimilarityRepository) GetFollow(ctx context.Context, followerID, followedID string) (*models.Follow, error) {
+	return nil, nil
+}
+func (m *MockSimilarityRepository) ListFollowers(ctx context.Context, userID string, limit int, cursor string) (*repository.PaginatedResult[models.Follow], error) {
+	return nil, nil
+}
+func (m *MockSimilarityRepository) ListFollowing(ctx context.Context, userID string, limit int, cursor string) (*repository.PaginatedResult[models.Follow], error) {
+	return nil, nil
+}
+func (m *MockSimilarityRepository) IncrementUserFollowingCount(ctx context.Context, userID string, delta int) error {
+	return nil
+}
+
 // Helper function to create test tracks
 func createSimilarityTestTrack(id, artist, album, genre, keyCamelot string, bpm int, tags []string) models.Track {
 	return models.Track{

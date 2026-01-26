@@ -58,6 +58,8 @@ type Repository interface {
 	GetUser(ctx context.Context, userID string) (*models.User, error)
 	UpdateUser(ctx context.Context, user models.User) error
 	UpdateUserStats(ctx context.Context, userID string, storageUsed int64, trackCount, albumCount, playlistCount int) error
+	UpdateUserRole(ctx context.Context, userID string, role models.UserRole) error
+	ListUsersByRole(ctx context.Context, role models.UserRole, limit int, cursor string) (*PaginatedResult[models.User], error)
 
 	// Playlist operations
 	CreatePlaylist(ctx context.Context, playlist models.Playlist) error
@@ -70,6 +72,24 @@ type Repository interface {
 	RemoveTracksFromPlaylist(ctx context.Context, playlistID string, trackIDs []string) error
 	GetPlaylistTracks(ctx context.Context, playlistID string) ([]models.PlaylistTrack, error)
 	ReorderPlaylistTracks(ctx context.Context, playlistID string, tracks []models.PlaylistTrack) error
+	UpdatePlaylistVisibility(ctx context.Context, userID, playlistID string, visibility models.PlaylistVisibility) error
+	ListPublicPlaylists(ctx context.Context, limit int, cursor string) (*PaginatedResult[models.Playlist], error)
+
+	// ArtistProfile operations
+	CreateArtistProfile(ctx context.Context, profile models.ArtistProfile) error
+	GetArtistProfile(ctx context.Context, userID string) (*models.ArtistProfile, error)
+	UpdateArtistProfile(ctx context.Context, profile models.ArtistProfile) error
+	DeleteArtistProfile(ctx context.Context, userID string) error
+	ListArtistProfiles(ctx context.Context, limit int, cursor string) (*PaginatedResult[models.ArtistProfile], error)
+	IncrementArtistFollowerCount(ctx context.Context, userID string, delta int) error
+
+	// Follow operations
+	CreateFollow(ctx context.Context, follow models.Follow) error
+	DeleteFollow(ctx context.Context, followerID, followedID string) error
+	GetFollow(ctx context.Context, followerID, followedID string) (*models.Follow, error)
+	ListFollowers(ctx context.Context, userID string, limit int, cursor string) (*PaginatedResult[models.Follow], error)
+	ListFollowing(ctx context.Context, userID string, limit int, cursor string) (*PaginatedResult[models.Follow], error)
+	IncrementUserFollowingCount(ctx context.Context, userID string, delta int) error
 
 	// Tag operations
 	CreateTag(ctx context.Context, tag models.Tag) error

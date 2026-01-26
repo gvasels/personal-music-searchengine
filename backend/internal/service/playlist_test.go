@@ -209,6 +209,62 @@ func (m *MockPlaylistRepository) SearchPlaylists(ctx context.Context, userID, qu
 	return nil, nil
 }
 
+// User role methods
+func (m *MockPlaylistRepository) UpdateUserRole(ctx context.Context, userID string, role models.UserRole) error {
+	return nil
+}
+func (m *MockPlaylistRepository) ListUsersByRole(ctx context.Context, role models.UserRole, limit int, cursor string) (*repository.PaginatedResult[models.User], error) {
+	return nil, nil
+}
+
+// Playlist visibility methods
+func (m *MockPlaylistRepository) UpdatePlaylistVisibility(ctx context.Context, userID, playlistID string, visibility models.PlaylistVisibility) error {
+	return nil
+}
+func (m *MockPlaylistRepository) ListPublicPlaylists(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.Playlist], error) {
+	return nil, nil
+}
+
+// ArtistProfile methods
+func (m *MockPlaylistRepository) CreateArtistProfile(ctx context.Context, profile models.ArtistProfile) error {
+	return nil
+}
+func (m *MockPlaylistRepository) GetArtistProfile(ctx context.Context, userID string) (*models.ArtistProfile, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) UpdateArtistProfile(ctx context.Context, profile models.ArtistProfile) error {
+	return nil
+}
+func (m *MockPlaylistRepository) DeleteArtistProfile(ctx context.Context, userID string) error {
+	return nil
+}
+func (m *MockPlaylistRepository) ListArtistProfiles(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.ArtistProfile], error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) IncrementArtistFollowerCount(ctx context.Context, userID string, delta int) error {
+	return nil
+}
+
+// Follow methods
+func (m *MockPlaylistRepository) CreateFollow(ctx context.Context, follow models.Follow) error {
+	return nil
+}
+func (m *MockPlaylistRepository) DeleteFollow(ctx context.Context, followerID, followedID string) error {
+	return nil
+}
+func (m *MockPlaylistRepository) GetFollow(ctx context.Context, followerID, followedID string) (*models.Follow, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) ListFollowers(ctx context.Context, userID string, limit int, cursor string) (*repository.PaginatedResult[models.Follow], error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) ListFollowing(ctx context.Context, userID string, limit int, cursor string) (*repository.PaginatedResult[models.Follow], error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) IncrementUserFollowingCount(ctx context.Context, userID string, delta int) error {
+	return nil
+}
+
 // MockPlaylistS3Repository provides mockable S3 repository methods
 type MockPlaylistS3Repository struct {
 	mock.Mock
