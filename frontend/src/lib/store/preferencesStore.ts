@@ -14,6 +14,7 @@ export interface PreferencesState {
   trackListColumns: TrackListColumn[];
   compactMode: boolean;
   showCoverArt: boolean;
+  showUploadedBy: boolean; // Show "Uploaded By" column in track list (for admin/global users)
 
   // Behavior preferences
   shortcutsEnabled: boolean;
@@ -32,6 +33,7 @@ export interface PreferencesState {
   toggleColumn: (column: TrackListColumn) => void;
   setCompactMode: (compact: boolean) => void;
   setShowCoverArt: (show: boolean) => void;
+  setShowUploadedBy: (show: boolean) => void;
   setShortcutsEnabled: (enabled: boolean) => void;
   setConfirmBeforeDelete: (confirm: boolean) => void;
   setAutoPlayOnSelect: (autoPlay: boolean) => void;
@@ -48,6 +50,7 @@ const defaultPreferences = {
   trackListColumns: DEFAULT_COLUMNS,
   compactMode: false,
   showCoverArt: true,
+  showUploadedBy: false, // Hidden by default, toggle in settings
   shortcutsEnabled: true,
   confirmBeforeDelete: true,
   autoPlayOnSelect: true,
@@ -81,6 +84,7 @@ export const usePreferencesStore = create<PreferencesState>()(
 
       setCompactMode: (compact) => set({ compactMode: compact }),
       setShowCoverArt: (show) => set({ showCoverArt: show }),
+      setShowUploadedBy: (show) => set({ showUploadedBy: show }),
 
       // Behavior actions
       setShortcutsEnabled: (enabled) => set({ shortcutsEnabled: enabled }),
@@ -116,3 +120,4 @@ export const useSidebarVisible = () => usePreferencesStore((s) => s.sidebarVisib
 export const useShortcutsEnabled = () => usePreferencesStore((s) => s.shortcutsEnabled);
 export const useTrackListColumns = () => usePreferencesStore((s) => s.trackListColumns);
 export const useCompactMode = () => usePreferencesStore((s) => s.compactMode);
+export const useShowUploadedBy = () => usePreferencesStore((s) => s.showUploadedBy);

@@ -1,9 +1,14 @@
 /**
  * Track Detail Page - Wave 2
+ * Updated with track visibility selector
  */
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from '@tanstack/react-router';
-import { useTrackQuery, useUpdateTrack, useDeleteTrack } from '../../hooks/useTracks';
+import { toast } from 'react-hot-toast';
+import { useTrackQuery, useUpdateTrack, useDeleteTrack, useUpdateTrackVisibility } from '../../hooks/useTracks';
+import { useAuth } from '../../hooks/useAuth';
+import { VisibilitySelector, VisibilityBadge } from '../../components/playlist';
+import type { TrackVisibility } from '../../types';
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -17,10 +22,16 @@ export default function TrackDetailPage() {
   const { data: track, isLoading, isError, error } = useTrackQuery(trackId);
   const updateTrack = useUpdateTrack();
   const deleteTrack = useDeleteTrack();
+  const updateVisibility = useUpdateTrackVisibility();
+  const { isArtist } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', artist: '', album: '' });
+
+  // Check if user owns this track (for visibility editing)
+  // Tracks don't have ownerId visible, so we assume current user can edit if they can see the track
+  const canEditVisibility = isArtist;
 
   const handleBack = () => {
     void navigate({ to: '/tracks' });
@@ -43,6 +54,16 @@ export default function TrackDetailPage() {
     if (!track) return;
     await deleteTrack.mutateAsync(track.id);
     void navigate({ to: '/tracks' });
+  };
+
+  const handleVisibilityChange = async (visibility: TrackVisibility) => {
+    if (!track) return;
+    try {
+      await updateVisibility.mutateAsync({ id: track.id, visibility });
+      toast.success(`Track visibility updated to ${visibility}`);
+    } catch (err) {
+      toast.error('Failed to update track visibility');
+    }
   };
 
   if (isLoading) {
@@ -173,6 +194,31 @@ export default function TrackDetailPage() {
                   ))}
                 </div>
               )}
+
+              {/* Track Visibility */}
+              <div className="card bg-base-200 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-medium">Visibility</h3>
+                    <p className="text-sm text-base-content/60">
+                      Control who can see and play this track
+                    </p>
+                  </div>
+                  {canEditVisibility ? (
+                    <VisibilitySelector
+                      value={(track.visibility as TrackVisibility) || 'private'}
+                      onChange={handleVisibilityChange}
+                      disabled={updateVisibility.isPending}
+                      size="sm"
+                    />
+                  ) : (
+                    <VisibilityBadge
+                      visibility={(track.visibility as TrackVisibility) || 'private'}
+                      size="md"
+                    />
+                  )}
+                </div>
+              </div>
 
               <div className="flex gap-2">
                 <button className="btn btn-primary">Play</button>

@@ -6,9 +6,10 @@ import (
 	"strings"
 
 	"github.com/awslabs/aws-lambda-go-api-proxy/core"
-	"github.com/labstack/echo/v4"
+	"github.com/gvasels/personal-music-searchengine/internal/handlers/middleware"
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/service"
+	"github.com/labstack/echo/v4"
 )
 
 // Handlers contains all HTTP handlers
@@ -40,6 +41,7 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 	api.POST("/tracks/:id/tags", h.AddTagsToTrack)
 	api.DELETE("/tracks/:id/tags/:tag", h.RemoveTagFromTrack)
 	api.PUT("/tracks/:id/cover", h.UploadCoverArt)
+	api.PUT("/tracks/:id/visibility", h.UpdateTrackVisibility)
 
 	// Album routes
 	api.GET("/albums", h.ListAlbums)
@@ -96,6 +98,20 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 	api.GET("/search", h.SimpleSearch)
 	api.POST("/search", h.AdvancedSearch)
 	api.GET("/search/autocomplete", h.Autocomplete)
+}
+
+// RegisterAdminRoutes registers admin routes with proper middleware protection.
+// Admin routes require the admin role.
+func RegisterAdminRoutes(e *echo.Echo, adminHandler *AdminHandler) {
+	// Admin route group with role-based protection
+	admin := e.Group("/api/v1/admin")
+	admin.Use(middleware.RequireRole(models.RoleAdmin))
+
+	// User management routes
+	admin.GET("/users", adminHandler.SearchUsers)           // Search users by email/name
+	admin.GET("/users/:id", adminHandler.GetUserDetails)    // Get user details
+	admin.PUT("/users/:id/role", adminHandler.UpdateUserRole)   // Update user role
+	admin.PUT("/users/:id/status", adminHandler.UpdateUserStatus) // Enable/disable user
 }
 
 // AuthContext contains user authentication and permission information

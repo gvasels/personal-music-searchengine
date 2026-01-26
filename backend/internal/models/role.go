@@ -62,6 +62,9 @@ const (
 
 	// PermissionManageUsers allows managing user accounts.
 	PermissionManageUsers Permission = "manage_users"
+
+	// PermissionViewGlobal allows viewing all content across all users.
+	PermissionViewGlobal Permission = "view_global"
 )
 
 // RolePermissions maps roles to their allowed permissions.
@@ -100,6 +103,7 @@ var RolePermissions = map[UserRole]map[Permission]bool{
 		PermissionManageOwnContent:      true,
 		PermissionModerateContent:       true,
 		PermissionManageUsers:           true,
+		PermissionViewGlobal:            true,
 	},
 }
 

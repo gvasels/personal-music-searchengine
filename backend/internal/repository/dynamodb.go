@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -310,6 +311,135 @@ func (r *DynamoDBRepository) ListTracksByArtist(ctx context.Context, userID, art
 	}
 
 	return tracks, nil
+}
+
+// ListPublicTracks queries GSI3 for all public tracks
+func (r *DynamoDBRepository) ListPublicTracks(ctx context.Context, limit int, cursor string) (*PaginatedResult[models.Track], error) {
+	if limit <= 0 {
+		limit = 20
+	}
+
+	keyCondition := expression.Key("GSI3PK").Equal(expression.Value("PUBLIC_TRACK"))
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	input := &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		IndexName:                 aws.String("GSI3"),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit)),
+		ScanIndexForward:          aws.Bool(false), // Most recent first
+	}
+
+	if cursor != "" {
+		startKey, err := models.DecodeCursor(cursor)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		input.ExclusiveStartKey = map[string]types.AttributeValue{
+			"PK":     &types.AttributeValueMemberS{Value: startKey.PK},
+			"SK":     &types.AttributeValueMemberS{Value: startKey.SK},
+			"GSI3PK": &types.AttributeValueMemberS{Value: "PUBLIC_TRACK"},
+			"GSI3SK": &types.AttributeValueMemberS{Value: startKey.GSI1SK}, // Reuse GSI1SK field for GSI3SK
+		}
+	}
+
+	result, err := r.client.Query(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query public tracks: %w", err)
+	}
+
+	var items []models.TrackItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal tracks: %w", err)
+	}
+
+	tracks := make([]models.Track, 0, len(items))
+	for _, item := range items {
+		tracks = append(tracks, item.Track)
+	}
+
+	var nextCursor string
+	hasMore := result.LastEvaluatedKey != nil
+	if hasMore {
+		pk := result.LastEvaluatedKey["PK"].(*types.AttributeValueMemberS).Value
+		sk := result.LastEvaluatedKey["SK"].(*types.AttributeValueMemberS).Value
+		gsi3sk := ""
+		if v, ok := result.LastEvaluatedKey["GSI3SK"].(*types.AttributeValueMemberS); ok {
+			gsi3sk = v.Value
+		}
+		nextCursor = models.EncodeCursor(models.PaginationCursor{
+			PK:     pk,
+			SK:     sk,
+			GSI1SK: gsi3sk, // Store GSI3SK in GSI1SK field
+		})
+	}
+
+	return &PaginatedResult[models.Track]{
+		Items:      tracks,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+	}, nil
+}
+
+// UpdateTrackVisibility updates a track's visibility and manages GSI3 keys
+func (r *DynamoDBRepository) UpdateTrackVisibility(ctx context.Context, userID, trackID string, visibility models.TrackVisibility) error {
+	pk := fmt.Sprintf("USER#%s", userID)
+	sk := fmt.Sprintf("TRACK#%s", trackID)
+	now := time.Now()
+
+	// Build update expression
+	updateExpr := "SET #vis = :vis, #upd = :upd"
+	exprNames := map[string]string{
+		"#vis": "Visibility",
+		"#upd": "updatedAt",
+	}
+	exprValues := map[string]types.AttributeValue{
+		":vis": &types.AttributeValueMemberS{Value: string(visibility)},
+		":upd": &types.AttributeValueMemberS{Value: now.Format(time.RFC3339)},
+	}
+
+	// If making public, set GSI3 keys and PublishedAt
+	if visibility == models.VisibilityPublic {
+		updateExpr += ", #gsi3pk = :gsi3pk, #gsi3sk = :gsi3sk, #pub = :pub"
+		exprNames["#gsi3pk"] = "GSI3PK"
+		exprNames["#gsi3sk"] = "GSI3SK"
+		exprNames["#pub"] = "PublishedAt"
+		exprValues[":gsi3pk"] = &types.AttributeValueMemberS{Value: "PUBLIC_TRACK"}
+		exprValues[":gsi3sk"] = &types.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", now.Format("2006-01-02T15:04:05Z"), trackID)}
+		exprValues[":pub"] = &types.AttributeValueMemberS{Value: now.Format(time.RFC3339)}
+	} else {
+		// If making private/unlisted, remove GSI3 keys
+		updateExpr += " REMOVE #gsi3pk, #gsi3sk"
+		exprNames["#gsi3pk"] = "GSI3PK"
+		exprNames["#gsi3sk"] = "GSI3SK"
+	}
+
+	_, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+		UpdateExpression:          aws.String(updateExpr),
+		ExpressionAttributeNames:  exprNames,
+		ExpressionAttributeValues: exprValues,
+		ConditionExpression:       aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		var condErr *types.ConditionalCheckFailedException
+		if errors.As(err, &condErr) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to update track visibility: %w", err)
+	}
+
+	return nil
 }
 
 // ============================================================================
@@ -717,6 +847,131 @@ func (r *DynamoDBRepository) ListUsersByRole(ctx context.Context, role models.Us
 		NextCursor: nextCursor,
 		HasMore:    result.LastEvaluatedKey != nil,
 	}, nil
+}
+
+// SearchUsers searches for users by email or display name (partial match)
+func (r *DynamoDBRepository) SearchUsers(ctx context.Context, query string, limit int) ([]models.User, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+
+	// Search by scanning with filter (not ideal for production, but works for admin use)
+	filter := expression.And(
+		expression.Name("Type").Equal(expression.Value("USER")),
+		expression.Or(
+			expression.Contains(expression.Name("email"), query),
+			expression.Contains(expression.Name("displayName"), query),
+		),
+	)
+
+	builder := expression.NewBuilder().WithFilter(filter)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	result, err := r.client.Scan(ctx, &dynamodb.ScanInput{
+		TableName:                 aws.String(r.tableName),
+		FilterExpression:          expr.Filter(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit * 5)), // Over-scan to account for filter
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to search users: %w", err)
+	}
+
+	users := make([]models.User, 0, len(result.Items))
+	for _, item := range result.Items {
+		var userItem models.UserItem
+		if err := attributevalue.UnmarshalMap(item, &userItem); err != nil {
+			continue // Skip invalid items
+		}
+		users = append(users, userItem.User)
+		if len(users) >= limit {
+			break
+		}
+	}
+
+	return users, nil
+}
+
+// SetUserDisabled sets the disabled status of a user
+func (r *DynamoDBRepository) SetUserDisabled(ctx context.Context, userID string, disabled bool) error {
+	pk := fmt.Sprintf("USER#%s", userID)
+	sk := "PROFILE"
+	now := time.Now()
+
+	_, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+		UpdateExpression: aws.String("SET #disabled = :disabled, #upd = :upd"),
+		ExpressionAttributeNames: map[string]string{
+			"#disabled": "disabled",
+			"#upd":      "updatedAt",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":disabled": &types.AttributeValueMemberBOOL{Value: disabled},
+			":upd":      &types.AttributeValueMemberS{Value: now.Format(time.RFC3339)},
+		},
+		ConditionExpression: aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		var condErr *types.ConditionalCheckFailedException
+		if errors.As(err, &condErr) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to set user disabled status: %w", err)
+	}
+
+	return nil
+}
+
+// GetUserDisplayName returns a user's display name
+func (r *DynamoDBRepository) GetUserDisplayName(ctx context.Context, userID string) (string, error) {
+	user, err := r.GetUser(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if user.DisplayName != "" {
+		return user.DisplayName, nil
+	}
+	return "Unknown", nil
+}
+
+// GetFollowerCount returns the number of followers for a user's artist profile
+func (r *DynamoDBRepository) GetFollowerCount(ctx context.Context, userID string) (int, error) {
+	// Check if user has an artist profile
+	pk := fmt.Sprintf("USER#%s", userID)
+	sk := "ARTIST_PROFILE"
+
+	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+		ProjectionExpression: aws.String("followerCount"),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to get follower count: %w", err)
+	}
+
+	if result.Item == nil {
+		return 0, nil // No artist profile means no followers
+	}
+
+	var profile struct {
+		FollowerCount int `dynamodbav:"followerCount"`
+	}
+	if err := attributevalue.UnmarshalMap(result.Item, &profile); err != nil {
+		return 0, nil
+	}
+
+	return profile.FollowerCount, nil
 }
 
 // ============================================================================

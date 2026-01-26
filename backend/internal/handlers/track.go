@@ -182,3 +182,36 @@ func (h *Handlers) UploadCoverArt(c echo.Context) error {
 
 	return success(c, resp)
 }
+
+// UpdateTrackVisibilityRequest is the request body for updating track visibility.
+type UpdateTrackVisibilityRequest struct {
+	Visibility models.TrackVisibility `json:"visibility" validate:"required"`
+}
+
+// UpdateTrackVisibility updates the visibility of a track
+func (h *Handlers) UpdateTrackVisibility(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == "" {
+		return handleError(c, models.ErrUnauthorized)
+	}
+
+	trackID := c.Param("id")
+	if trackID == "" {
+		return handleError(c, models.ErrBadRequest)
+	}
+
+	var req UpdateTrackVisibilityRequest
+	if err := bindAndValidate(c, &req); err != nil {
+		return handleError(c, err)
+	}
+
+	err := h.services.Track.UpdateVisibility(c.Request().Context(), userID, trackID, req.Visibility)
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	return success(c, map[string]interface{}{
+		"trackId":    trackID,
+		"visibility": req.Visibility,
+	})
+}

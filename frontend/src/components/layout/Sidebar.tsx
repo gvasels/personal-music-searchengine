@@ -16,8 +16,13 @@ const navItems = [
   { to: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
+// Admin-only navigation items
+const adminNavItems = [
+  { to: '/admin/users', label: 'User Management', icon: '👥' },
+];
+
 export function Sidebar() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin } = useAuth();
 
   // Don't show sidebar when not authenticated or still loading
   if (isLoading || !isAuthenticated) {
@@ -45,6 +50,30 @@ export function Sidebar() {
             </Link>
           </li>
         ))}
+
+        {/* Admin section - only visible to admins */}
+        {isAdmin && (
+          <>
+            <li className="menu-title mt-4">
+              <span className="text-xs uppercase tracking-wider text-base-content/50">Admin</span>
+            </li>
+            {adminNavItems.map((item) => (
+              <li key={item.to}>
+                <Link
+                  to={item.to}
+                  className="flex items-center gap-2 rounded-lg transition-colors"
+                  activeProps={{
+                    className: 'flex items-center gap-2 rounded-lg transition-colors bg-primary/20 border-l-3 border-primary font-semibold',
+                    'aria-current': 'page',
+                  }}
+                >
+                  <span>{item.icon}</span>
+                  <span>{item.label}</span>
+                </Link>
+              </li>
+            ))}
+          </>
+        )}
       </ul>
     </nav>
   );

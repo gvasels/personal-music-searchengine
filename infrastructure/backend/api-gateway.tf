@@ -473,6 +473,48 @@ resource "aws_apigatewayv2_route" "get_artist_entity_tracks" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Track visibility route
+resource "aws_apigatewayv2_route" "update_track_visibility" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "PUT /api/v1/tracks/{id}/visibility"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Admin routes (admin role checked in handler)
+resource "aws_apigatewayv2_route" "admin_search_users" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/admin/users"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "admin_get_user_details" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/admin/users/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "admin_update_user_role" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "PUT /api/v1/admin/users/{id}/role"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "admin_update_user_status" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "PUT /api/v1/admin/users/{id}/status"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Health check (no auth required)
 resource "aws_apigatewayv2_route" "health" {
   api_id    = aws_apigatewayv2_api.api.id

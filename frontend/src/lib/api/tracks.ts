@@ -2,7 +2,7 @@
  * Tracks API Module - Wave 2
  */
 import { apiClient } from './client';
-import type { Track, PaginatedResponse } from '../../types';
+import type { Track, PaginatedResponse, TrackVisibility } from '../../types';
 
 export interface GetTracksParams {
   page?: number;
@@ -39,4 +39,15 @@ export async function updateTrack(id: string, data: UpdateTrackData): Promise<Tr
 
 export async function deleteTrack(id: string): Promise<void> {
   await apiClient.delete(`/tracks/${id}`);
+}
+
+export async function updateTrackVisibility(
+  id: string,
+  visibility: TrackVisibility
+): Promise<{ trackId: string; visibility: TrackVisibility }> {
+  const response = await apiClient.put<{ trackId: string; visibility: TrackVisibility }>(
+    `/tracks/${id}/visibility`,
+    { visibility }
+  );
+  return response.data;
 }

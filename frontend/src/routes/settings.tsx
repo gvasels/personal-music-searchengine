@@ -22,6 +22,7 @@ function SettingsPage() {
     trackListColumns,
     compactMode,
     showCoverArt,
+    showUploadedBy,
     shortcutsEnabled,
     confirmBeforeDelete,
     autoPlayOnSelect,
@@ -32,6 +33,7 @@ function SettingsPage() {
     toggleColumn,
     setCompactMode,
     setShowCoverArt,
+    setShowUploadedBy,
     setShortcutsEnabled,
     setConfirmBeforeDelete,
     setAutoPlayOnSelect,
@@ -126,6 +128,24 @@ function SettingsPage() {
                   className="toggle toggle-primary"
                   checked={showCoverArt}
                   onChange={(e) => setShowCoverArt(e.target.checked)}
+                />
+              </label>
+            </div>
+
+            {/* Show Uploaded By */}
+            <div className="form-control">
+              <label className="label cursor-pointer justify-start gap-4">
+                <span className="label-text flex-1">
+                  <span className="font-medium">Show Uploaded By</span>
+                  <span className="block text-sm text-base-content/60">
+                    Display track uploader in track lists (admin/global users only)
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary"
+                  checked={showUploadedBy}
+                  onChange={(e) => setShowUploadedBy(e.target.checked)}
                 />
               </label>
             </div>
