@@ -6,18 +6,28 @@ This document tracks planned features, improvements, and technical debt for the 
 
 ---
 
-## Phase 2: Global User Type (Streaming Service Model)
+## Phase 2: Global User Type (Streaming Service Model) ✅ COMPLETE
 
 Foundation for a multi-user streaming platform with content rights management.
 
+**Completed: 2026-01-26** | [Full Spec](.spec-workflow/specs/global-user-type/)
+
 | Priority | Feature | Description | Status |
 |----------|---------|-------------|--------|
-| High | Global User Role | Implement user roles (admin, artist, subscriber, guest) | Planned |
-| High | Content Rights | Track ownership and licensing per track/album | Planned |
-| High | Public Playlists | Allow users to share playlists publicly | Planned |
-| High | Artist Profiles | Verified artist/creator accounts with management tools | Planned |
+| High | Global User Role | User roles (admin, artist, subscriber, guest) with Cognito groups | ✅ Complete |
+| High | Public Playlists | Visibility options (private/unlisted/public) with discovery | ✅ Complete |
+| High | Artist Profiles | Artist profile management with catalog linking | ✅ Complete |
+| High | Follow System | Follow/unfollow artists with follower counts | ✅ Complete |
+| High | Admin Panel | User management with search, role changes, status toggle | ✅ Complete |
+| Medium | Content Rights | Track ownership and licensing per track/album | Planned |
 | Medium | User Discovery | Browse other users' public libraries | Planned |
-| Medium | Social Features | Follow artists, like tracks, comments | Planned |
+
+### Implementation Details
+
+- **Backend**: Go services for roles, artist profiles, follows, admin operations
+- **Frontend**: React components for visibility selector, follow button, admin panel
+- **Infrastructure**: Cognito groups (admin, artist, subscriber, GlobalReaders)
+- **Data**: DynamoDB entities for ArtistProfile, Follow with GSI access patterns
 
 ---
 

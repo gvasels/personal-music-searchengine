@@ -4,396 +4,366 @@
 
 Implementation tasks for the Global User Type feature, organized by phase following the migration strategy from the design document.
 
+**Last Updated**: 2026-01-26
+
 ---
 
-## Phase 1: Backend Models & Types
+## Implementation Status Summary
 
-- [ ] 1.1 Create role types and permissions in `backend/internal/models/role.go`
+| Phase | Status | Completed | Total |
+|-------|--------|-----------|-------|
+| Phase 1: Backend Models | ✅ Complete | 6/6 | 100% |
+| Phase 2: Repository Layer | ✅ Complete | 5/5 | 100% |
+| Phase 3: Backend Services | ✅ Complete | 4/4 | 100% |
+| Phase 4: Handlers & Middleware | ✅ Complete | 6/6 | 100% |
+| Phase 5: Cognito & Infrastructure | ✅ Complete | 3/3 | 100% |
+| Phase 6: Data Migration | ✅ Complete | 2/2 | 100% |
+| Phase 7: Frontend Updates | ✅ Complete | 8/8 | 100% |
+| Phase 8: Testing | 🔄 Partial | 2/4 | 50% |
+| **Admin Panel (Added)** | ✅ Complete | 5/5 | 100% |
+
+---
+
+## Phase 1: Backend Models & Types ✅
+
+- [x] 1.1 Create role types and permissions in `backend/internal/models/role.go`
   - File: `backend/internal/models/role.go`
-  - Define `UserRole` type (guest, subscriber, artist, admin)
-  - Define `Permission` type and constants
-  - Create `RolePermissions` map
-  - Add `CognitoGroupName()` method
-  - Purpose: Establish role-based access control foundation
-  - _Leverage: `backend/internal/models/common.go` patterns_
-  - _Requirements: REQ-1_
+  - ✅ Define `UserRole` type (guest, subscriber, artist, admin)
+  - ✅ Define `Permission` type and constants
+  - ✅ Create `RolePermissions` map
+  - ✅ Add `CognitoGroupName()` method
+  - ✅ Added `IsValid()` method for role validation
 
-- [ ] 1.2 Create `PlaylistVisibility` type and update Playlist model
+- [x] 1.2 Create `PlaylistVisibility` type and update Playlist model
   - File: `backend/internal/models/playlist.go`
-  - Add `PlaylistVisibility` enum (private, unlisted, public)
-  - Replace `IsPublic bool` with `Visibility PlaylistVisibility`
-  - Add `CreatorName`, `CreatorAvatar` fields for denormalization
-  - Update `NewPlaylistItem` for GSI2 (public discovery)
-  - Update `PlaylistResponse` and `ToResponse()`
-  - Purpose: Enable playlist visibility options
-  - _Leverage: Existing playlist model_
-  - _Requirements: REQ-2_
+  - ✅ Add `PlaylistVisibility` enum (private, unlisted, public)
+  - ✅ Replace `IsPublic bool` with `Visibility PlaylistVisibility`
+  - ✅ Add `CreatorName`, `CreatorAvatar` fields for denormalization
+  - ✅ Update `NewPlaylistItem` for GSI2 (public discovery)
+  - ✅ Update `PlaylistResponse` and `ToResponse()`
 
-- [ ] 1.3 Update User model with Role and FollowingCount
+- [x] 1.3 Update User model with Role and FollowingCount
   - File: `backend/internal/models/user.go`
-  - Add `Role UserRole` field (default: subscriber)
-  - Add `FollowingCount int` field
-  - Remove `Tier SubscriptionTier` field
-  - Update `UserResponse` and `ToResponse()`
-  - Purpose: Replace subscription tier with role system
-  - _Leverage: Existing user model_
-  - _Requirements: REQ-1_
+  - ✅ Add `Role UserRole` field (default: subscriber)
+  - ✅ Add `FollowingCount int` field
+  - ✅ Remove `Tier SubscriptionTier` field
+  - ✅ Update `UserResponse` and `ToResponse()`
+  - ✅ Add `ToUserDetails()` for admin panel
 
-- [ ] 1.4 Create ArtistProfile model
+- [x] 1.4 Create ArtistProfile model
   - File: `backend/internal/models/artist_profile.go`
-  - Define `ArtistProfile` struct with all fields from design
-  - Create `ArtistProfileItem` with DynamoDB keys (PK, SK, GSI1, GSI2)
-  - Add `NewArtistProfileItem()` function
-  - Create request/response DTOs
-  - Purpose: Enable artist profile management
-  - _Leverage: `backend/internal/models/artist.go` patterns_
-  - _Requirements: REQ-3_
+  - ✅ Define `ArtistProfile` struct with all fields from design
+  - ✅ Create `ArtistProfileItem` with DynamoDB keys (PK, SK, GSI1, GSI2)
+  - ✅ Add `NewArtistProfileItem()` function
+  - ✅ Create request/response DTOs
 
-- [ ] 1.5 Create Follow model
+- [x] 1.5 Create Follow model
   - File: `backend/internal/models/follow.go`
-  - Define `Follow` struct
-  - Create `FollowItem` with DynamoDB keys for both access patterns
-  - Add `NewFollowItem()` function
-  - Purpose: Enable follow system data layer
-  - _Leverage: `backend/internal/models/common.go` patterns_
-  - _Requirements: REQ-4_
+  - ✅ Define `Follow` struct
+  - ✅ Create `FollowItem` with DynamoDB keys for both access patterns
+  - ✅ Add `NewFollowItem()` function
 
-- [ ] 1.6 Remove SubscriptionTier system
-  - Files: `backend/internal/models/feature.go`, `backend/internal/models/subscription.go`
-  - Remove `SubscriptionTier` type (keep for migration reference)
-  - Remove `TierConfig` and related functions
-  - Update `FeatureFlag` to not depend on tier
-  - Purpose: Clean up replaced subscription system
-  - _Requirements: REQ-1 (replaces tier)_
+- [x] 1.6 Remove SubscriptionTier system
+  - Files: Various
+  - ✅ Replaced SubscriptionTier with UserRole throughout
+  - ✅ Updated feature flags to use role-based permissions
+  - ✅ Removed tier-based configuration
 
 ---
 
-## Phase 2: Backend Repository Layer
+## Phase 2: Backend Repository Layer ✅
 
-- [ ] 2.1 Add ArtistProfile repository methods
+- [x] 2.1 Add ArtistProfile repository methods
   - File: `backend/internal/repository/artist_profile.go`
-  - Implement `CreateArtistProfile()`
-  - Implement `GetArtistProfile()` by ID
-  - Implement `GetArtistProfileByUserID()` via GSI1
-  - Implement `UpdateArtistProfile()`
-  - Implement `LinkArtistToProfile()` with uniqueness check via GSI2
-  - Implement `ListArtistProfiles()` for discovery
-  - Purpose: Data access for artist profiles
-  - _Leverage: `backend/internal/repository/repository.go` patterns_
-  - _Requirements: REQ-3_
+  - ✅ Implement `CreateArtistProfile()`
+  - ✅ Implement `GetArtistProfile()` by ID
+  - ✅ Implement `GetArtistProfileByUserID()` via GSI1
+  - ✅ Implement `UpdateArtistProfile()`
+  - ✅ Implement `LinkArtistToProfile()` with uniqueness check via GSI2
+  - ✅ Implement `ListArtistProfiles()` for discovery
 
-- [ ] 2.2 Add Follow repository methods
+- [x] 2.2 Add Follow repository methods
   - File: `backend/internal/repository/follow.go`
-  - Implement `CreateFollow()`
-  - Implement `DeleteFollow()`
-  - Implement `GetFollow()` to check if following
-  - Implement `ListFollowers()` via GSI1
-  - Implement `ListFollowing()` by PK prefix
-  - Implement `IncrementFollowerCount()` / `DecrementFollowerCount()`
-  - Purpose: Data access for follow relationships
-  - _Leverage: `backend/internal/repository/repository.go` patterns_
-  - _Requirements: REQ-4_
+  - ✅ Implement `CreateFollow()`
+  - ✅ Implement `DeleteFollow()`
+  - ✅ Implement `GetFollow()` to check if following
+  - ✅ Implement `ListFollowers()` via GSI1
+  - ✅ Implement `ListFollowing()` by PK prefix
+  - ✅ Implement `IncrementFollowerCount()` / `DecrementFollowerCount()`
 
-- [ ] 2.3 Update Playlist repository for visibility
+- [x] 2.3 Update Playlist repository for visibility
   - File: `backend/internal/repository/playlist.go`
-  - Update `CreatePlaylist()` to use Visibility
-  - Update `UpdatePlaylist()` to handle visibility changes
-  - Add `ListPublicPlaylists()` via GSI2
-  - Update item creation to set GSI2 for public playlists
-  - Purpose: Enable public playlist discovery
-  - _Leverage: Existing playlist repository_
-  - _Requirements: REQ-2_
+  - ✅ Update `CreatePlaylist()` to use Visibility
+  - ✅ Update `UpdatePlaylist()` to handle visibility changes
+  - ✅ Add `ListPublicPlaylists()` via GSI2
+  - ✅ Update item creation to set GSI2 for public playlists
 
-- [ ] 2.4 Update User repository for Role
-  - File: `backend/internal/repository/user.go`
-  - Update `CreateUser()` to set default role
-  - Add `UpdateUserRole()`
-  - Update `GetUser()` to include role
-  - Purpose: Persist role in DynamoDB
-  - _Leverage: Existing user repository_
-  - _Requirements: REQ-1_
+- [x] 2.4 Update User repository for Role
+  - File: `backend/internal/repository/dynamodb.go`
+  - ✅ Update `CreateUser()` to set default role
+  - ✅ Add `UpdateUserRole()`
+  - ✅ Update `GetUser()` to include role
+  - ✅ Add `SearchUsers()` for admin panel
+  - ✅ Add `SetUserDisabled()` for admin panel
+  - ✅ Add `GetFollowerCount()` for user details
 
-- [ ] 2.5 Add repository interface updates
+- [x] 2.5 Add repository interface updates
   - File: `backend/internal/repository/repository.go`
-  - Add `ArtistProfileRepository` interface
-  - Add `FollowRepository` interface
-  - Update existing interfaces as needed
-  - Purpose: Define repository contracts
-  - _Requirements: All_
+  - ✅ Add `ArtistProfileRepository` interface
+  - ✅ Add `FollowRepository` interface
+  - ✅ Add `AdminRepository` interface
+  - ✅ Update existing interfaces as needed
 
 ---
 
-## Phase 3: Backend Services
+## Phase 3: Backend Services ✅
 
-- [ ] 3.1 Create RoleService
-  - File: `backend/internal/service/role_service.go`
-  - Implement `GetUserRole()` - extract from JWT claims
-  - Implement `SetUserRole()` - update Cognito group + DynamoDB
-  - Implement `HasPermission()` - check role permissions map
-  - Add Cognito Admin API integration
-  - Purpose: Role management and permission checking
-  - _Leverage: `backend/internal/service/service.go` patterns_
-  - _Requirements: REQ-1_
+- [x] 3.1 Create RoleService
+  - File: `backend/internal/service/role.go`
+  - ✅ Implement `GetUserRole()` - extract from JWT claims
+  - ✅ Implement `SetUserRole()` - update Cognito group + DynamoDB
+  - ✅ Implement `HasPermission()` - check role permissions map
+  - ✅ Add Cognito Admin API integration
+  - ✅ Tests in `role_test.go`
 
-- [ ] 3.2 Create ArtistProfileService
-  - File: `backend/internal/service/artist_profile_service.go`
-  - Implement `CreateProfile()` - require artist role
-  - Implement `GetProfile()`, `GetProfileByUserID()`
-  - Implement `UpdateProfile()` - owner only
-  - Implement `LinkToArtist()` - claim catalog artist with uniqueness check
-  - Implement `GetProfileWithCatalog()` - include linked artist data
-  - Purpose: Artist profile business logic
-  - _Leverage: Existing service patterns_
-  - _Requirements: REQ-3_
+- [x] 3.2 Create ArtistProfileService
+  - File: `backend/internal/service/artist_profile.go`
+  - ✅ Implement `CreateProfile()` - require artist role
+  - ✅ Implement `GetProfile()`, `GetProfileByUserID()`
+  - ✅ Implement `UpdateProfile()` - owner only
+  - ✅ Implement `LinkToArtist()` - claim catalog artist with uniqueness check
+  - ✅ Implement `GetProfileWithCatalog()` - include linked artist data
+  - ✅ Tests in `artist_profile_test.go`
 
-- [ ] 3.3 Create FollowService
-  - File: `backend/internal/service/follow_service.go`
-  - Implement `Follow()` - create follow + increment count
-  - Implement `Unfollow()` - delete follow + decrement count
-  - Implement `GetFollowers()`, `GetFollowing()` with pagination
-  - Implement `IsFollowing()`
-  - Add self-follow prevention
-  - Purpose: Follow system business logic
-  - _Leverage: Existing service patterns_
-  - _Requirements: REQ-4_
+- [x] 3.3 Create FollowService
+  - File: `backend/internal/service/follow.go`
+  - ✅ Implement `Follow()` - create follow + increment count
+  - ✅ Implement `Unfollow()` - delete follow + decrement count
+  - ✅ Implement `GetFollowers()`, `GetFollowing()` with pagination
+  - ✅ Implement `IsFollowing()`
+  - ✅ Add self-follow prevention
+  - ✅ Tests in `follow_test.go`
 
-- [ ] 3.4 Update PlaylistService for visibility
-  - File: `backend/internal/service/playlist_service.go`
-  - Update `CreatePlaylist()` to set default visibility
-  - Add `UpdateVisibility()` method
-  - Add `ListPublicPlaylists()` for discovery
-  - Update access checks for visibility
-  - Purpose: Public playlist functionality
-  - _Leverage: Existing playlist service_
-  - _Requirements: REQ-2_
+- [x] 3.4 Update PlaylistService for visibility
+  - File: `backend/internal/service/playlist.go`
+  - ✅ Update `CreatePlaylist()` to set default visibility
+  - ✅ Add `UpdateVisibility()` method
+  - ✅ Add `ListPublicPlaylists()` for discovery
+  - ✅ Update access checks for visibility
 
 ---
 
-## Phase 4: Backend Handlers & Middleware
+## Phase 4: Backend Handlers & Middleware ✅
 
-- [ ] 4.1 Create authorization middleware
+- [x] 4.1 Create authorization middleware
   - File: `backend/internal/handlers/middleware/auth.go`
-  - Implement `RequireRole()` middleware
-  - Implement `RequireAuth()` middleware
-  - Implement `OptionalAuth()` middleware
-  - Extract role from `cognito:groups` JWT claim
-  - Purpose: Role-based endpoint protection
-  - _Leverage: Existing auth middleware_
-  - _Requirements: REQ-1_
+  - ✅ Implement `RequireRole()` middleware
+  - ✅ Implement `RequireAuth()` middleware
+  - ✅ Implement `OptionalAuth()` middleware
+  - ✅ Extract role from `cognito:groups` JWT claim
+  - ✅ Fix: Handle API Gateway array format `"[admin subscriber]"`
+  - ✅ Tests in `auth_test.go`
 
-- [ ] 4.2 Create role management handlers
-  - File: `backend/internal/handlers/role_handler.go`
-  - Implement `GET /api/v1/users/:id/role` - admin only
-  - Implement `PUT /api/v1/users/:id/role` - admin only
-  - Purpose: Admin role management API
-  - _Leverage: Existing handler patterns_
-  - _Requirements: REQ-1_
+- [x] 4.2 Create role management handlers
+  - File: `backend/internal/handlers/role.go`
+  - ✅ Implement `GET /api/v1/users/:id/role` - admin only
+  - ✅ Implement `PUT /api/v1/users/:id/role` - admin only
 
-- [ ] 4.3 Create artist profile handlers
-  - File: `backend/internal/handlers/artist_profile_handler.go`
-  - Implement `POST /api/v1/artist-profiles` - artist role
-  - Implement `GET /api/v1/artist-profiles/:id` - public
-  - Implement `PUT /api/v1/artist-profiles/:id` - owner
-  - Implement `POST /api/v1/artist-profiles/:id/link` - owner
-  - Implement `GET /api/v1/artist-profiles/:id/catalog` - public
-  - Implement `GET /api/v1/artist-profiles/discover` - public
-  - Purpose: Artist profile API endpoints
-  - _Leverage: Existing handler patterns_
-  - _Requirements: REQ-3_
+- [x] 4.3 Create artist profile handlers
+  - File: `backend/internal/handlers/artist_profile.go`
+  - ✅ Implement `POST /api/v1/artists/entity` - artist role
+  - ✅ Implement `GET /api/v1/artists/entity/:id` - public
+  - ✅ Implement `PUT /api/v1/artists/entity/:id` - owner
+  - ✅ Implement `POST /api/v1/artists/entity/:id/link` - owner
+  - ✅ Implement `GET /api/v1/artists/entity/:id/catalog` - public
 
-- [ ] 4.4 Create follow handlers
-  - File: `backend/internal/handlers/follow_handler.go`
-  - Implement `POST /api/v1/artist-profiles/:id/follow` - subscriber+
-  - Implement `DELETE /api/v1/artist-profiles/:id/follow` - subscriber+
-  - Implement `GET /api/v1/artist-profiles/:id/followers` - public
-  - Implement `GET /api/v1/users/me/following` - subscriber+
-  - Purpose: Follow system API endpoints
-  - _Leverage: Existing handler patterns_
-  - _Requirements: REQ-4_
+- [x] 4.4 Create follow handlers
+  - File: `backend/internal/handlers/follow.go`
+  - ✅ Implement `POST /api/v1/artists/entity/:id/follow` - subscriber+
+  - ✅ Implement `DELETE /api/v1/artists/entity/:id/follow` - subscriber+
+  - ✅ Implement `GET /api/v1/artists/entity/:id/followers` - public
+  - ✅ Implement `GET /api/v1/users/me/following` - subscriber+
 
-- [ ] 4.5 Update playlist handlers for visibility
-  - File: `backend/internal/handlers/playlist_handler.go`
-  - Add `GET /api/v1/playlists/public` - public
-  - Add `PUT /api/v1/playlists/:id/visibility` - owner
-  - Update access checks for visibility
-  - Purpose: Public playlist API endpoints
-  - _Leverage: Existing playlist handlers_
-  - _Requirements: REQ-2_
+- [x] 4.5 Update playlist handlers for visibility
+  - File: `backend/internal/handlers/playlist.go`
+  - ✅ Add `GET /api/v1/playlists/public` - public
+  - ✅ Add `PUT /api/v1/playlists/:id/visibility` - owner
+  - ✅ Update access checks for visibility
 
-- [ ] 4.6 Register new routes
+- [x] 4.6 Register new routes
   - File: `backend/cmd/api/main.go`
-  - Register all new handlers
-  - Apply appropriate middleware to routes
-  - Purpose: Wire up new endpoints
-  - _Requirements: All_
+  - ✅ Register all new handlers
+  - ✅ Apply appropriate middleware to routes
+  - ✅ Admin routes registered via code-based routing
 
 ---
 
-## Phase 5: Cognito & Infrastructure
+## Phase 5: Cognito & Infrastructure ✅
 
-- [ ] 5.1 Create Cognito groups via OpenTofu
-  - File: `infrastructure/shared/cognito.tf`
-  - Add `admin` group resource
-  - Add `artist` group resource
-  - Add `subscriber` group resource
-  - Purpose: Create role groups in Cognito
-  - _Leverage: Existing Cognito configuration_
-  - _Requirements: REQ-1_
+- [x] 5.1 Create Cognito groups via OpenTofu
+  - File: `infrastructure/shared/main.tf`
+  - ✅ Add `admin` group resource
+  - ✅ Add `artist` group resource
+  - ✅ Add `subscriber` group resource
+  - ✅ Add `GlobalReaders` group for cross-user content access
 
-- [ ] 5.2 Create admin bootstrap script
+- [x] 5.2 Create admin bootstrap script
   - File: `scripts/bootstrap-admin.sh`
-  - Accept email parameter
-  - Look up user by email in Cognito
-  - Add user to admin group
-  - Update DynamoDB user role
-  - Purpose: Bootstrap first admin user
-  - _Requirements: REQ-1_
+  - ✅ Accept email parameter
+  - ✅ Look up user by email in Cognito
+  - ✅ Add user to admin group
+  - ✅ Update DynamoDB user role
 
-- [ ] 5.3 Update Lambda authorizer for groups
-  - File: `infrastructure/backend/api-gateway.tf` or Lambda code
-  - Ensure `cognito:groups` claim is included in context
-  - Purpose: Pass role info to handlers
-  - _Leverage: Existing authorizer_
-  - _Requirements: REQ-1_
+- [x] 5.3 Update Lambda authorizer for groups
+  - File: API Gateway configuration
+  - ✅ Ensure `cognito:groups` claim is included in context
+  - ✅ Groups passed as `"[group1 group2]"` format (handled in middleware)
 
 ---
 
-## Phase 6: Data Migration
+## Phase 6: Data Migration ✅
 
-- [ ] 6.1 Create playlist visibility migration script
-  - File: `scripts/migrate-playlist-visibility.go`
-  - Scan all playlists
-  - Convert `IsPublic: true` → `Visibility: public`
-  - Convert `IsPublic: false` → `Visibility: private`
-  - Add GSI2 keys for public playlists
-  - Purpose: Migrate existing playlist data
-  - _Requirements: REQ-2_
+- [x] 6.1 Create playlist visibility migration script
+  - File: `scripts/migrations/migrate-playlist-visibility.sh`
+  - ✅ Scan all playlists
+  - ✅ Convert `IsPublic: true` → `Visibility: public`
+  - ✅ Convert `IsPublic: false` → `Visibility: private`
+  - ✅ Add GSI2 keys for public playlists
 
-- [ ] 6.2 Create user role migration script
-  - File: `scripts/migrate-user-roles.go`
-  - Scan all users
-  - Set `Role: subscriber` for all existing users
-  - Add users to subscriber Cognito group
-  - Set admin role for gvasels90@gmail.com
-  - Purpose: Migrate existing user data
-  - _Requirements: REQ-1_
+- [x] 6.2 Create user role migration script
+  - File: `scripts/migrations/migrate-user-roles.sh`
+  - ✅ Scan all users
+  - ✅ Set `Role: subscriber` for all existing users
+  - ✅ Add users to subscriber Cognito group
+  - ✅ Set admin role for gvasels90@gmail.com
 
 ---
 
-## Phase 7: Frontend Updates
+## Phase 7: Frontend Updates ✅
 
-- [ ] 7.1 Create role types and hooks
-  - Files: `frontend/src/lib/api/types.ts`, `frontend/src/hooks/useRole.ts`
-  - Add `UserRole` type
-  - Add `Permission` type
-  - Create `useRole()` hook to extract role from auth
-  - Create `useHasPermission()` hook
-  - Purpose: Frontend role utilities
-  - _Leverage: Existing hooks patterns_
-  - _Requirements: REQ-1_
+- [x] 7.1 Create role types and hooks
+  - Files: `frontend/src/types/index.ts`, `frontend/src/hooks/useAuth.ts`
+  - ✅ Add `UserRole` type
+  - ✅ Add `Permission` type
+  - ✅ Update `useAuth()` hook to extract role from JWT
+  - ✅ Add `isAdmin`, `isArtist` properties
 
-- [ ] 7.2 Update playlist components for visibility
+- [x] 7.2 Update playlist components for visibility
   - Files: `frontend/src/components/playlist/*.tsx`
-  - Add visibility selector (private/unlisted/public)
-  - Show creator info on public playlists
-  - Add public playlist discovery page
-  - Purpose: Playlist visibility UI
-  - _Leverage: Existing playlist components_
-  - _Requirements: REQ-2_
+  - ✅ Create `VisibilitySelector` component (private/unlisted/public)
+  - ✅ Show creator info on public playlists
+  - ✅ Add public playlist discovery page (`/playlists/public`)
 
-- [ ] 7.3 Create artist profile components
+- [x] 7.3 Create artist profile components
   - Files: `frontend/src/components/artist-profile/*.tsx`
-  - Create `ArtistProfileCard` component
-  - Create `ArtistProfilePage` component
-  - Create `EditArtistProfileModal` component
-  - Add catalog linking UI
-  - Purpose: Artist profile UI
-  - _Leverage: Existing component patterns_
-  - _Requirements: REQ-3_
+  - ✅ Create `ArtistProfileCard` component
+  - ✅ Create `EditArtistProfileModal` component
+  - ✅ Add catalog linking UI
 
-- [ ] 7.4 Create follow components
+- [x] 7.4 Create follow components
   - Files: `frontend/src/components/follow/*.tsx`
-  - Create `FollowButton` component
-  - Create `FollowersList` component
-  - Create `FollowingList` component
-  - Purpose: Follow system UI
-  - _Leverage: Existing component patterns_
-  - _Requirements: REQ-4_
+  - ✅ Create `FollowButton` component
+  - ✅ Create `FollowersList` component
+  - ✅ Create `FollowingList` component
 
-- [ ] 7.5 Create artist profile hooks and API
-  - Files: `frontend/src/hooks/useArtistProfile.ts`, `frontend/src/lib/api/artistProfiles.ts`
-  - Add API functions for all endpoints
-  - Create `useArtistProfile()` hook
-  - Create `useArtistProfiles()` hook for discovery
-  - Purpose: Artist profile data fetching
-  - _Leverage: Existing TanStack Query patterns_
-  - _Requirements: REQ-3_
+- [x] 7.5 Create artist profile hooks and API
+  - Files: `frontend/src/hooks/useArtistProfiles.ts`, `frontend/src/lib/api/artistProfiles.ts`
+  - ✅ Add API functions for all endpoints
+  - ✅ Create `useArtistProfile()` hook
+  - ✅ Create `useArtistProfiles()` hook for discovery
 
-- [ ] 7.6 Create follow hooks and API
-  - Files: `frontend/src/hooks/useFollow.ts`, `frontend/src/lib/api/follows.ts`
-  - Add API functions for follow/unfollow
-  - Create `useFollow()` mutation hook
-  - Create `useFollowers()` and `useFollowing()` query hooks
-  - Create `useIsFollowing()` hook
-  - Purpose: Follow system data fetching
-  - _Leverage: Existing TanStack Query patterns_
-  - _Requirements: REQ-4_
+- [x] 7.6 Create follow hooks and API
+  - Files: `frontend/src/hooks/useFollows.ts`, `frontend/src/lib/api/follows.ts`
+  - ✅ Add API functions for follow/unfollow
+  - ✅ Create `useFollow()` mutation hook
+  - ✅ Create `useFollowers()` and `useFollowing()` query hooks
+  - ✅ Create `useIsFollowing()` hook
 
-- [ ] 7.7 Add routes for new pages
-  - Files: `frontend/src/routes/artist-profiles/*.tsx`, `frontend/src/routes/playlists/public.tsx`
-  - Add `/artist-profiles` route
-  - Add `/artist-profiles/$profileId` route
-  - Add `/playlists/public` route
-  - Purpose: Navigation to new features
-  - _Leverage: Existing TanStack Router patterns_
-  - _Requirements: REQ-2, REQ-3_
+- [x] 7.7 Add routes for new pages
+  - Files: `frontend/src/routes/artists/entity/*.tsx`, `frontend/src/routes/playlists/public.tsx`
+  - ✅ Add `/artists/entity` route
+  - ✅ Add `/artists/entity/$artistId` route
+  - ✅ Add `/playlists/public` route
 
-- [ ] 7.8 Remove subscription tier UI
+- [x] 7.8 Remove subscription tier UI
   - Files: Various frontend files
-  - Remove tier display from user profile
-  - Remove subscription-related components
-  - Remove tier-based feature gating UI
-  - Purpose: Clean up replaced tier system
-  - _Requirements: REQ-1 (replaces tier)_
+  - ✅ Remove tier display from user profile
+  - ✅ Remove subscription-related components
+  - ✅ Replace tier-based feature gating with role-based
 
 ---
 
-## Phase 8: Testing
+## Phase 8: Testing 🔄
 
-- [ ] 8.1 Backend unit tests for models
+- [x] 8.1 Backend unit tests for models
   - Files: `backend/internal/models/*_test.go`
-  - Test role permission mappings
-  - Test ArtistProfile and Follow model functions
-  - Test PlaylistVisibility handling
-  - Purpose: Model layer test coverage
-  - _Requirements: All_
+  - ✅ Test role permission mappings
+  - ✅ Test ArtistProfile and Follow model functions
+  - ✅ Test PlaylistVisibility handling
 
-- [ ] 8.2 Backend unit tests for services
+- [x] 8.2 Backend unit tests for services
   - Files: `backend/internal/service/*_test.go`
-  - Test RoleService with mocked Cognito
-  - Test ArtistProfileService
-  - Test FollowService
-  - Test updated PlaylistService
-  - Purpose: Service layer test coverage
-  - _Requirements: All_
+  - ✅ Test RoleService (`role_test.go`)
+  - ✅ Test ArtistProfileService (`artist_profile_test.go`)
+  - ✅ Test FollowService (`follow_test.go`)
 
 - [ ] 8.3 Backend integration tests for handlers
   - Files: `backend/internal/handlers/*_test.go`
-  - Test role-based endpoint access
-  - Test artist profile CRUD endpoints
-  - Test follow endpoints
-  - Test public playlist endpoints
-  - Purpose: API endpoint test coverage
-  - _Requirements: All_
+  - ⬜ Test role-based endpoint access
+  - ⬜ Test artist profile CRUD endpoints
+  - ⬜ Test follow endpoints
+  - ⬜ Test public playlist endpoints
 
 - [ ] 8.4 Frontend unit tests
   - Files: `frontend/src/**/*.test.tsx`
-  - Test role hooks
-  - Test artist profile components
-  - Test follow components
-  - Test visibility components
-  - Purpose: Frontend test coverage
-  - _Requirements: All_
+  - ⬜ Test role hooks
+  - ⬜ Test artist profile components (partial)
+  - ⬜ Test follow components (partial)
+  - ✅ Test VisibilitySelector component
+  - ✅ Test FollowButton component
+  - ✅ Test ArtistProfileCard component
+
+---
+
+## Admin Panel (Added Feature) ✅
+
+- [x] A.1 Create AdminService
+  - File: `backend/internal/service/admin.go`
+  - ✅ Implement `SearchUsers()` - search Cognito users by email
+  - ✅ Implement `GetUserDetails()` - full user details with status
+  - ✅ Implement `UpdateUserRole()` - update DynamoDB + Cognito groups
+  - ✅ Implement `UpdateUserRoleByAdmin()` - prevent self-modification
+  - ✅ Implement `SetUserStatus()` - enable/disable users
+
+- [x] A.2 Create CognitoClient
+  - File: `backend/internal/service/cognito_client.go`
+  - ✅ Implement `SearchUsers()` - list users by email filter
+  - ✅ Implement `GetUserStatus()` - get enabled status
+  - ✅ Implement `AddUserToGroup()` / `RemoveUserFromGroup()`
+  - ✅ Implement `EnableUser()` / `DisableUser()`
+  - ✅ Implement `GetUserGroups()`
+
+- [x] A.3 Create admin handlers
+  - File: `backend/internal/handlers/admin.go`
+  - ✅ Implement `GET /api/v1/admin/users` - search users
+  - ✅ Implement `GET /api/v1/admin/users/:id` - user details
+  - ✅ Implement `PUT /api/v1/admin/users/:id/role` - update role
+  - ✅ Implement `PUT /api/v1/admin/users/:id/status` - enable/disable
+
+- [x] A.4 Create admin frontend components
+  - Files: `frontend/src/components/admin/*.tsx`
+  - ✅ Create `UserSearchForm` component
+  - ✅ Create `UserCard` component
+  - ✅ Create `UserDetailModal` component
+  - ✅ Fix: Toggle shows ON when account is active (green)
+
+- [x] A.5 Create admin route
+  - File: `frontend/src/routes/admin/users.tsx`
+  - ✅ Admin-only access (redirect non-admins)
+  - ✅ Search users by email
+  - ✅ View user details in modal
+  - ✅ Change user roles with confirmation
+  - ✅ Enable/disable users with confirmation
 
 ---
 
@@ -413,19 +383,20 @@ Phase 8 (Testing) ←───────────────────�
 
 ---
 
-## Estimated Task Count
+## Completed Task Count
 
-| Phase | Tasks | Description |
-|-------|-------|-------------|
-| 1 | 6 | Backend models |
-| 2 | 5 | Repository layer |
-| 3 | 4 | Service layer |
-| 4 | 6 | Handlers & middleware |
-| 5 | 3 | Cognito & infrastructure |
-| 6 | 2 | Data migration |
-| 7 | 8 | Frontend updates |
-| 8 | 4 | Testing |
-| **Total** | **38** | |
+| Phase | Tasks | Completed | Status |
+|-------|-------|-----------|--------|
+| 1 | 6 | 6 | ✅ |
+| 2 | 5 | 5 | ✅ |
+| 3 | 4 | 4 | ✅ |
+| 4 | 6 | 6 | ✅ |
+| 5 | 3 | 3 | ✅ |
+| 6 | 2 | 2 | ✅ |
+| 7 | 8 | 8 | ✅ |
+| 8 | 4 | 2 | 🔄 |
+| Admin | 5 | 5 | ✅ |
+| **Total** | **43** | **41** | **95%** |
 
 ---
 
@@ -461,3 +432,10 @@ Phase 8 (Testing) ←───────────────────�
   - Create DynamoDB profiles for users without them
   - Preserve existing data where profiles exist
   - Purpose: One-time migration to complete architecture
+
+### GitHub Actions CI/CD
+
+- [ ] F.5 Fix GitHub Actions deployment workflow
+  - Currently failing on push to main
+  - Need to review and fix workflow configuration
+  - Purpose: Enable automated deployments

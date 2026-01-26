@@ -25,12 +25,21 @@ A personal music library application for uploading, organizing, searching, and s
 | **Mobile Responsive** | Works on desktop and mobile devices |
 | **Dark/Light Theme** | Toggle between dark and light themes |
 
-### Creator Studio Features (Phase 2 - Foundation Complete)
+### Global User Type (Phase 2 - Complete)
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Feature Flags** | Tier-based feature gating (free/creator/pro) | ✅ Backend + Frontend |
-| **Subscription Tiers** | Free, Creator ($9.99), Pro ($19.99), Studio ($49.99) | ✅ Backend + Frontend |
+| **User Roles** | Role-based access (admin, artist, subscriber, guest) via Cognito groups | ✅ Complete |
+| **Public Playlists** | Visibility options (private/unlisted/public) with discovery page | ✅ Complete |
+| **Artist Profiles** | Artist profile management with bio, social links, catalog linking | ✅ Complete |
+| **Follow System** | Follow/unfollow artists with follower/following counts | ✅ Complete |
+| **Admin Panel** | User management with search, role changes, enable/disable users | ✅ Complete |
+
+### Creator Studio Features
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Feature Flags** | Role-based feature gating | ✅ Backend + Frontend |
 | **DJ Crates** | Organize tracks into DJ crates/folders | ✅ Backend + Frontend |
 | **Hot Cues** | Set up to 8 cue points per track with labels and colors | ✅ Backend + Frontend |
 | **BPM/Key Matching** | Find compatible tracks using Camelot wheel | ✅ Backend + Frontend |
@@ -504,6 +513,25 @@ All endpoints require authentication via Cognito JWT.
 | GET | `/api/v1/stream/:trackId` | Get signed streaming URL |
 | GET | `/api/v1/download/:trackId` | Get signed download URL |
 
+### Artist Profiles
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/artists/entity` | List artist profiles |
+| POST | `/api/v1/artists/entity` | Create artist profile (artist role) |
+| GET | `/api/v1/artists/entity/:id` | Get artist profile |
+| PUT | `/api/v1/artists/entity/:id` | Update artist profile (owner) |
+| POST | `/api/v1/artists/entity/:id/follow` | Follow artist |
+| DELETE | `/api/v1/artists/entity/:id/follow` | Unfollow artist |
+| GET | `/api/v1/artists/entity/:id/followers` | Get followers |
+
+### Admin (Admin role required)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/admin/users` | Search users by email |
+| GET | `/api/v1/admin/users/:id` | Get user details |
+| PUT | `/api/v1/admin/users/:id/role` | Update user role |
+| PUT | `/api/v1/admin/users/:id/status` | Enable/disable user |
+
 ---
 
 ## Testing
@@ -581,6 +609,14 @@ Upload → S3 (upload bucket) → Step Functions → [Metadata → CoverArt → 
 | Upload | `USER#{userId}` | `UPLOAD#{uploadId}` |
 | Crate | `USER#{userId}` | `CRATE#{crateId}` |
 | HotCue | `USER#{userId}` | `HOTCUE#{trackId}#{slot}` |
+| ArtistProfile | `ARTIST_PROFILE#{id}` | `PROFILE` |
+| Follow | `USER#{userId}` | `FOLLOW#{artistProfileId}` |
+
+### GSI Access Patterns
+| GSI | Purpose |
+|-----|---------|
+| GSI1 | User → ArtistProfile lookup, Artist followers |
+| GSI2 | Public playlist discovery, Linked artist uniqueness |
 
 ---
 

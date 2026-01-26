@@ -1,5 +1,7 @@
 # Design Document: Global User Type
 
+**Status**: ✅ IMPLEMENTED (2026-01-26)
+
 ## Overview
 
 This design extends the Personal Music Search Engine from a single-user library to a multi-user platform with role-based access control, public playlists, artist profiles linked to the catalog, and a follow system.
@@ -503,3 +505,58 @@ Highest role wins: admin > artist > subscriber > guest
 - User following multiple artists
 - Public playlist visibility changes
 - Admin role assignment
+
+---
+
+## Implementation Notes (2026-01-26)
+
+### Key Implementation Details
+
+#### JWT Groups Parsing
+API Gateway passes Cognito groups as `"[admin subscriber]"` format (brackets included). The auth middleware strips brackets before parsing:
+
+```go
+// parseGroups handles API Gateway's array format
+func parseGroups(groupsClaim string) []string {
+    groupsClaim = strings.TrimPrefix(groupsClaim, "[")
+    groupsClaim = strings.TrimSuffix(groupsClaim, "]")
+    return strings.Split(strings.TrimSpace(groupsClaim), " ")
+}
+```
+
+#### Admin Panel Architecture
+- **Source of Truth**: Currently Cognito for user search (future: DynamoDB)
+- **CognitoClient**: Wraps AWS SDK for admin operations
+- **AdminService**: Orchestrates Cognito + DynamoDB operations
+- **Rollback Logic**: On Cognito failure, reverts DynamoDB changes
+
+#### Files Implemented
+
+**Backend:**
+- `backend/internal/models/role.go` - UserRole, Permission types
+- `backend/internal/models/artist_profile.go` - ArtistProfile model
+- `backend/internal/models/follow.go` - Follow model
+- `backend/internal/service/role.go` - RoleService
+- `backend/internal/service/artist_profile.go` - ArtistProfileService
+- `backend/internal/service/follow.go` - FollowService
+- `backend/internal/service/admin.go` - AdminService
+- `backend/internal/service/cognito_client.go` - CognitoClient
+- `backend/internal/handlers/middleware/auth.go` - Role middleware
+- `backend/internal/handlers/artist_profile.go` - Artist profile handlers
+- `backend/internal/handlers/follow.go` - Follow handlers
+- `backend/internal/handlers/admin.go` - Admin handlers
+
+**Frontend:**
+- `frontend/src/components/admin/` - Admin panel components
+- `frontend/src/components/artist-profile/` - Artist profile components
+- `frontend/src/components/follow/` - Follow components
+- `frontend/src/components/playlist/VisibilitySelector.tsx` - Visibility UI
+- `frontend/src/lib/api/artistProfiles.ts` - API client
+- `frontend/src/lib/api/follows.ts` - API client
+- `frontend/src/hooks/useAdmin.ts` - Admin hooks
+- `frontend/src/routes/admin/users.tsx` - Admin page
+
+**Infrastructure:**
+- `infrastructure/shared/main.tf` - Cognito groups
+- `scripts/bootstrap-admin.sh` - Admin bootstrap
+- `scripts/migrations/` - Data migration scripts
