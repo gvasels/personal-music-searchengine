@@ -142,6 +142,15 @@ func NewConflictError(message string) *APIError {
 	}
 }
 
+// NewForbiddenError creates a forbidden error with a custom message
+func NewForbiddenError(message string) *APIError {
+	return &APIError{
+		Code:       "FORBIDDEN",
+		Message:    message,
+		StatusCode: http.StatusForbidden,
+	}
+}
+
 // ErrorResponse represents the standard error response format
 type ErrorResponse struct {
 	Error *APIError `json:"error"`

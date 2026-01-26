@@ -33,7 +33,7 @@ vi.mock('../../lib/api/crates', () => ({
 vi.mock('../useFeatureFlags', () => ({
   useFeatureGate: vi.fn(() => ({
     isEnabled: true,
-    showUpgrade: false,
+    isLocked: false,
   })),
 }));
 
@@ -79,7 +79,7 @@ describe('useCrates (WS4 Creator Studio)', () => {
 
       expect(result.current.data).toEqual(mockCrates);
       expect(result.current.isFeatureEnabled).toBe(true);
-      expect(result.current.showUpgrade).toBe(false);
+      expect(result.current.isLocked).toBe(false);
       expect(cratesApi.getCrates).toHaveBeenCalled();
     });
 
@@ -324,8 +324,8 @@ describe('useCrates (WS4 Creator Studio)', () => {
 });
 
 describe('useCrates feature gating', () => {
-  it('should show upgrade when feature is disabled', () => {
-    // We test the feature gating indirectly via the isFeatureEnabled and showUpgrade properties
+  it('should show locked state when feature is disabled', () => {
+    // We test the feature gating indirectly via the isFeatureEnabled and isLocked properties
     // The mock returns enabled=true by default
     // To properly test disabled state would require resetting module mocks which is complex
     // The key test is that these properties are correctly passed through from useFeatureGate

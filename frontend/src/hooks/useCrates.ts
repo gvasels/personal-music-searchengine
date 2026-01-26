@@ -25,7 +25,7 @@ export const crateKeys = {
 };
 
 export function useCrates() {
-  const { isEnabled, showUpgrade } = useFeatureGate('CRATES');
+  const { isEnabled, isLocked } = useFeatureGate('CRATES');
 
   return {
     ...useQuery({
@@ -35,7 +35,7 @@ export function useCrates() {
       staleTime: 1000 * 60 * 5,
     }),
     isFeatureEnabled: isEnabled,
-    showUpgrade,
+    isLocked,
   };
 }
 

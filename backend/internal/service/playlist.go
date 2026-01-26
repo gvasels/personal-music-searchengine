@@ -373,3 +373,60 @@ func (s *playlistService) ReorderTracks(ctx context.Context, userID, playlistID 
 	response := playlist.ToResponse(coverArtURL)
 	return &response, nil
 }
+
+// UpdateVisibility updates the visibility of a playlist.
+func (s *playlistService) UpdateVisibility(ctx context.Context, userID, playlistID string, visibility models.PlaylistVisibility) error {
+	// Validate visibility
+	if !visibility.IsValid() {
+		return models.NewValidationError("invalid visibility value")
+	}
+
+	// Get playlist to verify ownership
+	playlist, err := s.repo.GetPlaylist(ctx, userID, playlistID)
+	if err != nil {
+		if err == repository.ErrNotFound {
+			return models.NewNotFoundError("Playlist", playlistID)
+		}
+		return err
+	}
+
+	// Check ownership - only owner can change visibility
+	if playlist.UserID != userID {
+		return models.NewForbiddenError("only the playlist owner can change visibility")
+	}
+
+	return s.repo.UpdatePlaylistVisibility(ctx, userID, playlistID, visibility)
+}
+
+// ListPublicPlaylists returns all public playlists for discovery.
+func (s *playlistService) ListPublicPlaylists(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.PlaylistResponse], error) {
+	result, err := s.repo.ListPublicPlaylists(ctx, limit, cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]models.PlaylistResponse, len(result.Items))
+	for i, playlist := range result.Items {
+		coverArtURL := ""
+		if playlist.CoverArtKey != "" {
+			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, playlist.CoverArtKey, 24*time.Hour)
+			if err == nil {
+				coverArtURL = url
+			}
+		}
+
+		responses[i] = playlist.ToResponse(coverArtURL)
+
+		// Get track count from actual tracks
+		tracks, err := s.repo.GetPlaylistTracks(ctx, playlist.ID)
+		if err == nil {
+			responses[i].TrackCount = len(tracks)
+		}
+	}
+
+	return &repository.PaginatedResult[models.PlaylistResponse]{
+		Items:      responses,
+		NextCursor: result.NextCursor,
+		HasMore:    result.HasMore,
+	}, nil
+}

@@ -19,7 +19,7 @@
 | Field | Value |
 |-------|-------|
 | **Name** | Personal Music Search Engine |
-| **Description** | Music library app for uploading, organizing, searching, streaming audio files |
+| **Description** | Multi-user music library platform with role-based access, artist profiles, public playlists, and follow system |
 | **Status** | Development |
 | **AWS Account** | 887395463840 |
 | **AWS Profile** | `gvasels-muza` |
@@ -32,7 +32,8 @@
 | **Backend** | Go 1.22+, Echo v4, AWS Lambda, dhowden/tag |
 | **Frontend** | React 18, TanStack Router/Query, Tailwind + DaisyUI 5, Zustand, Vite |
 | **Infrastructure** | AWS, OpenTofu 1.8+ (NOT Terraform), GitHub Actions |
-| **Data** | DynamoDB (single-table), S3, Nixiesearch, Cognito, CloudFront |
+| **Data** | DynamoDB (single-table), S3, Nixiesearch, Cognito (with Groups), CloudFront |
+| **Auth** | Cognito User Pools with Groups for role-based access control |
 
 ---
 
@@ -62,16 +63,63 @@
 ```
 ├── backend/                 # Go Lambda services
 │   ├── cmd/{api,indexer,processor}/  # Lambda entrypoints
-│   └── internal/{handlers,models,repository,service,metadata,search}/
+│   └── internal/
+│       ├── handlers/        # HTTP handlers + middleware/auth.go
+│       ├── models/          # Domain models (role.go, artist_profile.go, follow.go)
+│       ├── repository/      # DynamoDB access (artist_profile.go, follow.go)
+│       ├── service/         # Business logic (role.go, artist_profile.go, follow.go)
+│       └── {metadata,search}/
 ├── frontend/src/            # React app
-│   └── {components,pages,hooks,lib,routes}/
+│   ├── components/
+│   │   ├── artist-profile/  # ArtistProfileCard, EditArtistProfileModal
+│   │   ├── follow/          # FollowButton, FollowersList, FollowingList
+│   │   ├── playlist/        # VisibilitySelector, CreatePlaylistModal
+│   │   └── studio/          # ModuleCard, CrateList, HotCueBar
+│   ├── hooks/               # useAuth, useFollow, useArtistProfiles, useFeatureFlags
+│   ├── lib/api/             # API clients (artistProfiles.ts, follows.ts)
+│   └── routes/artists/entity/  # Artist profile pages
 ├── infrastructure/          # OpenTofu IaC
 │   └── {global,shared,backend,frontend}/
+├── scripts/                 # Utility scripts
+│   ├── bootstrap-admin.sh   # Admin user promotion
+│   └── migrations/          # Data migration scripts
 ├── .claude/                 # Claude Code automation
-│   └── {plugins,agents,skills,commands,docs}/
 ├── .spec-workflow/specs/    # Feature specifications
 └── .github/workflows/       # CI/CD
 ```
+
+---
+
+## Role-Based Access Control
+
+### User Roles
+
+| Role | Description | Cognito Group |
+|------|-------------|---------------|
+| `guest` | Unauthenticated, browse only | (none) |
+| `subscriber` | Default authenticated user | `subscriber` |
+| `artist` | Can create artist profile, upload tracks | `artist` |
+| `admin` | Full system access | `admin` |
+
+### Permissions by Role
+
+| Permission | Guest | Subscriber | Artist | Admin |
+|------------|-------|------------|--------|-------|
+| Browse public content | ✓ | ✓ | ✓ | ✓ |
+| Listen to music | | ✓ | ✓ | ✓ |
+| Create playlists | | ✓ | ✓ | ✓ |
+| Follow artists | | ✓ | ✓ | ✓ |
+| Upload tracks | | | ✓ | ✓ |
+| Manage artist profile | | | ✓ | ✓ |
+| Manage users/roles | | | | ✓ |
+
+### Playlist Visibility
+
+| Level | Description |
+|-------|-------------|
+| `private` | Only owner can see |
+| `unlisted` | Anyone with link can see |
+| `public` | Discoverable by all users |
 
 ---
 
@@ -93,8 +141,9 @@
 cd backend && go test ./...
 cd backend && go build ./cmd/api
 
-# Frontend
+# Frontend (437 tests)
 cd frontend && npm test && npm run build
+cd frontend && npm run lint
 
 # Infrastructure
 cd infrastructure/{global,shared,backend} && tofu plan
@@ -135,20 +184,57 @@ main (protected)
 |------|---------|---------|
 | Group | `group-N/{name}` | `group-1/foundation-backend` |
 | Task | `task-N.X/{desc}` | `task-1.1/domain-models` |
+| Feature | `feature/{name}` | `feature/global-user-type` |
 | Hotfix | `hotfix/{desc}` | `hotfix/lambda-timeout` |
 
 ---
 
 ## DynamoDB Schema (Single-Table)
 
-| Entity | PK | SK |
-|--------|----|----|
-| User | `USER#{userId}` | `PROFILE` |
-| Track | `USER#{userId}` | `TRACK#{trackId}` |
-| Album | `USER#{userId}` | `ALBUM#{albumId}` |
-| Playlist | `USER#{userId}` | `PLAYLIST#{playlistId}` |
-| Upload | `USER#{userId}` | `UPLOAD#{uploadId}` |
-| Tag | `USER#{userId}` | `TAG#{tagName}` |
+| Entity | PK | SK | GSI1-PK | GSI1-SK |
+|--------|----|----|---------|---------|
+| User | `USER#{userId}` | `PROFILE` | | |
+| Track | `USER#{userId}` | `TRACK#{trackId}` | | |
+| Album | `USER#{userId}` | `ALBUM#{albumId}` | | |
+| Playlist | `USER#{userId}` | `PLAYLIST#{playlistId}` | `PUBLIC_PLAYLIST` (if public) | `{createdAt}` |
+| ArtistProfile | `ARTIST_PROFILE#{id}` | `PROFILE` | `USER#{userId}` | `ARTIST_PROFILE` |
+| Follow | `FOLLOW#{followerId}` | `FOLLOWING#{followedId}` | `ARTIST_PROFILE#{followedId}` | `FOLLOWER#{followerId}` |
+| Upload | `USER#{userId}` | `UPLOAD#{uploadId}` | | |
+| Tag | `USER#{userId}` | `TAG#{tagName}` | | |
+
+---
+
+## API Endpoints
+
+### Artist Profiles
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/artists/entity` | Artist+ | Create artist profile |
+| GET | `/artists/entity` | Public | List artist profiles |
+| GET | `/artists/entity/:id` | Public | Get artist profile |
+| PUT | `/artists/entity/:id` | Owner | Update artist profile |
+| GET | `/artists/entity/search` | Public | Search artists |
+
+### Follow System
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/artists/entity/:id/follow` | Subscriber+ | Follow artist |
+| DELETE | `/artists/entity/:id/follow` | Subscriber+ | Unfollow artist |
+| GET | `/artists/entity/:id/followers` | Public | Get followers |
+| GET | `/artists/entity/:id/following` | Public | Check if following |
+| GET | `/users/me/following` | Subscriber+ | Get user's following list |
+
+### Playlists
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/playlists/public` | Public | List public playlists |
+| PUT | `/playlists/:id/visibility` | Owner | Update visibility |
+
+### Roles (Admin only)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/users/:id/role` | Admin | Get user role |
+| PUT | `/users/:id/role` | Admin | Update user role |
 
 ---
 
@@ -184,4 +270,28 @@ Located in `.claude/docs/`:
 - `epic-completion-checklist.md` - Epic completion
 - `task-granularity.md` - Task breakdown rules
 
-Current specs: `.spec-workflow/specs/music-search-engine/`
+Current specs: `.spec-workflow/specs/global-user-type/`
+
+---
+
+## Recent Updates (2025-01-26)
+
+### Global User Type Feature (PR #18)
+Replaced subscription tier system with role-based access control:
+
+**Backend Changes:**
+- New models: `UserRole`, `Permission`, `ArtistProfile`, `Follow`, `PlaylistVisibility`
+- New services: `RoleService`, `ArtistProfileService`, `FollowService`
+- New handlers with authorization middleware (`RequireRole`, `RequireAuth`)
+- Repository methods for artist profiles and follow relationships
+
+**Frontend Changes:**
+- Role-based feature gating (replaced `hasTier()` with `hasRole()`)
+- New components: `ArtistProfileCard`, `FollowButton`, `VisibilitySelector`
+- New routes: `/artists/entity`, `/artists/entity/$artistId`, `/playlists/public`
+- 437 tests passing (39 new component tests)
+
+**Infrastructure:**
+- Cognito user groups: admin, artist, subscriber
+- Bootstrap script: `scripts/bootstrap-admin.sh`
+- Migration scripts in `scripts/migrations/`

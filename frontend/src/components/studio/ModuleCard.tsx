@@ -3,7 +3,7 @@
  * Displays a studio module with feature gating
  */
 import { useFeatureGate } from '@/hooks/useFeatureFlags';
-import type { FeatureKey, SubscriptionTier } from '@/types';
+import type { FeatureKey, UserRole } from '@/types';
 
 interface ModuleCardProps {
   title: string;
@@ -11,7 +11,7 @@ interface ModuleCardProps {
   icon: string;
   feature: FeatureKey;
   href: string;
-  requiredTier: SubscriptionTier;
+  requiredRole: UserRole;
 }
 
 export function ModuleCard({
@@ -20,9 +20,9 @@ export function ModuleCard({
   icon,
   feature,
   href,
-  requiredTier,
+  requiredRole,
 }: ModuleCardProps) {
-  const { isLoading, showUpgrade } = useFeatureGate(feature);
+  const { isLoading, isLocked } = useFeatureGate(feature);
 
   if (isLoading) {
     return (
@@ -36,7 +36,7 @@ export function ModuleCard({
     );
   }
 
-  if (showUpgrade) {
+  if (isLocked) {
     return (
       <div className="card bg-base-200 border border-base-300 opacity-75">
         <div className="card-body">
@@ -45,11 +45,8 @@ export function ModuleCard({
           <p className="text-sm text-base-content/50">{description}</p>
           <div className="card-actions justify-end mt-4">
             <span className="badge badge-outline capitalize">
-              {requiredTier}+ required
+              {requiredRole} role required
             </span>
-            <a href="/subscription" className="btn btn-sm btn-primary">
-              Upgrade
-            </a>
           </div>
         </div>
       </div>
@@ -70,7 +67,7 @@ export function ModuleCard({
   );
 }
 
-// Preset module configurations
+// Preset module configurations - features gated by role
 // eslint-disable-next-line react-refresh/only-export-components
 export const studioModules = [
   {
@@ -79,7 +76,7 @@ export const studioModules = [
     icon: '📦',
     feature: 'CRATES' as FeatureKey,
     href: '/studio/crates',
-    requiredTier: 'creator' as SubscriptionTier,
+    requiredRole: 'artist' as UserRole,
   },
   {
     title: 'BPM Matching',
@@ -87,7 +84,7 @@ export const studioModules = [
     icon: '🎚️',
     feature: 'BPM_MATCHING' as FeatureKey,
     href: '/studio/matching',
-    requiredTier: 'creator' as SubscriptionTier,
+    requiredRole: 'artist' as UserRole,
   },
   {
     title: 'Key Matching',
@@ -95,7 +92,7 @@ export const studioModules = [
     icon: '🎹',
     feature: 'KEY_MATCHING' as FeatureKey,
     href: '/studio/matching',
-    requiredTier: 'creator' as SubscriptionTier,
+    requiredRole: 'artist' as UserRole,
   },
   {
     title: 'Hot Cues',
@@ -103,7 +100,7 @@ export const studioModules = [
     icon: '🎯',
     feature: 'HOT_CUES' as FeatureKey,
     href: '/studio/hotcues',
-    requiredTier: 'creator' as SubscriptionTier,
+    requiredRole: 'artist' as UserRole,
   },
   {
     title: 'Bulk Edit',
@@ -111,7 +108,7 @@ export const studioModules = [
     icon: '✏️',
     feature: 'BULK_EDIT' as FeatureKey,
     href: '/studio/bulk-edit',
-    requiredTier: 'creator' as SubscriptionTier,
+    requiredRole: 'artist' as UserRole,
   },
   {
     title: 'Mix Recording',
@@ -119,7 +116,7 @@ export const studioModules = [
     icon: '🎙️',
     feature: 'MIX_RECORDING' as FeatureKey,
     href: '/studio/recording',
-    requiredTier: 'pro' as SubscriptionTier,
+    requiredRole: 'artist' as UserRole,
   },
   {
     title: 'Advanced Stats',
@@ -127,6 +124,6 @@ export const studioModules = [
     icon: '📊',
     feature: 'ADVANCED_STATS' as FeatureKey,
     href: '/studio/stats',
-    requiredTier: 'pro' as SubscriptionTier,
+    requiredRole: 'admin' as UserRole,
   },
 ];

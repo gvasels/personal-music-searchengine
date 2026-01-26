@@ -60,6 +60,111 @@ func (m *MockMigrationRepository) ListTracks(ctx context.Context, userID string,
 	return args.Get(0).(*repository.PaginatedResult[models.Track]), args.Error(1)
 }
 
+// User role management methods
+func (m *MockMigrationRepository) UpdateUserRole(ctx context.Context, userID string, role models.UserRole) error {
+	args := m.Called(ctx, userID, role)
+	return args.Error(0)
+}
+
+func (m *MockMigrationRepository) ListUsersByRole(ctx context.Context, role models.UserRole, limit int, cursor string) (*repository.PaginatedResult[models.User], error) {
+	args := m.Called(ctx, role, limit, cursor)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*repository.PaginatedResult[models.User]), args.Error(1)
+}
+
+// Playlist visibility methods
+func (m *MockMigrationRepository) UpdatePlaylistVisibility(ctx context.Context, userID, playlistID string, visibility models.PlaylistVisibility) error {
+	args := m.Called(ctx, userID, playlistID, visibility)
+	return args.Error(0)
+}
+
+func (m *MockMigrationRepository) ListPublicPlaylists(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.Playlist], error) {
+	args := m.Called(ctx, limit, cursor)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*repository.PaginatedResult[models.Playlist]), args.Error(1)
+}
+
+// ArtistProfile methods
+func (m *MockMigrationRepository) CreateArtistProfile(ctx context.Context, profile models.ArtistProfile) error {
+	args := m.Called(ctx, profile)
+	return args.Error(0)
+}
+
+func (m *MockMigrationRepository) GetArtistProfile(ctx context.Context, artistUserID string) (*models.ArtistProfile, error) {
+	args := m.Called(ctx, artistUserID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.ArtistProfile), args.Error(1)
+}
+
+func (m *MockMigrationRepository) UpdateArtistProfile(ctx context.Context, profile models.ArtistProfile) error {
+	args := m.Called(ctx, profile)
+	return args.Error(0)
+}
+
+func (m *MockMigrationRepository) DeleteArtistProfile(ctx context.Context, artistUserID string) error {
+	args := m.Called(ctx, artistUserID)
+	return args.Error(0)
+}
+
+func (m *MockMigrationRepository) ListArtistProfiles(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.ArtistProfile], error) {
+	args := m.Called(ctx, limit, cursor)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*repository.PaginatedResult[models.ArtistProfile]), args.Error(1)
+}
+
+func (m *MockMigrationRepository) IncrementArtistFollowerCount(ctx context.Context, artistUserID string, delta int) error {
+	args := m.Called(ctx, artistUserID, delta)
+	return args.Error(0)
+}
+
+// Follow methods
+func (m *MockMigrationRepository) CreateFollow(ctx context.Context, follow models.Follow) error {
+	args := m.Called(ctx, follow)
+	return args.Error(0)
+}
+
+func (m *MockMigrationRepository) DeleteFollow(ctx context.Context, followerUserID, followedUserID string) error {
+	args := m.Called(ctx, followerUserID, followedUserID)
+	return args.Error(0)
+}
+
+func (m *MockMigrationRepository) GetFollow(ctx context.Context, followerUserID, followedUserID string) (*models.Follow, error) {
+	args := m.Called(ctx, followerUserID, followedUserID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Follow), args.Error(1)
+}
+
+func (m *MockMigrationRepository) ListFollowers(ctx context.Context, userID string, limit int, cursor string) (*repository.PaginatedResult[models.Follow], error) {
+	args := m.Called(ctx, userID, limit, cursor)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*repository.PaginatedResult[models.Follow]), args.Error(1)
+}
+
+func (m *MockMigrationRepository) ListFollowing(ctx context.Context, userID string, limit int, cursor string) (*repository.PaginatedResult[models.Follow], error) {
+	args := m.Called(ctx, userID, limit, cursor)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*repository.PaginatedResult[models.Follow]), args.Error(1)
+}
+
+func (m *MockMigrationRepository) IncrementUserFollowingCount(ctx context.Context, userID string, delta int) error {
+	args := m.Called(ctx, userID, delta)
+	return args.Error(0)
+}
+
 // Helper function to create test tracks
 func createMigrationTestTrack(userID, trackID, artist, artistID string) models.Track {
 	now := time.Now().UTC()

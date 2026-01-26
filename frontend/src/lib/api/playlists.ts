@@ -2,7 +2,7 @@
  * Playlists API - Wave 5
  */
 import { apiClient } from './client';
-import type { Playlist, PlaylistWithTracks, PaginatedResponse } from '../../types';
+import type { Playlist, PlaylistWithTracks, PaginatedResponse, PlaylistVisibility } from '../../types';
 
 export interface GetPlaylistsParams {
   limit?: number;
@@ -12,6 +12,7 @@ export interface GetPlaylistsParams {
 export interface CreatePlaylistData {
   name: string;
   description?: string;
+  visibility?: PlaylistVisibility;
 }
 
 export interface UpdatePlaylistData {
@@ -69,5 +70,38 @@ export async function reorderPlaylistTracks(
   data: ReorderTracksData
 ): Promise<Playlist> {
   const response = await apiClient.put<Playlist>(`/playlists/${playlistId}/reorder`, data);
+  return response.data;
+}
+
+export interface UpdateVisibilityResponse {
+  playlistId: string;
+  visibility: PlaylistVisibility;
+}
+
+export async function updatePlaylistVisibility(
+  playlistId: string,
+  visibility: PlaylistVisibility
+): Promise<UpdateVisibilityResponse> {
+  const response = await apiClient.put<UpdateVisibilityResponse>(
+    `/playlists/${playlistId}/visibility`,
+    { visibility }
+  );
+  return response.data;
+}
+
+export interface GetPublicPlaylistsParams {
+  limit?: number;
+  cursor?: string;
+}
+
+export interface PublicPlaylistsResponse {
+  items: Playlist[];
+  nextCursor?: string;
+}
+
+export async function getPublicPlaylists(
+  params?: GetPublicPlaylistsParams
+): Promise<PublicPlaylistsResponse> {
+  const response = await apiClient.get<PublicPlaylistsResponse>('/playlists/public', { params });
   return response.data;
 }

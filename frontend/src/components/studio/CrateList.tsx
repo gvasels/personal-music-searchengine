@@ -12,21 +12,19 @@ interface CrateListProps {
 }
 
 export function CrateList({ onSelectCrate, selectedCrateId }: CrateListProps) {
-  const { data: crates, isLoading, showUpgrade, isFeatureEnabled } = useCrates();
+  const { data: crates, isLoading, isLocked, isFeatureEnabled } = useCrates();
   const createCrate = useCreateCrate();
   const deleteCrate = useDeleteCrate();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newCrateName, setNewCrateName] = useState('');
 
-  if (!isFeatureEnabled && showUpgrade) {
+  if (!isFeatureEnabled && isLocked) {
     return (
       <div className="p-4 text-center">
         <p className="text-base-content/70 mb-4">
-          Crates are available for Creator and Pro users.
+          Crates are available for Artist users.
         </p>
-        <a href="/subscription" className="btn btn-primary btn-sm">
-          Upgrade to Access
-        </a>
+        <span className="badge badge-outline">Artist role required</span>
       </div>
     );
   }

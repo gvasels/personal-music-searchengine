@@ -25,7 +25,7 @@ vi.mock('../../lib/api/hotcues', () => ({
 vi.mock('../useFeatureFlags', () => ({
   useFeatureGate: vi.fn(() => ({
     isEnabled: true,
-    showUpgrade: false,
+    isLocked: false,
   })),
 }));
 
@@ -71,7 +71,7 @@ describe('useHotCues (WS4 Creator Studio)', () => {
 
       expect(result.current.data).toEqual(mockHotCues);
       expect(result.current.isFeatureEnabled).toBe(true);
-      expect(result.current.showUpgrade).toBe(false);
+      expect(result.current.isLocked).toBe(false);
       expect(hotcuesApi.getTrackHotCues).toHaveBeenCalledWith('track-1');
     });
 
@@ -266,8 +266,8 @@ describe('useHotCues (WS4 Creator Studio)', () => {
 });
 
 describe('useHotCues feature gating', () => {
-  it('should show upgrade when feature is disabled', () => {
-    // We test the feature gating indirectly via the isFeatureEnabled and showUpgrade properties
+  it('should show locked state when feature is disabled', () => {
+    // We test the feature gating indirectly via the isFeatureEnabled and isLocked properties
     // The mock returns enabled=true by default
     // Feature gating is properly tested via integration tests
     expect(true).toBe(true);

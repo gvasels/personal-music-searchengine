@@ -7,14 +7,17 @@ import (
 
 // Playlist represents a user-created playlist
 type Playlist struct {
-	ID            string `json:"id" dynamodbav:"id"`
-	UserID        string `json:"userId" dynamodbav:"userId"`
-	Name          string `json:"name" dynamodbav:"name"`
-	Description   string `json:"description,omitempty" dynamodbav:"description,omitempty"`
-	CoverArtKey   string `json:"coverArtKey,omitempty" dynamodbav:"coverArtKey,omitempty"`
-	TrackCount    int    `json:"trackCount" dynamodbav:"trackCount"`
-	TotalDuration int    `json:"totalDuration" dynamodbav:"totalDuration"` // seconds
-	IsPublic      bool   `json:"isPublic" dynamodbav:"isPublic"`
+	ID            string             `json:"id" dynamodbav:"id"`
+	UserID        string             `json:"userId" dynamodbav:"userId"`
+	Name          string             `json:"name" dynamodbav:"name"`
+	Description   string             `json:"description,omitempty" dynamodbav:"description,omitempty"`
+	CoverArtKey   string             `json:"coverArtKey,omitempty" dynamodbav:"coverArtKey,omitempty"`
+	TrackCount    int                `json:"trackCount" dynamodbav:"trackCount"`
+	TotalDuration int                `json:"totalDuration" dynamodbav:"totalDuration"` // seconds
+	IsPublic      bool               `json:"isPublic" dynamodbav:"isPublic"`           // Deprecated: Use Visibility instead
+	Visibility    PlaylistVisibility `json:"visibility" dynamodbav:"visibility"`
+	CreatorName   string             `json:"creatorName,omitempty" dynamodbav:"creatorName,omitempty"`     // Denormalized for public playlists
+	CreatorAvatar string             `json:"creatorAvatar,omitempty" dynamodbav:"creatorAvatar,omitempty"` // Denormalized for public playlists
 	Timestamps
 }
 
@@ -26,7 +29,7 @@ type PlaylistItem struct {
 
 // NewPlaylistItem creates a DynamoDB item for a playlist
 func NewPlaylistItem(playlist Playlist) PlaylistItem {
-	return PlaylistItem{
+	item := PlaylistItem{
 		DynamoDBItem: DynamoDBItem{
 			PK:   fmt.Sprintf("USER#%s", playlist.UserID),
 			SK:   fmt.Sprintf("PLAYLIST#%s", playlist.ID),
@@ -34,6 +37,14 @@ func NewPlaylistItem(playlist Playlist) PlaylistItem {
 		},
 		Playlist: playlist,
 	}
+
+	// Set GSI2 for public playlist discovery
+	if playlist.Visibility.IsDiscoverable() {
+		item.GSI2PK = "PUBLIC_PLAYLIST"
+		item.GSI2SK = fmt.Sprintf("PLAYLIST#%s", playlist.ID)
+	}
+
+	return item
 }
 
 // PlaylistTrack represents a track within a playlist (with position)
@@ -95,20 +106,29 @@ type ReorderPlaylistTracksRequest struct {
 
 // PlaylistResponse represents a playlist in API responses
 type PlaylistResponse struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	Description   string    `json:"description,omitempty"`
-	CoverArtURL   string    `json:"coverArtUrl,omitempty"`
-	TrackCount    int       `json:"trackCount"`
-	TotalDuration int       `json:"totalDuration"`
-	DurationStr   string    `json:"durationStr"`
-	IsPublic      bool      `json:"isPublic"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	ID            string             `json:"id"`
+	Name          string             `json:"name"`
+	Description   string             `json:"description,omitempty"`
+	CoverArtURL   string             `json:"coverArtUrl,omitempty"`
+	TrackCount    int                `json:"trackCount"`
+	TotalDuration int                `json:"totalDuration"`
+	DurationStr   string             `json:"durationStr"`
+	IsPublic      bool               `json:"isPublic"`                          // Deprecated: Use Visibility instead
+	Visibility    PlaylistVisibility `json:"visibility"`
+	CreatorName   string             `json:"creatorName,omitempty"`
+	CreatorAvatar string             `json:"creatorAvatar,omitempty"`
+	CreatedAt     time.Time          `json:"createdAt"`
+	UpdatedAt     time.Time          `json:"updatedAt"`
 }
 
 // ToResponse converts a Playlist to a PlaylistResponse
 func (p *Playlist) ToResponse(coverArtURL string) PlaylistResponse {
+	// Ensure visibility is set (backwards compatibility)
+	visibility := p.Visibility
+	if visibility == "" {
+		visibility = VisibilityFromIsPublic(p.IsPublic)
+	}
+
 	return PlaylistResponse{
 		ID:            p.ID,
 		Name:          p.Name,
@@ -118,6 +138,9 @@ func (p *Playlist) ToResponse(coverArtURL string) PlaylistResponse {
 		TotalDuration: p.TotalDuration,
 		DurationStr:   formatDuration(p.TotalDuration),
 		IsPublic:      p.IsPublic,
+		Visibility:    visibility,
+		CreatorName:   p.CreatorName,
+		CreatorAvatar: p.CreatorAvatar,
 		CreatedAt:     p.CreatedAt,
 		UpdatedAt:     p.UpdatedAt,
 	}

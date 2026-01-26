@@ -209,6 +209,67 @@ func (m *MockPlaylistRepository) SearchPlaylists(ctx context.Context, userID, qu
 	return nil, nil
 }
 
+// User role methods
+func (m *MockPlaylistRepository) UpdateUserRole(ctx context.Context, userID string, role models.UserRole) error {
+	return nil
+}
+func (m *MockPlaylistRepository) ListUsersByRole(ctx context.Context, role models.UserRole, limit int, cursor string) (*repository.PaginatedResult[models.User], error) {
+	return nil, nil
+}
+
+// Playlist visibility methods
+func (m *MockPlaylistRepository) UpdatePlaylistVisibility(ctx context.Context, userID, playlistID string, visibility models.PlaylistVisibility) error {
+	args := m.Called(ctx, userID, playlistID, visibility)
+	return args.Error(0)
+}
+func (m *MockPlaylistRepository) ListPublicPlaylists(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.Playlist], error) {
+	args := m.Called(ctx, limit, cursor)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*repository.PaginatedResult[models.Playlist]), args.Error(1)
+}
+
+// ArtistProfile methods
+func (m *MockPlaylistRepository) CreateArtistProfile(ctx context.Context, profile models.ArtistProfile) error {
+	return nil
+}
+func (m *MockPlaylistRepository) GetArtistProfile(ctx context.Context, userID string) (*models.ArtistProfile, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) UpdateArtistProfile(ctx context.Context, profile models.ArtistProfile) error {
+	return nil
+}
+func (m *MockPlaylistRepository) DeleteArtistProfile(ctx context.Context, userID string) error {
+	return nil
+}
+func (m *MockPlaylistRepository) ListArtistProfiles(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.ArtistProfile], error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) IncrementArtistFollowerCount(ctx context.Context, userID string, delta int) error {
+	return nil
+}
+
+// Follow methods
+func (m *MockPlaylistRepository) CreateFollow(ctx context.Context, follow models.Follow) error {
+	return nil
+}
+func (m *MockPlaylistRepository) DeleteFollow(ctx context.Context, followerID, followedID string) error {
+	return nil
+}
+func (m *MockPlaylistRepository) GetFollow(ctx context.Context, followerID, followedID string) (*models.Follow, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) ListFollowers(ctx context.Context, userID string, limit int, cursor string) (*repository.PaginatedResult[models.Follow], error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) ListFollowing(ctx context.Context, userID string, limit int, cursor string) (*repository.PaginatedResult[models.Follow], error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) IncrementUserFollowingCount(ctx context.Context, userID string, delta int) error {
+	return nil
+}
+
 // MockPlaylistS3Repository provides mockable S3 repository methods
 type MockPlaylistS3Repository struct {
 	mock.Mock
@@ -759,5 +820,174 @@ func TestRemoveTracks_PlaylistNotFound(t *testing.T) {
 	if errors.As(err, &apiErr) {
 		assert.Equal(t, "NOT_FOUND", apiErr.Code)
 	}
+	mockRepo.AssertExpectations(t)
+}
+
+// =============================================================================
+// Playlist Visibility Tests
+// =============================================================================
+
+func TestUpdatePlaylistVisibility_Success(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockPlaylistRepository)
+	mockS3 := new(MockPlaylistS3Repository)
+	svc := NewPlaylistService(mockRepo, mockS3)
+
+	now := time.Now()
+	mockRepo.On("GetPlaylist", ctx, "user-123", "playlist-1").Return(&models.Playlist{
+		ID:         "playlist-1",
+		UserID:     "user-123",
+		Name:       "My Playlist",
+		Visibility: models.VisibilityPrivate,
+		Timestamps: models.Timestamps{CreatedAt: now, UpdatedAt: now},
+	}, nil)
+
+	mockRepo.On("UpdatePlaylistVisibility", ctx, "user-123", "playlist-1", models.VisibilityPublic).Return(nil)
+
+	err := svc.UpdateVisibility(ctx, "user-123", "playlist-1", models.VisibilityPublic)
+
+	assert.NoError(t, err)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestUpdatePlaylistVisibility_NotOwner(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockPlaylistRepository)
+	mockS3 := new(MockPlaylistS3Repository)
+	svc := NewPlaylistService(mockRepo, mockS3)
+
+	now := time.Now()
+	mockRepo.On("GetPlaylist", ctx, "other-user", "playlist-1").Return(&models.Playlist{
+		ID:         "playlist-1",
+		UserID:     "user-123", // Different from requester
+		Name:       "My Playlist",
+		Visibility: models.VisibilityPrivate,
+		Timestamps: models.Timestamps{CreatedAt: now, UpdatedAt: now},
+	}, nil)
+
+	err := svc.UpdateVisibility(ctx, "other-user", "playlist-1", models.VisibilityPublic)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "FORBIDDEN")
+}
+
+func TestUpdatePlaylistVisibility_InvalidVisibility(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockPlaylistRepository)
+	mockS3 := new(MockPlaylistS3Repository)
+	svc := NewPlaylistService(mockRepo, mockS3)
+
+	err := svc.UpdateVisibility(ctx, "user-123", "playlist-1", models.PlaylistVisibility("invalid"))
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "VALIDATION_ERROR")
+}
+
+func TestUpdatePlaylistVisibility_PlaylistNotFound(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockPlaylistRepository)
+	mockS3 := new(MockPlaylistS3Repository)
+	svc := NewPlaylistService(mockRepo, mockS3)
+
+	mockRepo.On("GetPlaylist", ctx, "user-123", "nonexistent").Return(nil, repository.ErrNotFound)
+
+	err := svc.UpdateVisibility(ctx, "user-123", "nonexistent", models.VisibilityPublic)
+
+	assert.Error(t, err)
+
+	var apiErr *models.APIError
+	if errors.As(err, &apiErr) {
+		assert.Equal(t, "NOT_FOUND", apiErr.Code)
+	}
+}
+
+func TestListPublicPlaylists_Success(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockPlaylistRepository)
+	mockS3 := new(MockPlaylistS3Repository)
+	svc := NewPlaylistService(mockRepo, mockS3)
+
+	now := time.Now()
+	mockRepo.On("ListPublicPlaylists", ctx, 20, "").Return(&repository.PaginatedResult[models.Playlist]{
+		Items: []models.Playlist{
+			{
+				ID:          "playlist-1",
+				UserID:      "user-1",
+				Name:        "Public Playlist 1",
+				Visibility:  models.VisibilityPublic,
+				CreatorName: "Artist 1",
+				Timestamps:  models.Timestamps{CreatedAt: now, UpdatedAt: now},
+			},
+			{
+				ID:          "playlist-2",
+				UserID:      "user-2",
+				Name:        "Public Playlist 2",
+				Visibility:  models.VisibilityPublic,
+				CreatorName: "Artist 2",
+				Timestamps:  models.Timestamps{CreatedAt: now, UpdatedAt: now},
+			},
+		},
+		HasMore: false,
+	}, nil)
+
+	// Mock GetPlaylistTracks for track count
+	mockRepo.On("GetPlaylistTracks", ctx, "playlist-1").Return([]models.PlaylistTrack{}, nil)
+	mockRepo.On("GetPlaylistTracks", ctx, "playlist-2").Return([]models.PlaylistTrack{}, nil)
+
+	result, err := svc.ListPublicPlaylists(ctx, 20, "")
+
+	assert.NoError(t, err)
+	assert.Len(t, result.Items, 2)
+	assert.Equal(t, "Public Playlist 1", result.Items[0].Name)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestListPublicPlaylists_WithPagination(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockPlaylistRepository)
+	mockS3 := new(MockPlaylistS3Repository)
+	svc := NewPlaylistService(mockRepo, mockS3)
+
+	now := time.Now()
+	mockRepo.On("ListPublicPlaylists", ctx, 1, "cursor-1").Return(&repository.PaginatedResult[models.Playlist]{
+		Items: []models.Playlist{
+			{
+				ID:         "playlist-2",
+				UserID:     "user-2",
+				Name:       "Public Playlist 2",
+				Visibility: models.VisibilityPublic,
+				Timestamps: models.Timestamps{CreatedAt: now, UpdatedAt: now},
+			},
+		},
+		NextCursor: "cursor-2",
+		HasMore:    true,
+	}, nil)
+
+	mockRepo.On("GetPlaylistTracks", ctx, "playlist-2").Return([]models.PlaylistTrack{}, nil)
+
+	result, err := svc.ListPublicPlaylists(ctx, 1, "cursor-1")
+
+	assert.NoError(t, err)
+	assert.Len(t, result.Items, 1)
+	assert.True(t, result.HasMore)
+	assert.Equal(t, "cursor-2", result.NextCursor)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestListPublicPlaylists_Empty(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockPlaylistRepository)
+	mockS3 := new(MockPlaylistS3Repository)
+	svc := NewPlaylistService(mockRepo, mockS3)
+
+	mockRepo.On("ListPublicPlaylists", ctx, 20, "").Return(&repository.PaginatedResult[models.Playlist]{
+		Items:   []models.Playlist{},
+		HasMore: false,
+	}, nil)
+
+	result, err := svc.ListPublicPlaylists(ctx, 20, "")
+
+	assert.NoError(t, err)
+	assert.Empty(t, result.Items)
 	mockRepo.AssertExpectations(t)
 }

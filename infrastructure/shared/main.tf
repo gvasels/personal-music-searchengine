@@ -103,3 +103,16 @@ output "search_indexes_bucket_name" {
 output "search_indexes_bucket_arn" {
   value = aws_s3_bucket.search_indexes.arn
 }
+
+# Cognito User Groups
+output "cognito_admin_group_name" {
+  value = aws_cognito_user_group.admin.name
+}
+
+output "cognito_artist_group_name" {
+  value = aws_cognito_user_group.artist.name
+}
+
+output "cognito_subscriber_group_name" {
+  value = aws_cognito_user_group.subscriber.name
+}
