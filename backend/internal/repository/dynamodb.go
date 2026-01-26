@@ -856,11 +856,15 @@ func (r *DynamoDBRepository) SearchUsers(ctx context.Context, query string, limi
 	}
 
 	// Search by scanning with filter (not ideal for production, but works for admin use)
+	// Handle both old schema (Type=USER, email, displayName) and new schema (EntityType=User, Email)
 	filter := expression.And(
-		expression.Name("Type").Equal(expression.Value("USER")),
+		expression.Name("SK").Equal(expression.Value("PROFILE")),
 		expression.Or(
+			// Old schema: lowercase email/displayName
 			expression.Contains(expression.Name("email"), query),
 			expression.Contains(expression.Name("displayName"), query),
+			// New schema: capitalized Email
+			expression.Contains(expression.Name("Email"), query),
 		),
 	)
 

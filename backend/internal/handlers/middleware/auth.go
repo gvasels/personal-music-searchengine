@@ -149,11 +149,22 @@ func extractAuthFromContext(c echo.Context) (string, models.UserRole, []string) 
 	return userID, role, groups
 }
 
-// parseGroups parses Cognito groups from JWT claim (space-separated string).
+// parseGroups parses Cognito groups from JWT claim.
+// API Gateway passes array claims as "[value1 value2]" format.
 func parseGroups(groupsClaim string) []string {
 	if groupsClaim == "" {
 		return nil
 	}
+
+	// Strip brackets if present (API Gateway formats arrays as "[a b c]")
+	groupsClaim = strings.TrimPrefix(groupsClaim, "[")
+	groupsClaim = strings.TrimSuffix(groupsClaim, "]")
+	groupsClaim = strings.TrimSpace(groupsClaim)
+
+	if groupsClaim == "" {
+		return nil
+	}
+
 	return strings.Split(groupsClaim, " ")
 }
 

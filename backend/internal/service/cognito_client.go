@@ -10,6 +10,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 )
 
+// CognitoUser represents a user from Cognito for admin operations.
+type CognitoUser struct {
+	ID       string
+	Email    string
+	Name     string
+	Status   string
+	Enabled  bool
+	Created  string
+	Modified string
+}
+
 // CognitoClient provides operations for managing users in Cognito User Pools.
 // This interface abstracts AWS Cognito admin operations for user management.
 type CognitoClient interface {
@@ -27,6 +38,12 @@ type CognitoClient interface {
 
 	// EnableUser enables a previously disabled user in Cognito.
 	EnableUser(ctx context.Context, userID string) error
+
+	// SearchUsers searches for users by email prefix in Cognito.
+	SearchUsers(ctx context.Context, query string, limit int) ([]CognitoUser, error)
+
+	// GetUserStatus gets the enabled/disabled status of a user from Cognito.
+	GetUserStatus(ctx context.Context, userID string) (enabled bool, err error)
 }
 
 // CognitoIdentityProviderAPI defines the subset of Cognito operations we use.
@@ -37,6 +54,8 @@ type CognitoIdentityProviderAPI interface {
 	AdminListGroupsForUser(ctx context.Context, params *cognitoidentityprovider.AdminListGroupsForUserInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.AdminListGroupsForUserOutput, error)
 	AdminDisableUser(ctx context.Context, params *cognitoidentityprovider.AdminDisableUserInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.AdminDisableUserOutput, error)
 	AdminEnableUser(ctx context.Context, params *cognitoidentityprovider.AdminEnableUserInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.AdminEnableUserOutput, error)
+	ListUsers(ctx context.Context, params *cognitoidentityprovider.ListUsersInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.ListUsersOutput, error)
+	AdminGetUser(ctx context.Context, params *cognitoidentityprovider.AdminGetUserInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.AdminGetUserOutput, error)
 }
 
 // cognitoClient implements CognitoClient using AWS SDK v2.
@@ -139,6 +158,72 @@ func (c *cognitoClient) EnableUser(ctx context.Context, userID string) error {
 		return c.wrapCognitoError(err, "enable user")
 	}
 	return nil
+}
+
+// GetUserStatus gets the enabled/disabled status of a user from Cognito.
+func (c *cognitoClient) GetUserStatus(ctx context.Context, userID string) (bool, error) {
+	input := &cognitoidentityprovider.AdminGetUserInput{
+		UserPoolId: aws.String(c.userPoolID),
+		Username:   aws.String(userID),
+	}
+
+	output, err := c.api.AdminGetUser(ctx, input)
+	if err != nil {
+		return false, c.wrapCognitoError(err, "get user status")
+	}
+
+	return output.Enabled, nil
+}
+
+// SearchUsers searches for users by email in Cognito.
+func (c *cognitoClient) SearchUsers(ctx context.Context, query string, limit int) ([]CognitoUser, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+
+	// Cognito filter syntax: email ^= "query" (starts with)
+	filter := fmt.Sprintf("email ^= \"%s\"", query)
+
+	input := &cognitoidentityprovider.ListUsersInput{
+		UserPoolId: aws.String(c.userPoolID),
+		Filter:     aws.String(filter),
+		Limit:      aws.Int32(int32(limit)),
+	}
+
+	output, err := c.api.ListUsers(ctx, input)
+	if err != nil {
+		return nil, c.wrapCognitoError(err, "search users")
+	}
+
+	users := make([]CognitoUser, 0, len(output.Users))
+	for _, user := range output.Users {
+		cognitoUser := CognitoUser{
+			ID:      aws.ToString(user.Username),
+			Status:  string(user.UserStatus),
+			Enabled: user.Enabled,
+		}
+
+		// Extract attributes
+		for _, attr := range user.Attributes {
+			switch aws.ToString(attr.Name) {
+			case "email":
+				cognitoUser.Email = aws.ToString(attr.Value)
+			case "name":
+				cognitoUser.Name = aws.ToString(attr.Value)
+			}
+		}
+
+		if user.UserCreateDate != nil {
+			cognitoUser.Created = user.UserCreateDate.Format("2006-01-02T15:04:05Z")
+		}
+		if user.UserLastModifiedDate != nil {
+			cognitoUser.Modified = user.UserLastModifiedDate.Format("2006-01-02T15:04:05Z")
+		}
+
+		users = append(users, cognitoUser)
+	}
+
+	return users, nil
 }
 
 // wrapCognitoError converts AWS Cognito errors to appropriate error messages.

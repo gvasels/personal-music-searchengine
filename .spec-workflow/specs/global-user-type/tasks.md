@@ -426,3 +426,38 @@ Phase 8 (Testing) ←───────────────────�
 | 7 | 8 | Frontend updates |
 | 8 | 4 | Testing |
 | **Total** | **38** | |
+
+---
+
+## Future Enhancements (Roadmap)
+
+### User Management Architecture Refactor
+
+**Current State**: Admin user search queries Cognito directly, with role info stored in both Cognito groups and DynamoDB. This creates data synchronization challenges.
+
+**Target State**: DynamoDB becomes the source of truth for user data, with Cognito sync as needed for authentication.
+
+#### Tasks:
+- [ ] F.1 Create DynamoDB user profile on Cognito post-confirmation trigger
+  - Add Lambda trigger for `PostConfirmation_ConfirmSignUp`
+  - Create user profile in DynamoDB with default role (subscriber)
+  - Sync display name from Cognito attributes
+  - Purpose: Ensure all Cognito users have DynamoDB profiles
+
+- [ ] F.2 Migrate admin search from Cognito to DynamoDB
+  - Update `AdminService.SearchUsers` to query DynamoDB only
+  - Add GSI for email prefix search if needed
+  - Remove Cognito ListUsers dependency
+  - Purpose: Simplify architecture, reduce Cognito API calls
+
+- [ ] F.3 Create Cognito sync service for role changes
+  - On role change in DynamoDB, sync to Cognito groups
+  - Handle group membership atomically with DynamoDB updates
+  - Add retry/rollback logic for consistency
+  - Purpose: Keep Cognito groups in sync for JWT claims
+
+- [ ] F.4 Backfill existing Cognito users to DynamoDB
+  - Migration script to scan Cognito users
+  - Create DynamoDB profiles for users without them
+  - Preserve existing data where profiles exist
+  - Purpose: One-time migration to complete architecture

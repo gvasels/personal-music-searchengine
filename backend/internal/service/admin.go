@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
@@ -54,20 +55,40 @@ func NewAdminService(repo AdminRepository, cognito CognitoClient) AdminService {
 	}
 }
 
-// SearchUsers searches for users by email or display name.
+// SearchUsers searches for users by email in Cognito.
 func (s *adminService) SearchUsers(ctx context.Context, query string, limit int) ([]models.UserSummary, error) {
 	if limit <= 0 {
 		limit = DefaultSearchLimit
 	}
 
-	users, err := s.repo.SearchUsers(ctx, query, limit)
+	// Search Cognito for users (source of truth for user identity)
+	cognitoUsers, err := s.cognito.SearchUsers(ctx, query, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search users: %w", err)
+		return nil, fmt.Errorf("failed to search users in Cognito: %w", err)
 	}
 
-	summaries := make([]models.UserSummary, len(users))
-	for i, user := range users {
-		summaries[i] = user.ToUserSummary(false) // Disabled status is not fetched in search
+	summaries := make([]models.UserSummary, len(cognitoUsers))
+	for i, cu := range cognitoUsers {
+		// Try to get role from DynamoDB, default to subscriber
+		role := models.RoleSubscriber
+		if user, err := s.repo.GetUser(ctx, cu.ID); err == nil {
+			role = user.Role
+		}
+
+		// Parse created time
+		var createdAt time.Time
+		if cu.Created != "" {
+			createdAt, _ = time.Parse(time.RFC3339, cu.Created)
+		}
+
+		summaries[i] = models.UserSummary{
+			ID:          cu.ID,
+			Email:       cu.Email,
+			DisplayName: cu.Name,
+			Role:        role,
+			Disabled:    !cu.Enabled, // Cognito Enabled=true means NOT disabled
+			CreatedAt:   createdAt,
+		}
 	}
 
 	return summaries, nil
@@ -86,9 +107,11 @@ func (s *adminService) GetUserDetails(ctx context.Context, userID string) (*mode
 	// Get follower count (optional, don't fail if error)
 	followerCount, _ := s.repo.GetFollowerCount(ctx, userID)
 
-	// Get disabled status from Cognito groups (optional)
-	// For now, assume not disabled if we can't determine
+	// Get disabled status from Cognito (enabled=true means disabled=false)
 	disabled := false
+	if enabled, err := s.cognito.GetUserStatus(ctx, userID); err == nil {
+		disabled = !enabled
+	}
 
 	details := user.ToUserDetails(disabled, nil, followerCount)
 	return &details, nil
