@@ -22,7 +22,9 @@ const adminNavItems = [
 ];
 
 export function Sidebar() {
-  const { isAuthenticated, isLoading, isAdmin } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, role, groups } = useAuth();
+
+  console.log('[Sidebar] Auth state:', { isAuthenticated, isLoading, isAdmin, role, groups });
 
   // Don't show sidebar when not authenticated or still loading
   if (isLoading || !isAuthenticated) {

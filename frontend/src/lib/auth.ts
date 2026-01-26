@@ -73,16 +73,21 @@ export interface Tokens {
  */
 function roleFromGroups(groups: string[]): UserRole {
   const lowerGroups = groups.map((g) => g.toLowerCase());
+  console.log('[Auth] roleFromGroups input:', groups, '-> lowercase:', lowerGroups);
 
   if (lowerGroups.includes('admin') || lowerGroups.includes('admins')) {
+    console.log('[Auth] Detected role: admin');
     return 'admin';
   }
   if (lowerGroups.includes('artist') || lowerGroups.includes('artists')) {
+    console.log('[Auth] Detected role: artist');
     return 'artist';
   }
   if (lowerGroups.includes('subscriber') || lowerGroups.includes('subscribers')) {
+    console.log('[Auth] Detected role: subscriber');
     return 'subscriber';
   }
+  console.log('[Auth] Detected role: guest (no matching groups)');
   return 'guest';
 }
 
@@ -212,15 +217,18 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     const user = await amplifyGetCurrentUser();
     const groups = await getGroupsFromSession();
+    const role = roleFromGroups(groups);
+    console.log('[Auth] getCurrentUser result:', { userId: user.userId, groups, role });
     return {
       userId: user.userId,
       email: user.signInDetails?.loginId || '',
-      role: roleFromGroups(groups),
+      role,
       groups,
     };
   } catch (error) {
     const err = error as { name?: string };
     if (err?.name === 'UserUnAuthenticatedException') {
+      console.log('[Auth] User not authenticated');
       return null;
     }
     throw mapAmplifyError(error);
