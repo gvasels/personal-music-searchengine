@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Cognito admin IAM permissions for Lambda (`backend/iam-cognito.tf`)
+  - Allows user management operations (ListUsers, AdminGetUser, AdminAddUserToGroup, etc.)
+  - Attached to API Lambda execution role for admin panel functionality
 - FFmpeg Lambda layer for audio processing
 - Analyzer Lambda processor infrastructure
 - S3 Tables configuration (disabled pending AWS provider support)

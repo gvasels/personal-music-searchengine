@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Admin Panel & Track Visibility Feature**
+  - Admin handlers for user management (`internal/handlers/admin.go`)
+  - Admin service with Cognito integration (`internal/service/admin.go`)
+  - Track visibility service for private/unlisted/public tracks (`internal/service/track_visibility.go`)
+  - Admin handler integration tests (`internal/handlers/admin_test.go`)
 - **Global User Type Feature** (Role-Based Access Control)
   - User roles: `guest`, `subscriber`, `artist`, `admin` with Cognito Groups integration
   - Permission system with 12 granular permissions (browse, listen, upload, publish, etc.)
