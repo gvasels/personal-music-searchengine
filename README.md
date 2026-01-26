@@ -94,28 +94,135 @@ See [ROADMAP.md](./ROADMAP.md) for the full roadmap including:
 
 ### Prerequisites
 
-- AWS CLI configured with profile `gvasels-muza`
-- Go 1.22+
-- Node.js 20+
-- Account: 887395463840, Region: us-east-1
+| Requirement | Version | Purpose |
+|-------------|---------|---------|
+| AWS CLI | v2+ | AWS resource management |
+| OpenTofu | 1.8+ | Infrastructure as code (NOT Terraform) |
+| Go | 1.22+ | Backend compilation |
+| Node.js | 20+ | Frontend build |
+| Make | - | Build automation |
 
-### Backend Deployment
+**Current Deployment:**
+- Account: `887395463840`
+- Region: `us-east-1`
+- AWS Profile: `gvasels-muza`
+
+---
+
+### Fresh AWS Account Deployment
+
+Follow these steps to deploy to a new AWS account from scratch.
+
+#### Step 1: Configure AWS Credentials
+
+```bash
+# Create AWS profile for the new account
+aws configure --profile your-profile-name
+# Enter: Access Key ID, Secret Access Key, Region (us-east-1), Output format (json)
+
+# Verify access
+aws sts get-caller-identity --profile your-profile-name
+```
+
+#### Step 2: Update Provider Configuration
+
+Edit `infrastructure/global/main.tf` and update the profile:
+
+```hcl
+provider "aws" {
+  region  = "us-east-1"
+  profile = "your-profile-name"  # Change this
+}
+```
+
+Update the same profile in:
+- `infrastructure/shared/main.tf`
+- `infrastructure/backend/main.tf`
+- `infrastructure/frontend/main.tf`
+
+#### Step 3: Bootstrap Global Infrastructure (State Backend)
+
+```bash
+cd infrastructure/global
+
+# Initialize without backend (first time only - no state bucket yet)
+tofu init
+
+# Create state bucket, DynamoDB lock table, ECR repos, base IAM
+tofu apply
+
+# After successful apply, the S3 backend config in main.tf can be uncommented
+# Then migrate local state to S3:
+tofu init -migrate-state
+```
+
+**Resources created:**
+| Resource | Name | Purpose |
+|----------|------|---------|
+| S3 Bucket | `music-library-prod-tofu-state` | Terraform state storage |
+| DynamoDB Table | `music-library-prod-tofu-lock` | State locking |
+| ECR Repositories | `music-library-prod-{api,processor,indexer}` | Lambda container images |
+| IAM Role | `music-library-prod-lambda-execution` | Base Lambda execution |
+
+#### Step 4: Deploy Shared Infrastructure
+
+```bash
+cd infrastructure/shared
+
+tofu init
+tofu apply
+```
+
+**Resources created:**
+- Cognito User Pool and App Client
+- DynamoDB table (`MusicLibrary`)
+- S3 buckets (media, upload)
+- CloudFront key pair for signed URLs
+
+#### Step 5: Build and Push Lambda Code
 
 ```bash
 cd backend
 
-# Build all Lambda functions (ARM64)
+# Build all Lambda functions
 make build
 
 # Package as ZIP files
 make package
+```
+
+#### Step 6: Deploy Backend Infrastructure
+
+```bash
+cd infrastructure/backend
+
+tofu init
+tofu apply
+```
+
+**Resources created:**
+- API Gateway HTTP API with routes
+- Lambda functions (API, processors)
+- Step Functions state machine
+- CloudFront distribution for media
+
+**Note:** First deploy may require manual import if resources already exist:
+```bash
+# Example: Import existing API Gateway route
+tofu import aws_apigatewayv2_route.route_name api-id/route-key
+```
+
+#### Step 7: Deploy Lambda Code
+
+```bash
+cd backend
 
 # Deploy API Lambda
 aws lambda update-function-code \
   --function-name music-library-prod-api \
   --zip-file fileb://api.zip \
   --region us-east-1 \
-  --profile gvasels-muza
+  --profile your-profile-name
 
 # Deploy processor Lambdas
 for fn in metadata cover-art-processor track-creator file-mover search-indexer upload-status-updater; do
@@ -123,11 +230,143 @@ for fn in metadata cover-art-processor track-creator file-mover search-indexer u
     --function-name music-library-prod-${fn} \
     --zip-file fileb://cmd/processor/${fn}.zip \
     --region us-east-1 \
+    --profile your-profile-name
+done
+```
+
+#### Step 8: Build and Deploy Frontend
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Update environment variables in .env.production with new values:
+# - VITE_API_URL (from API Gateway output)
+# - VITE_COGNITO_USER_POOL_ID (from Cognito output)
+# - VITE_COGNITO_CLIENT_ID (from Cognito output)
+
+# Build for production
+npm run build
+```
+
+#### Step 9: Deploy Frontend Infrastructure
+
+```bash
+cd infrastructure/frontend
+
+tofu init
+tofu apply
+```
+
+**Resources created:**
+- S3 bucket for static hosting
+- CloudFront distribution
+
+#### Step 10: Upload Frontend Assets
+
+```bash
+# Get bucket name from tofu output
+FRONTEND_BUCKET=$(cd infrastructure/frontend && tofu output -raw frontend_bucket_name)
+
+# Sync built assets
+aws s3 sync frontend/dist/ s3://${FRONTEND_BUCKET} \
+  --delete \
+  --profile your-profile-name
+
+# Invalidate CloudFront cache
+DISTRIBUTION_ID=$(cd infrastructure/frontend && tofu output -raw cloudfront_distribution_id)
+aws cloudfront create-invalidation \
+  --distribution-id ${DISTRIBUTION_ID} \
+  --paths "/*" \
+  --profile your-profile-name
+```
+
+---
+
+### Updating Existing Deployment
+
+#### Infrastructure Changes
+
+When OpenTofu files are modified:
+
+```bash
+# Navigate to the changed layer
+cd infrastructure/{global|shared|backend|frontend}
+
+# Review changes
+tofu plan
+
+# Apply changes
+tofu apply
+```
+
+**Layer dependencies:** Deploy in order if cross-layer changes:
+```
+global → shared → backend → frontend
+```
+
+#### Backend Code Changes
+
+```bash
+cd backend
+
+# Build and package
+make build && make package
+
+# Deploy all Lambdas
+aws lambda update-function-code \
+  --function-name music-library-prod-api \
+  --zip-file fileb://api.zip \
+  --profile gvasels-muza
+
+for fn in metadata cover-art-processor track-creator file-mover search-indexer upload-status-updater; do
+  aws lambda update-function-code \
+    --function-name music-library-prod-${fn} \
+    --zip-file fileb://cmd/processor/${fn}.zip \
     --profile gvasels-muza
 done
 ```
 
-**Lambda Functions:**
+#### Frontend Code Changes
+
+```bash
+cd frontend
+
+# Build
+npm run build
+
+# Deploy to S3
+aws s3 sync dist/ s3://music-library-prod-frontend \
+  --delete \
+  --profile gvasels-muza
+
+# Invalidate CloudFront cache
+aws cloudfront create-invalidation \
+  --distribution-id E3TZURTFP3YE5 \
+  --paths "/*" \
+  --profile gvasels-muza
+```
+
+---
+
+### Quick Deploy Commands
+
+```bash
+# Full backend deploy (build + upload)
+cd backend && make build && make package && \
+  aws lambda update-function-code --function-name music-library-prod-api --zip-file fileb://api.zip --profile gvasels-muza
+
+# Full frontend deploy (build + sync + invalidate)
+cd frontend && npm run build && \
+  aws s3 sync dist/ s3://music-library-prod-frontend --delete --profile gvasels-muza && \
+  aws cloudfront create-invalidation --distribution-id E3TZURTFP3YE5 --paths "/*" --profile gvasels-muza
+```
+
+---
+
+### Lambda Functions Reference
 
 | Function | Purpose |
 |----------|---------|
@@ -138,29 +377,6 @@ done
 | `music-library-prod-file-mover` | Move files from upload to media bucket |
 | `music-library-prod-search-indexer` | Index tracks in Nixiesearch |
 | `music-library-prod-upload-status-updater` | Update upload status in DynamoDB |
-
-### Frontend Deployment
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Build for production
-npm run build
-
-# Deploy to S3
-aws s3 sync dist/ s3://music-library-prod-frontend \
-  --delete \
-  --profile gvasels-muza
-
-# Invalidate CloudFront cache
-aws cloudfront create-invalidation \
-  --distribution-id E2XXXXXXXXXX \
-  --paths "/*" \
-  --profile gvasels-muza
-```
 
 ### Environment Variables
 
