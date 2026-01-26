@@ -200,3 +200,31 @@ resource "aws_cognito_identity_pool_roles_attachment" "main" {
     authenticated = aws_iam_role.cognito_authenticated.arn
   }
 }
+
+# =============================================================================
+# User Role Groups
+# =============================================================================
+
+# Admin group - full platform access
+resource "aws_cognito_user_group" "admin" {
+  name         = "admin"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Platform administrators with full access"
+  precedence   = 1 # Highest priority
+}
+
+# Artist group - can upload and publish content
+resource "aws_cognito_user_group" "artist" {
+  name         = "artist"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Artists who can upload and manage their own music"
+  precedence   = 2
+}
+
+# Subscriber group - default for authenticated users
+resource "aws_cognito_user_group" "subscriber" {
+  name         = "subscriber"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Subscribers who can listen and create playlists"
+  precedence   = 3
+}
