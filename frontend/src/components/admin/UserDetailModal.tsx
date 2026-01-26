@@ -275,8 +275,8 @@ export function UserDetailModal({ isOpen, onClose, userId }: UserDetailModalProp
                   </span>
                   <input
                     type="checkbox"
-                    className="toggle toggle-error"
-                    checked={user.disabled}
+                    className="toggle toggle-success"
+                    checked={!user.disabled}
                     onChange={handleToggleStatus}
                     disabled={isUpdating}
                   />
