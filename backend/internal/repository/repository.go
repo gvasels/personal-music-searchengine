@@ -32,6 +32,8 @@ type Repository interface {
 	DeleteTrack(ctx context.Context, userID, trackID string) error
 	ListTracks(ctx context.Context, userID string, filter models.TrackFilter) (*PaginatedResult[models.Track], error)
 	ListTracksByArtist(ctx context.Context, userID, artist string) ([]models.Track, error)
+	ListPublicTracks(ctx context.Context, limit int, cursor string) (*PaginatedResult[models.Track], error)
+	UpdateTrackVisibility(ctx context.Context, userID, trackID string, visibility models.TrackVisibility) error
 
 	// Album operations
 	GetOrCreateAlbum(ctx context.Context, userID, albumName, artist string) (*models.Album, error)
@@ -60,6 +62,10 @@ type Repository interface {
 	UpdateUserStats(ctx context.Context, userID string, storageUsed int64, trackCount, albumCount, playlistCount int) error
 	UpdateUserRole(ctx context.Context, userID string, role models.UserRole) error
 	ListUsersByRole(ctx context.Context, role models.UserRole, limit int, cursor string) (*PaginatedResult[models.User], error)
+	SearchUsers(ctx context.Context, query string, limit int) ([]models.User, error)
+	SetUserDisabled(ctx context.Context, userID string, disabled bool) error
+	GetUserDisplayName(ctx context.Context, userID string) (string, error)
+	GetFollowerCount(ctx context.Context, userID string) (int, error)
 
 	// Playlist operations
 	CreatePlaylist(ctx context.Context, playlist models.Playlist) error

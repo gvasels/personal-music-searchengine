@@ -85,7 +85,9 @@ locals {
   search_indexes_bucket_name = data.terraform_remote_state.shared.outputs.search_indexes_bucket_name
   search_indexes_bucket_arn  = data.terraform_remote_state.shared.outputs.search_indexes_bucket_arn
   cognito_user_pool_id       = data.terraform_remote_state.shared.outputs.cognito_user_pool_id
+  cognito_user_pool_arn      = data.terraform_remote_state.shared.outputs.cognito_user_pool_arn
   lambda_role_arn            = data.terraform_remote_state.global.outputs.lambda_execution_role_arn
+  lambda_role_name           = data.terraform_remote_state.global.outputs.lambda_execution_role_name
 }
 
 # Outputs

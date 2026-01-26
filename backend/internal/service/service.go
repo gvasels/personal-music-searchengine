@@ -15,6 +15,8 @@ type TrackService interface {
 	ListTracks(ctx context.Context, userID string, filter models.TrackFilter) (*repository.PaginatedResult[models.TrackResponse], error)
 	ListTracksByArtist(ctx context.Context, userID, artist string) ([]models.TrackResponse, error)
 	IncrementPlayCount(ctx context.Context, userID, trackID string) error
+	// Visibility operations
+	UpdateVisibility(ctx context.Context, userID, trackID string, visibility models.TrackVisibility) error
 }
 
 // AlbumService defines album management operations

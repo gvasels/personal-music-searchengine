@@ -2,7 +2,16 @@
  * useTracks Hook - Wave 2
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTracks, getTrack, updateTrack, deleteTrack, type GetTracksParams, type UpdateTrackData } from '../lib/api/tracks';
+import {
+  getTracks,
+  getTrack,
+  updateTrack,
+  deleteTrack,
+  updateTrackVisibility,
+  type GetTracksParams,
+  type UpdateTrackData,
+} from '../lib/api/tracks';
+import type { TrackVisibility, Track } from '../types';
 
 export const trackKeys = {
   all: ['tracks'] as const,
@@ -46,6 +55,26 @@ export function useDeleteTrack() {
     mutationFn: (id: string) => deleteTrack(id),
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: trackKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: trackKeys.lists() });
+    },
+  });
+}
+
+export function useUpdateTrackVisibility() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, visibility }: { id: string; visibility: TrackVisibility }) =>
+      updateTrackVisibility(id, visibility),
+    onSuccess: (data, variables) => {
+      // Update the track in the cache with new visibility
+      const existingTrack = queryClient.getQueryData<Track>(trackKeys.detail(variables.id));
+      if (existingTrack) {
+        queryClient.setQueryData(trackKeys.detail(variables.id), {
+          ...existingTrack,
+          visibility: data.visibility,
+        });
+      }
       void queryClient.invalidateQueries({ queryKey: trackKeys.lists() });
     },
   });

@@ -56,3 +56,17 @@ func VisibilityFromIsPublic(isPublic bool) PlaylistVisibility {
 	}
 	return VisibilityPrivate
 }
+
+// TrackVisibility is an alias for PlaylistVisibility for use with tracks.
+// Tracks use the same visibility model as playlists.
+type TrackVisibility = PlaylistVisibility
+
+// DefaultTrackVisibility returns the default visibility for new tracks.
+func DefaultTrackVisibility() TrackVisibility {
+	return VisibilityPrivate
+}
+
+// AllTrackVisibilities returns a slice of all valid visibility options for tracks.
+func AllTrackVisibilities() []TrackVisibility {
+	return []TrackVisibility{VisibilityPrivate, VisibilityUnlisted, VisibilityPublic}
+}

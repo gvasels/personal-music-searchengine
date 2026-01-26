@@ -27,11 +27,51 @@ resource "aws_dynamodb_table" "music_library" {
     type = "S"
   }
 
+  # GSI2 attributes - for public playlist discovery
+  attribute {
+    name = "GSI2PK"
+    type = "S"
+  }
+
+  attribute {
+    name = "GSI2SK"
+    type = "S"
+  }
+
+  # GSI3 attributes - for public track discovery
+  attribute {
+    name = "GSI3PK"
+    type = "S"
+  }
+
+  attribute {
+    name = "GSI3SK"
+    type = "S"
+  }
+
   # Global Secondary Index 1 - For artist-based queries and tag lookups
   global_secondary_index {
     name            = "GSI1"
     hash_key        = "GSI1PK"
     range_key       = "GSI1SK"
+    projection_type = "ALL"
+  }
+
+  # Global Secondary Index 2 - For public playlist discovery
+  # GSI2PK = "PUBLIC_PLAYLIST", GSI2SK = "{createdAt}#{playlistId}"
+  global_secondary_index {
+    name            = "GSI2"
+    hash_key        = "GSI2PK"
+    range_key       = "GSI2SK"
+    projection_type = "ALL"
+  }
+
+  # Global Secondary Index 3 - For public track discovery
+  # GSI3PK = "PUBLIC_TRACK", GSI3SK = "{createdAt}#{trackId}"
+  global_secondary_index {
+    name            = "GSI3"
+    hash_key        = "GSI3PK"
+    range_key       = "GSI3SK"
     projection_type = "ALL"
   }
 
@@ -139,5 +179,13 @@ resource "aws_dynamodb_table" "music_library" {
 #
 # 10. Find tracks by tag:
 #     Query GSI1: GSI1PK = USER#{userId}#TAG#{tagName}
+#
+# 11. List public playlists (discovery):
+#     Query GSI2: GSI2PK = "PUBLIC_PLAYLIST"
+#     Only playlists with Visibility = "public" have GSI2 keys set
+#
+# 12. List public tracks (discovery):
+#     Query GSI3: GSI3PK = "PUBLIC_TRACK"
+#     Only tracks with Visibility = "public" have GSI3 keys set
 #
 # ================================================================

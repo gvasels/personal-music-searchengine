@@ -286,6 +286,26 @@ func (m *MockRepository) IncrementUserFollowingCount(ctx context.Context, userID
 	return nil
 }
 
+// Admin-related methods for track visibility
+func (m *MockRepository) ListPublicTracks(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.Track], error) {
+	return nil, nil
+}
+func (m *MockRepository) UpdateTrackVisibility(ctx context.Context, userID, trackID string, visibility models.TrackVisibility) error {
+	return nil
+}
+func (m *MockRepository) SearchUsers(ctx context.Context, query string, limit int) ([]models.User, error) {
+	return nil, nil
+}
+func (m *MockRepository) SetUserDisabled(ctx context.Context, userID string, disabled bool) error {
+	return nil
+}
+func (m *MockRepository) GetUserDisplayName(ctx context.Context, userID string) (string, error) {
+	return "", nil
+}
+func (m *MockRepository) GetFollowerCount(ctx context.Context, userID string) (int, error) {
+	return 0, nil
+}
+
 // MockS3Repository mocks the repository.S3Repository
 type MockS3Repository struct {
 	mock.Mock
@@ -1091,6 +1111,26 @@ func (m *MockFilterTagsRepository) ListFollowing(ctx context.Context, userID str
 }
 func (m *MockFilterTagsRepository) IncrementUserFollowingCount(ctx context.Context, userID string, delta int) error {
 	return nil
+}
+
+// Admin-related methods for track visibility
+func (m *MockFilterTagsRepository) ListPublicTracks(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.Track], error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) UpdateTrackVisibility(ctx context.Context, userID, trackID string, visibility models.TrackVisibility) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) SearchUsers(ctx context.Context, query string, limit int) ([]models.User, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) SetUserDisabled(ctx context.Context, userID string, disabled bool) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) GetUserDisplayName(ctx context.Context, userID string) (string, error) {
+	return "", nil
+}
+func (m *MockFilterTagsRepository) GetFollowerCount(ctx context.Context, userID string) (int, error) {
+	return 0, nil
 }
 
 // TestFilterByTags_EmptyTags verifies that empty tags array returns all results unchanged

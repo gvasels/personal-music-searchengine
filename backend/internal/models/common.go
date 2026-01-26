@@ -56,6 +56,8 @@ type DynamoDBItem struct {
 	GSI1SK string `dynamodbav:"GSI1SK,omitempty"`
 	GSI2PK string `dynamodbav:"GSI2PK,omitempty"` // Used for public playlist discovery
 	GSI2SK string `dynamodbav:"GSI2SK,omitempty"` // Used for public playlist discovery
+	GSI3PK string `dynamodbav:"GSI3PK,omitempty"` // Used for public track discovery
+	GSI3SK string `dynamodbav:"GSI3SK,omitempty"` // Used for public track discovery
 	Type   string `dynamodbav:"Type"`
 }
 

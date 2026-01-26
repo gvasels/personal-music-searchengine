@@ -53,6 +53,9 @@ export function hasPermission(role: UserRole, permission: Permission): boolean {
 // Playlist visibility levels
 export type PlaylistVisibility = 'private' | 'unlisted' | 'public';
 
+// Track visibility levels (same as playlist visibility)
+export type TrackVisibility = 'private' | 'unlisted' | 'public';
+
 // Artist role for track contributions
 export type ArtistRole = 'main' | 'featuring' | 'remixer' | 'producer';
 
@@ -84,6 +87,9 @@ export interface Track {
   musicalKey?: string;    // e.g., "Am", "C", "F#m"
   keyMode?: string;       // "major" or "minor"
   keyCamelot?: string;    // Camelot notation, e.g., "8A", "11B"
+  visibility?: TrackVisibility;         // Track visibility level (default: private)
+  ownerDisplayName?: string;            // Display name of track owner (for admin/global users)
+  publishedAt?: string;                 // When track was made public
   createdAt: string;
   updatedAt: string;
 }

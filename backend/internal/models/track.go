@@ -67,6 +67,13 @@ type Track struct {
 	AnalysisStatus string     `json:"analysisStatus,omitempty" dynamodbav:"analysisStatus,omitempty"` // PENDING, ANALYZING, COMPLETED, FAILED
 	AnalyzedAt     *time.Time `json:"analyzedAt,omitempty" dynamodbav:"analyzedAt,omitempty"`         // When analysis completed
 
+	// Visibility fields (admin-panel-track-visibility feature)
+	Visibility  TrackVisibility `json:"visibility" dynamodbav:"Visibility"`                   // private, unlisted, public
+	PublishedAt *time.Time      `json:"publishedAt,omitempty" dynamodbav:"PublishedAt,omitempty"` // When track was made public
+
+	// For API responses when admin/global views all tracks (not stored in DynamoDB)
+	OwnerDisplayName string `json:"ownerDisplayName,omitempty" dynamodbav:"-"`
+
 	Timestamps
 }
 
@@ -87,10 +94,17 @@ func NewTrackItem(track Track) TrackItem {
 		Track: track,
 	}
 
-	// Set GSI for artist-based queries
+	// Set GSI1 for artist-based queries
 	if track.Artist != "" {
 		item.GSI1PK = fmt.Sprintf("USER#%s#ARTIST#%s", track.UserID, track.Artist)
 		item.GSI1SK = fmt.Sprintf("TRACK#%s", track.ID)
+	}
+
+	// Set GSI3 for public track discovery (only when visibility is public)
+	if track.Visibility == VisibilityPublic {
+		item.GSI3PK = "PUBLIC_TRACK"
+		// Sort by creation time for chronological discovery
+		item.GSI3SK = fmt.Sprintf("%s#%s", track.CreatedAt.Format("2006-01-02T15:04:05Z"), track.ID)
 	}
 
 	return item
@@ -122,6 +136,11 @@ type UpdateTrackRequest struct {
 	Lyrics      *string  `json:"lyrics,omitempty"`
 	Comment     *string  `json:"comment,omitempty" validate:"omitempty,max=1000"`
 	Tags        []string `json:"tags,omitempty" validate:"omitempty,dive,min=1,max=50"`
+}
+
+// UpdateTrackVisibilityRequest represents a request to update track visibility
+type UpdateTrackVisibilityRequest struct {
+	Visibility string `json:"visibility" validate:"required,oneof=private unlisted public"`
 }
 
 // TrackResponse represents a track in API responses
@@ -156,8 +175,12 @@ type TrackResponse struct {
 	WaveformURL    string     `json:"waveformUrl,omitempty"`
 	AnalysisStatus string     `json:"analysisStatus,omitempty"`
 	AnalyzedAt     *time.Time `json:"analyzedAt,omitempty"`
-	CreatedAt      time.Time  `json:"createdAt"`
-	UpdatedAt      time.Time  `json:"updatedAt"`
+	// Visibility fields
+	Visibility       string     `json:"visibility"`
+	PublishedAt      *time.Time `json:"publishedAt,omitempty"`
+	OwnerDisplayName string     `json:"ownerDisplayName,omitempty"` // Populated for admin/global views
+	CreatedAt        time.Time  `json:"createdAt"`
+	UpdatedAt        time.Time  `json:"updatedAt"`
 }
 
 // ToResponse converts a Track to a TrackResponse
@@ -166,6 +189,12 @@ func (t *Track) ToResponse(coverArtURL string) TrackResponse {
 	tags := t.Tags
 	if tags == nil {
 		tags = []string{}
+	}
+
+	// Default visibility to private if not set
+	visibility := string(t.Visibility)
+	if visibility == "" {
+		visibility = string(VisibilityPrivate)
 	}
 
 	return TrackResponse{
@@ -199,8 +228,11 @@ func (t *Track) ToResponse(coverArtURL string) TrackResponse {
 		WaveformURL:    t.WaveformURL,
 		AnalysisStatus: t.AnalysisStatus,
 		AnalyzedAt:     t.AnalyzedAt,
-		CreatedAt:      t.CreatedAt,
-		UpdatedAt:      t.UpdatedAt,
+		Visibility:       visibility,
+		PublishedAt:      t.PublishedAt,
+		OwnerDisplayName: t.OwnerDisplayName,
+		CreatedAt:        t.CreatedAt,
+		UpdatedAt:        t.UpdatedAt,
 	}
 }
 
@@ -219,6 +251,33 @@ type TrackFilter struct {
 	Limit       int      `query:"limit"`
 	LastKey     string   `query:"lastKey"`
 	GlobalScope bool     `query:"-"` // If true, return tracks from all users (requires GLOBAL permission)
+
+	// Visibility filtering (admin-panel-track-visibility feature)
+	IncludePublic bool   `query:"includePublic"` // Include public tracks from other users
+	OwnerID       string `query:"ownerId"`       // Filter by specific owner (for admin)
+	Visibility    string `query:"visibility"`    // Filter by visibility: private, unlisted, public
+}
+
+// Track visibility helper methods
+
+// IsPubliclyAccessible returns true if the track can be accessed by non-owners.
+// Both public and unlisted tracks are accessible if you have the link.
+func (t *Track) IsPubliclyAccessible() bool {
+	return t.Visibility.IsPubliclyAccessible()
+}
+
+// IsDiscoverable returns true if the track appears in search results and public listings.
+// Only public tracks are discoverable.
+func (t *Track) IsDiscoverable() bool {
+	return t.Visibility.IsDiscoverable()
+}
+
+// GetVisibility returns the track's visibility, defaulting to private if not set.
+func (t *Track) GetVisibility() TrackVisibility {
+	if t.Visibility == "" {
+		return DefaultTrackVisibility()
+	}
+	return t.Visibility
 }
 
 // Helper functions

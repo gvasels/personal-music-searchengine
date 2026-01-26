@@ -263,6 +263,26 @@ func (m *MockTagRepository) IncrementUserFollowingCount(ctx context.Context, use
 	return nil
 }
 
+// Admin-related methods for track visibility
+func (m *MockTagRepository) ListPublicTracks(ctx context.Context, limit int, cursor string) (*repository.PaginatedResult[models.Track], error) {
+	return nil, nil
+}
+func (m *MockTagRepository) UpdateTrackVisibility(ctx context.Context, userID, trackID string, visibility models.TrackVisibility) error {
+	return nil
+}
+func (m *MockTagRepository) SearchUsers(ctx context.Context, query string, limit int) ([]models.User, error) {
+	return nil, nil
+}
+func (m *MockTagRepository) SetUserDisabled(ctx context.Context, userID string, disabled bool) error {
+	return nil
+}
+func (m *MockTagRepository) GetUserDisplayName(ctx context.Context, userID string) (string, error) {
+	return "", nil
+}
+func (m *MockTagRepository) GetFollowerCount(ctx context.Context, userID string) (int, error) {
+	return 0, nil
+}
+
 // =============================================================================
 // CreateTag Tests
 // =============================================================================

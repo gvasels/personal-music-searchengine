@@ -3,6 +3,8 @@ import { useNavigate } from '@tanstack/react-router';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { getDownloadUrl } from '@/lib/api/client';
 import { AddToPlaylistDropdown } from './AddToPlaylistDropdown';
+import { useShowUploadedBy } from '@/lib/store/preferencesStore';
+import { useAuth } from '@/hooks/useAuth';
 
 interface TrackListProps {
   tracks: Track[];
@@ -10,6 +12,7 @@ interface TrackListProps {
   showDownload?: boolean;
   showAddedDate?: boolean;
   showAddToPlaylist?: boolean;
+  showUploadedBy?: boolean; // Override preference, if false always hide column
 }
 
 function formatDuration(seconds: number): string {
@@ -27,9 +30,15 @@ function formatDate(dateString: string): string {
   });
 }
 
-export function TrackList({ tracks, isLoading, showDownload = false, showAddedDate = false, showAddToPlaylist = false }: TrackListProps) {
+export function TrackList({ tracks, isLoading, showDownload = false, showAddedDate = false, showAddToPlaylist = false, showUploadedBy: showUploadedByProp }: TrackListProps) {
   const navigate = useNavigate();
   const { setQueue, currentTrack, isPlaying } = usePlayerStore();
+  const showUploadedByPref = useShowUploadedBy();
+  const { isAdmin } = useAuth();
+
+  // Show "Uploaded By" column if: setting is enabled AND (prop allows it OR user is admin/global)
+  // Only admins and global readers can see other users' tracks, so the column is most useful for them
+  const showUploadedByColumn = showUploadedByPref && showUploadedByProp !== false && isAdmin;
 
   const handleArtistClick = (e: React.MouseEvent, artist: string) => {
     e.stopPropagation();
@@ -88,6 +97,7 @@ export function TrackList({ tracks, isLoading, showDownload = false, showAddedDa
           <th>Artist</th>
           <th>Album</th>
           <th className="w-20">Duration</th>
+          {showUploadedByColumn && <th>Uploaded By</th>}
           {showAddedDate && <th>Added</th>}
           {(showDownload || showAddToPlaylist) && <th className="w-24">Actions</th>}
         </tr>
@@ -129,6 +139,11 @@ export function TrackList({ tracks, isLoading, showDownload = false, showAddedDa
               </button>
             </td>
             <td className="tabular-nums">{formatDuration(track.duration)}</td>
+            {showUploadedByColumn && (
+              <td className="text-sm text-base-content/60">
+                {track.ownerDisplayName || 'You'}
+              </td>
+            )}
             {showAddedDate && (
               <td className="text-sm text-base-content/60">{formatDate(track.createdAt)}</td>
             )}

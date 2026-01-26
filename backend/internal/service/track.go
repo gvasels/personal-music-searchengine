@@ -190,3 +190,24 @@ func (s *trackService) IncrementPlayCount(ctx context.Context, userID, trackID s
 
 	return s.repo.UpdateTrack(ctx, *track)
 }
+
+// UpdateVisibility updates the visibility of a track.
+// Only the track owner can update visibility.
+func (s *trackService) UpdateVisibility(ctx context.Context, userID, trackID string, visibility models.TrackVisibility) error {
+	// Validate visibility value
+	if !visibility.IsValid() {
+		return models.NewValidationError("invalid visibility value")
+	}
+
+	// Verify track exists and belongs to user
+	_, err := s.repo.GetTrack(ctx, userID, trackID)
+	if err != nil {
+		if err == repository.ErrNotFound {
+			return models.NewNotFoundError("Track", trackID)
+		}
+		return err
+	}
+
+	// Update visibility in repository (this also updates GSI3 keys for public discovery)
+	return s.repo.UpdateTrackVisibility(ctx, userID, trackID, visibility)
+}
