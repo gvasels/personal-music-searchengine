@@ -53,7 +53,7 @@ export interface UpdateUserStatusRequest {
  * Search users by email or display name
  */
 export async function searchUsers(params: SearchUsersParams): Promise<SearchUsersResponse> {
-  const response = await apiClient.get<SearchUsersResponse>('/api/v1/admin/users', { params });
+  const response = await apiClient.get<SearchUsersResponse>('/admin/users', { params });
   return response.data;
 }
 
@@ -61,7 +61,7 @@ export async function searchUsers(params: SearchUsersParams): Promise<SearchUser
  * Get detailed user information by ID
  */
 export async function getUserDetails(userId: string): Promise<UserDetails> {
-  const response = await apiClient.get<UserDetails>(`/api/v1/admin/users/${userId}`);
+  const response = await apiClient.get<UserDetails>(`/admin/users/${userId}`);
   return response.data;
 }
 
@@ -69,7 +69,7 @@ export async function getUserDetails(userId: string): Promise<UserDetails> {
  * Update a user's role
  */
 export async function updateUserRole(userId: string, role: UserRole): Promise<UserDetails> {
-  const response = await apiClient.put<UserDetails>(`/api/v1/admin/users/${userId}/role`, {
+  const response = await apiClient.put<UserDetails>(`/admin/users/${userId}/role`, {
     role,
   } as UpdateUserRoleRequest);
   return response.data;
@@ -79,7 +79,7 @@ export async function updateUserRole(userId: string, role: UserRole): Promise<Us
  * Update a user's status (enable/disable)
  */
 export async function updateUserStatus(userId: string, disabled: boolean): Promise<UserDetails> {
-  const response = await apiClient.put<UserDetails>(`/api/v1/admin/users/${userId}/status`, {
+  const response = await apiClient.put<UserDetails>(`/admin/users/${userId}/status`, {
     disabled,
   } as UpdateUserStatusRequest);
   return response.data;
