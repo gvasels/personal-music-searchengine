@@ -32,6 +32,7 @@ import PlaylistDetailPage from './routes/playlists/$playlistId';
 import TagsPage from './routes/tags/index';
 import TagDetailPage from './routes/tags/$tagName';
 import SettingsPage from './routes/settings';
+import AdminUsersPage from './routes/admin/users';
 
 // Import layout components
 import { Layout } from './components/layout';
@@ -175,6 +176,12 @@ const settingsRoute = createRoute({
   component: withAuthGuard(SettingsPage),
 });
 
+const adminUsersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/users',
+  component: withAuthGuard(AdminUsersPage),
+});
+
 // Build route tree
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -193,6 +200,7 @@ const routeTree = rootRoute.addChildren([
   tagsRoute,
   tagDetailRoute,
   settingsRoute,
+  adminUsersRoute,
 ]);
 
 // Create router
