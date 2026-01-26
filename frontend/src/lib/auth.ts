@@ -93,11 +93,13 @@ async function getGroupsFromSession(): Promise<string[]> {
   try {
     const session = await fetchAuthSession();
     if (!session.tokens?.idToken) {
+      console.log('[Auth] No ID token in session');
       return [];
     }
     // Groups are in the cognito:groups claim of the ID token
     const payload = session.tokens.idToken.payload;
     const groups = payload['cognito:groups'];
+    console.log('[Auth] Token groups claim:', groups);
     if (Array.isArray(groups)) {
       return groups as string[];
     }
@@ -105,7 +107,8 @@ async function getGroupsFromSession(): Promise<string[]> {
       return groups.split(' ');
     }
     return [];
-  } catch {
+  } catch (err) {
+    console.error('[Auth] Error getting groups:', err);
     return [];
   }
 }
