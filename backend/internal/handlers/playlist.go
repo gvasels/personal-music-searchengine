@@ -183,3 +183,49 @@ func (h *Handlers) ReorderPlaylistTracks(c echo.Context) error {
 
 	return success(c, playlist)
 }
+
+// UpdatePlaylistVisibilityRequest is the request body for updating visibility.
+type UpdatePlaylistVisibilityRequest struct {
+	Visibility models.PlaylistVisibility `json:"visibility" validate:"required"`
+}
+
+// UpdatePlaylistVisibility updates the visibility of a playlist
+func (h *Handlers) UpdatePlaylistVisibility(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == "" {
+		return handleError(c, models.ErrUnauthorized)
+	}
+
+	playlistID := c.Param("id")
+	if playlistID == "" {
+		return handleError(c, models.ErrBadRequest)
+	}
+
+	var req UpdatePlaylistVisibilityRequest
+	if err := bindAndValidate(c, &req); err != nil {
+		return handleError(c, err)
+	}
+
+	err := h.services.Playlist.UpdateVisibility(c.Request().Context(), userID, playlistID, req.Visibility)
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	return success(c, map[string]interface{}{
+		"playlistId": playlistID,
+		"visibility": req.Visibility,
+	})
+}
+
+// ListPublicPlaylists returns a paginated list of public playlists for discovery
+func (h *Handlers) ListPublicPlaylists(c echo.Context) error {
+	limit := 20
+	cursor := c.QueryParam("cursor")
+
+	playlists, err := h.services.Playlist.ListPublicPlaylists(c.Request().Context(), limit, cursor)
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	return success(c, playlists)
+}

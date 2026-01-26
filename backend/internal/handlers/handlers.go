@@ -63,12 +63,14 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 	// Playlist routes
 	api.GET("/playlists", h.ListPlaylists)
 	api.POST("/playlists", h.CreatePlaylist)
+	api.GET("/playlists/public", h.ListPublicPlaylists) // Public playlist discovery
 	api.GET("/playlists/:id", h.GetPlaylist)
 	api.PUT("/playlists/:id", h.UpdatePlaylist)
 	api.DELETE("/playlists/:id", h.DeletePlaylist)
 	api.POST("/playlists/:id/tracks", h.AddTracksToPlaylist)
 	api.DELETE("/playlists/:id/tracks", h.RemoveTracksFromPlaylist)
 	api.PUT("/playlists/:id/reorder", h.ReorderPlaylistTracks)
+	api.PUT("/playlists/:id/visibility", h.UpdatePlaylistVisibility)
 
 	// Tag routes
 	api.GET("/tags", h.ListTags)
