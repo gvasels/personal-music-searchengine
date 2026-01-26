@@ -2,11 +2,6 @@
 
 A personal music library application for uploading, organizing, searching, and streaming your audio files. Built with a serverless architecture on AWS.
 
-## Live Demo
-
-- **Frontend**: https://d8wn3lkytn5qe.cloudfront.net
-- **API**: https://r1simytb2i.execute-api.us-east-1.amazonaws.com
-
 ## Features
 
 ### Core Features (Implemented)
