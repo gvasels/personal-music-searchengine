@@ -13,6 +13,8 @@ import {
   AuthError,
   AuthErrorCode,
 } from '../lib/auth';
+import type { UserRole, Permission } from '../types';
+import { hasPermission } from '../types';
 
 export interface UseAuthReturn {
   user: AuthUser | null;
@@ -25,6 +27,13 @@ export interface UseAuthReturn {
   error: { message: string; code: AuthErrorCode } | null;
   clearError: () => void;
   refetch: () => Promise<unknown>;
+  // Role-based access control
+  role: UserRole;
+  groups: string[];
+  can: (permission: Permission) => boolean;
+  isAdmin: boolean;
+  isArtist: boolean;
+  isSubscriber: boolean;
 }
 
 export function useAuth(): UseAuthReturn {
@@ -89,6 +98,16 @@ export function useAuth(): UseAuthReturn {
     setError(null);
   }, []);
 
+  const role: UserRole = user?.role ?? 'guest';
+  const groups: string[] = user?.groups ?? [];
+
+  const can = useCallback(
+    (permission: Permission): boolean => {
+      return hasPermission(role, permission);
+    },
+    [role]
+  );
+
   return {
     user: user ?? null,
     isLoading,
@@ -100,5 +119,12 @@ export function useAuth(): UseAuthReturn {
     error,
     clearError,
     refetch,
+    // Role-based access control
+    role,
+    groups,
+    can,
+    isAdmin: role === 'admin',
+    isArtist: role === 'artist' || role === 'admin',
+    isSubscriber: role === 'subscriber' || role === 'artist' || role === 'admin',
   };
 }

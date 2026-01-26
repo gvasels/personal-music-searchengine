@@ -5,6 +5,7 @@
 
 import { signIn as amplifySignIn, signOut as amplifySignOut, getCurrentUser as amplifyGetCurrentUser, fetchAuthSession, signUp as amplifySignUp, confirmSignUp as amplifyConfirmSignUp, resendSignUpCode as amplifyResendSignUpCode } from 'aws-amplify/auth';
 import { Amplify } from 'aws-amplify';
+import type { UserRole } from '../types';
 
 export enum AuthErrorCode {
   INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
@@ -48,6 +49,8 @@ export interface AuthUser {
   userId: string;
   email: string;
   name?: string;
+  role: UserRole;
+  groups: string[];
 }
 
 export interface TokenOptions {
@@ -62,6 +65,49 @@ export interface SignOutOptions {
 export interface Tokens {
   accessToken: string;
   idToken: string;
+}
+
+/**
+ * Extract user role from Cognito groups.
+ * Priority: admin > artist > subscriber > guest
+ */
+function roleFromGroups(groups: string[]): UserRole {
+  const lowerGroups = groups.map((g) => g.toLowerCase());
+
+  if (lowerGroups.includes('admin') || lowerGroups.includes('admins')) {
+    return 'admin';
+  }
+  if (lowerGroups.includes('artist') || lowerGroups.includes('artists')) {
+    return 'artist';
+  }
+  if (lowerGroups.includes('subscriber') || lowerGroups.includes('subscribers')) {
+    return 'subscriber';
+  }
+  return 'guest';
+}
+
+/**
+ * Extract Cognito groups from session tokens.
+ */
+async function getGroupsFromSession(): Promise<string[]> {
+  try {
+    const session = await fetchAuthSession();
+    if (!session.tokens?.idToken) {
+      return [];
+    }
+    // Groups are in the cognito:groups claim of the ID token
+    const payload = session.tokens.idToken.payload;
+    const groups = payload['cognito:groups'];
+    if (Array.isArray(groups)) {
+      return groups as string[];
+    }
+    if (typeof groups === 'string') {
+      return groups.split(' ');
+    }
+    return [];
+  } catch {
+    return [];
+  }
 }
 
 function mapAmplifyError(error: unknown): AuthError {
@@ -134,9 +180,12 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
     }
 
     const user = await amplifyGetCurrentUser();
+    const groups = await getGroupsFromSession();
     return {
       userId: user.userId,
       email: user.signInDetails?.loginId || email.trim(),
+      role: roleFromGroups(groups),
+      groups,
     };
   } catch (error) {
     if (error instanceof AuthError) throw error;
@@ -159,9 +208,12 @@ export async function signOut(options?: SignOutOptions): Promise<void> {
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     const user = await amplifyGetCurrentUser();
+    const groups = await getGroupsFromSession();
     return {
       userId: user.userId,
       email: user.signInDetails?.loginId || '',
+      role: roleFromGroups(groups),
+      groups,
     };
   } catch (error) {
     const err = error as { name?: string };

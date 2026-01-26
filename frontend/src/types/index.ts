@@ -1,3 +1,58 @@
+// User roles for role-based access control
+export type UserRole = 'guest' | 'subscriber' | 'artist' | 'admin';
+
+// Permissions that can be checked
+export type Permission =
+  | 'browse'
+  | 'listen'
+  | 'create_playlist'
+  | 'edit_playlist'
+  | 'delete_playlist'
+  | 'upload_tracks'
+  | 'edit_tracks'
+  | 'delete_tracks'
+  | 'publish_tracks'
+  | 'manage_users'
+  | 'manage_content';
+
+// Role permission mappings
+export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  guest: ['browse'],
+  subscriber: ['browse', 'listen', 'create_playlist', 'edit_playlist', 'delete_playlist'],
+  artist: [
+    'browse',
+    'listen',
+    'create_playlist',
+    'edit_playlist',
+    'delete_playlist',
+    'upload_tracks',
+    'edit_tracks',
+    'delete_tracks',
+    'publish_tracks',
+  ],
+  admin: [
+    'browse',
+    'listen',
+    'create_playlist',
+    'edit_playlist',
+    'delete_playlist',
+    'upload_tracks',
+    'edit_tracks',
+    'delete_tracks',
+    'publish_tracks',
+    'manage_users',
+    'manage_content',
+  ],
+};
+
+// Check if a role has a permission
+export function hasPermission(role: UserRole, permission: Permission): boolean {
+  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+}
+
+// Playlist visibility levels
+export type PlaylistVisibility = 'private' | 'unlisted' | 'public';
+
 // Artist role for track contributions
 export type ArtistRole = 'main' | 'featuring' | 'remixer' | 'producer';
 
@@ -91,6 +146,9 @@ export interface Playlist {
   trackIds: string[];
   trackCount: number;
   coverArt?: string;
+  visibility: PlaylistVisibility;
+  ownerUserId?: string;
+  ownerDisplayName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -216,4 +274,40 @@ export interface MatchResult {
   overallScore: number;
   bpmDiff: number;
   keyRelation: string;
+}
+
+// Artist profile for artists with accounts
+export interface ArtistProfile {
+  userId: string;
+  displayName: string;
+  bio?: string;
+  avatarUrl?: string;
+  headerImageUrl?: string;
+  location?: string;
+  website?: string;
+  socialLinks?: Record<string, string>;
+  isVerified: boolean;
+  followerCount: number;
+  followingCount: number;
+  trackCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Follow relationship
+export interface Follow {
+  followerId: string;
+  followedId: string;
+  createdAt: string;
+}
+
+// User profile with role
+export interface UserProfile {
+  userId: string;
+  email: string;
+  displayName?: string;
+  role: UserRole;
+  avatarUrl?: string;
+  createdAt: string;
+  updatedAt: string;
 }

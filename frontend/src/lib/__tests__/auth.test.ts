@@ -66,11 +66,16 @@ describe('Auth Module (Task 1.1)', () => {
         userId: 'user-123',
         signInDetails: { loginId: 'test@example.com' },
       });
+      vi.mocked(AmplifyAuth.fetchAuthSession).mockResolvedValue({
+        tokens: {
+          idToken: { payload: { 'cognito:groups': ['subscriber'] }, toString: () => 'id-token' },
+        },
+      } as Awaited<ReturnType<typeof AmplifyAuth.fetchAuthSession>>);
 
       const result = await signIn('test@example.com', 'password123');
 
       expect(AmplifyAuth.signIn).toHaveBeenCalledWith({ username: 'test@example.com', password: 'password123' });
-      expect(result).toEqual({ userId: 'user-123', email: 'test@example.com' });
+      expect(result).toEqual({ userId: 'user-123', email: 'test@example.com', role: 'subscriber', groups: ['subscriber'] });
     });
 
     it('should throw INVALID_CREDENTIALS for NotAuthorizedException', async () => {
@@ -151,9 +156,14 @@ describe('Auth Module (Task 1.1)', () => {
         userId: 'user-123',
         signInDetails: { loginId: 'test@example.com' },
       });
+      vi.mocked(AmplifyAuth.fetchAuthSession).mockResolvedValue({
+        tokens: {
+          idToken: { payload: { 'cognito:groups': ['artist'] }, toString: () => 'id-token' },
+        },
+      } as Awaited<ReturnType<typeof AmplifyAuth.fetchAuthSession>>);
 
       const user = await getCurrentUser();
-      expect(user).toEqual({ userId: 'user-123', email: 'test@example.com' });
+      expect(user).toEqual({ userId: 'user-123', email: 'test@example.com', role: 'artist', groups: ['artist'] });
     });
 
     it('should return null when not authenticated', async () => {
