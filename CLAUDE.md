@@ -11,6 +11,7 @@
 | 3 | **Spec-First** | All features need specs in `.spec-workflow/specs/` before coding | Create specs first |
 | 4 | **Documentation** | Update CLAUDE.md + CHANGELOG.md in every directory with changes | Update before PR |
 | 5 | **Quality Gates** | 80% test coverage, all tests pass, no critical security vulnerabilities | Fix before merge |
+| 6 | **Wiring Checklist** | Follow `.claude/docs/wiring-checklist.md` for new services/handlers/routes | Complete checklist before PR |
 
 ---
 
@@ -265,12 +266,19 @@ Every major subdirectory needs a CLAUDE.md with:
 ## Reference Docs
 
 Located in `.claude/docs/`:
-- `tdd-workflow.md` - TDD practices
+- `tdd-workflow.md` - TDD practices (includes wiring verification tests)
+- `wiring-checklist.md` - **CRITICAL** checklist for new services/handlers/routes
 - `wave-planning.md` - Parallel @claude execution
 - `epic-completion-checklist.md` - Epic completion
 - `task-granularity.md` - Task breakdown rules
 
 Current specs: `.spec-workflow/specs/global-user-type/`
+
+**Important**: When adding new features, ALWAYS follow the wiring checklist to ensure:
+- Services are added to Services struct
+- Handlers are created and routes registered
+- Frontend routes are added to router (code-based routing)
+- Environment variables are configured in Lambda
 
 ---
 

@@ -235,7 +235,69 @@ Only after tests are written:
 |------|------------------|-------------|
 | Unit Tests | 80% | Business logic, data transformations |
 | Integration Tests | Key paths | API contracts, database operations |
+| Wiring/Smoke Tests | All routes | Endpoint accessibility verification |
 | E2E Tests | Critical flows | User journeys, cross-service interactions |
+
+---
+
+## Wiring Verification Tests (CRITICAL)
+
+**Why This Matters**: Unit tests with mocks can pass even when:
+- Service isn't added to Services struct
+- Handler isn't created in main.go
+- Routes aren't registered
+- Environment variables are missing from Lambda
+- Frontend routes aren't registered in router
+
+Only integration/smoke tests that hit actual endpoints catch these wiring issues.
+
+### Backend Wiring Test Pattern
+
+For every new route, add a smoke test that verifies the route is accessible:
+
+```go
+// integration_test.go
+func TestAdminRoutes_Accessible(t *testing.T) {
+    resp := httptest.NewRecorder()
+    req := httptest.NewRequest("GET", "/api/v1/admin/users?search=test", nil)
+    req.Header.Set("Authorization", "Bearer "+validToken)
+
+    router.ServeHTTP(resp, req)
+
+    // Should NOT be 404 - route must be registered
+    assert.NotEqual(t, 404, resp.Code, "Route not registered!")
+}
+```
+
+### Frontend Route Test Pattern
+
+For every new page, add a test that verifies the route renders:
+
+```typescript
+// routes.test.tsx
+describe('Admin Routes', () => {
+  it('renders admin users page at /admin/users', async () => {
+    render(<Router initialEntries={['/admin/users']} />);
+
+    // Should NOT show 404/NotFound
+    expect(screen.queryByText('Page not found')).not.toBeInTheDocument();
+    // Should show expected page content
+    expect(await screen.findByText('User Management')).toBeInTheDocument();
+  });
+});
+```
+
+### Wiring Checklist
+
+**ALWAYS follow the wiring checklist** when adding new features:
+- See: `.claude/docs/wiring-checklist.md`
+
+The checklist covers:
+- New Service Checklist
+- New Handler Checklist
+- New Route Checklist
+- New Frontend Route Checklist
+- Verification Steps
 
 ---
 
