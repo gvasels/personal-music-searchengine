@@ -391,6 +391,88 @@ resource "aws_apigatewayv2_route" "autocomplete" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# Playlist reorder route
+resource "aws_apigatewayv2_route" "reorder_playlist_tracks" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "PUT /api/v1/playlists/{id}/reorder"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Playlist visibility route
+resource "aws_apigatewayv2_route" "update_playlist_visibility" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "PUT /api/v1/playlists/{id}/visibility"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# Public playlists route (no auth - public discovery)
+resource "aws_apigatewayv2_route" "list_public_playlists" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api/v1/playlists/public"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+}
+
+# Artist entity routes
+resource "aws_apigatewayv2_route" "create_artist_entity" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "POST /api/v1/artists/entity"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "list_artist_entities" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/artists/entity"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "search_artists" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/artists/entity/search"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_artist_entity" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/artists/entity/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "update_artist_entity" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "PUT /api/v1/artists/entity/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "delete_artist_entity" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "DELETE /api/v1/artists/entity/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_artist_entity_tracks" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/artists/entity/{id}/tracks"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Health check (no auth required)
 resource "aws_apigatewayv2_route" "health" {
   api_id    = aws_apigatewayv2_api.api.id
