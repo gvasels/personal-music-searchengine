@@ -47,6 +47,18 @@ variable "project_name" {
   default     = "music-library"
 }
 
+variable "custom_domain" {
+  description = "Custom domain for CloudFront (e.g., music.vasels.com). Leave empty to use CloudFront default domain."
+  type        = string
+  default     = ""
+}
+
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN for custom domain. Required if custom_domain is set."
+  type        = string
+  default     = ""
+}
+
 # Data sources for shared resources
 data "terraform_remote_state" "shared" {
   backend = "s3"
@@ -89,4 +101,14 @@ output "frontend_cloudfront_distribution_id" {
 output "frontend_cloudfront_domain_name" {
   description = "CloudFront domain name for frontend access"
   value       = aws_cloudfront_distribution.frontend.domain_name
+}
+
+output "frontend_custom_domain" {
+  description = "Custom domain for frontend (if configured)"
+  value       = var.custom_domain != "" ? var.custom_domain : null
+}
+
+output "frontend_url" {
+  description = "Frontend URL (custom domain or CloudFront)"
+  value       = var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
