@@ -368,6 +368,10 @@ func (m *MockPlaylistS3Repository) GeneratePresignedDownloadURLWithFilename(ctx 
 	return "", nil
 }
 
+func (m *MockPlaylistS3Repository) DeleteByPrefix(ctx context.Context, prefix string) error {
+	return nil
+}
+
 // =============================================================================
 // CreatePlaylist Tests
 // =============================================================================

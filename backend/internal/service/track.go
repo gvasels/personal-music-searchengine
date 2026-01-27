@@ -144,17 +144,37 @@ func (s *trackService) UpdateTrack(ctx context.Context, userID, trackID string, 
 	return &response, nil
 }
 
-func (s *trackService) DeleteTrack(ctx context.Context, userID, trackID string) error {
-	track, err := s.repo.GetTrack(ctx, userID, trackID)
-	if err != nil {
-		if err == repository.ErrNotFound {
-			return models.NewNotFoundError("Track", trackID)
-		}
+func (s *trackService) DeleteTrack(ctx context.Context, userID, trackID string, hasGlobal bool) error {
+	var track *models.Track
+	var err error
+	var ownerID string
+
+	// Try to get track as owner first
+	track, err = s.repo.GetTrack(ctx, userID, trackID)
+	if err != nil && err != repository.ErrNotFound {
 		return err
 	}
 
-	// Delete from repository
-	if err := s.repo.DeleteTrack(ctx, userID, trackID); err != nil {
+	if track != nil {
+		// User owns this track
+		ownerID = userID
+	} else if hasGlobal {
+		// Admin trying to delete another user's track - look up the track by ID
+		track, err = s.repo.GetTrackByID(ctx, trackID)
+		if err != nil {
+			if err == repository.ErrNotFound {
+				return models.NewNotFoundError("Track", trackID)
+			}
+			return err
+		}
+		ownerID = track.UserID
+	} else {
+		// Regular user trying to delete a track they don't own
+		return models.NewNotFoundError("Track", trackID)
+	}
+
+	// Delete from repository using the actual owner's ID
+	if err := s.repo.DeleteTrack(ctx, ownerID, trackID); err != nil {
 		return err
 	}
 
@@ -169,7 +189,7 @@ func (s *trackService) DeleteTrack(ctx context.Context, userID, trackID string) 
 	// Delete HLS transcoded files if they exist (best effort)
 	// HLS files are stored at hls/{userID}/{trackID}/
 	if track.HLSPlaylistKey != "" {
-		hlsPrefix := "hls/" + userID + "/" + trackID + "/"
+		hlsPrefix := "hls/" + ownerID + "/" + trackID + "/"
 		_ = s.s3Repo.DeleteByPrefix(ctx, hlsPrefix)
 	}
 

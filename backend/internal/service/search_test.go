@@ -372,6 +372,10 @@ func (m *MockS3Repository) ObjectExists(ctx context.Context, key string) (bool, 
 	return false, nil
 }
 
+func (m *MockS3Repository) DeleteByPrefix(ctx context.Context, prefix string) error {
+	return nil
+}
+
 // SearchClient interface for mocking
 type SearchClient interface {
 	Search(ctx context.Context, userID string, query search.SearchQuery) (*search.SearchResponse, error)

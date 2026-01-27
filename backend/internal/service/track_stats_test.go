@@ -333,6 +333,10 @@ func (m *MockS3RepoForStats) ObjectExists(ctx context.Context, key string) (bool
 	return false, nil
 }
 
+func (m *MockS3RepoForStats) DeleteByPrefix(ctx context.Context, prefix string) error {
+	return nil
+}
+
 // createStatsTestService creates a track service with mocked dependencies for testing
 func createStatsTestService(mockRepo *MockStatsRepository, mockS3 *MockS3RepoForStats) *trackService {
 	return &trackService{

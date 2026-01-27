@@ -98,9 +98,11 @@ func (h *Handlers) UpdateTrack(c echo.Context) error {
 }
 
 // DeleteTrack deletes a track
+// Admins can delete any track, regular users can only delete their own
 func (h *Handlers) DeleteTrack(c echo.Context) error {
-	userID := getUserIDFromContext(c)
-	if userID == "" {
+	// Use DB role for real-time permission checking
+	auth := h.getAuthContextWithDBRole(c)
+	if auth.UserID == "" {
 		return handleError(c, models.ErrUnauthorized)
 	}
 
@@ -109,7 +111,7 @@ func (h *Handlers) DeleteTrack(c echo.Context) error {
 		return handleError(c, models.ErrBadRequest)
 	}
 
-	if err := h.services.Track.DeleteTrack(c.Request().Context(), userID, trackID); err != nil {
+	if err := h.services.Track.DeleteTrack(c.Request().Context(), auth.UserID, trackID, auth.HasGlobal); err != nil {
 		return handleError(c, err)
 	}
 

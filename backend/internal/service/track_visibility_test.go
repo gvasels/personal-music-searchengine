@@ -603,6 +603,24 @@ func (m *MockTrackServiceRepository) ListUploadsByStatus(ctx context.Context, st
 	return nil, nil
 }
 
+// MockS3RepoForTrackService mocks S3 repository for track service tests.
+type MockS3RepoForTrackService struct {
+	mock.Mock
+}
+
+func (m *MockS3RepoForTrackService) GeneratePresignedDownloadURL(ctx context.Context, key string, duration time.Duration) (string, error) {
+	args := m.Called(ctx, key, duration)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockS3RepoForTrackService) GeneratePresignedUploadURL(ctx context.Context, key string, contentType string, duration time.Duration) (string, error) {
+	return "", nil
+}
+
+func (m *MockS3RepoForTrackService) DeleteObject(ctx context.Context, key string) error {
+	return nil
+}
+
 // S3 extended stubs
 func (m *MockS3RepoForTrackService) GeneratePresignedDownloadURLWithFilename(ctx context.Context, key string, expiry time.Duration, filename string) (string, error) {
 	return "", nil
@@ -628,22 +646,7 @@ func (m *MockS3RepoForTrackService) GetObjectMetadata(ctx context.Context, key s
 func (m *MockS3RepoForTrackService) ObjectExists(ctx context.Context, key string) (bool, error) {
 	return false, nil
 }
-
-// MockS3RepoForTrackService mocks S3 repository for track service tests.
-type MockS3RepoForTrackService struct {
-	mock.Mock
-}
-
-func (m *MockS3RepoForTrackService) GeneratePresignedDownloadURL(ctx context.Context, key string, duration time.Duration) (string, error) {
-	args := m.Called(ctx, key, duration)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockS3RepoForTrackService) GeneratePresignedUploadURL(ctx context.Context, key string, contentType string, duration time.Duration) (string, error) {
-	return "", nil
-}
-
-func (m *MockS3RepoForTrackService) DeleteObject(ctx context.Context, key string) error {
+func (m *MockS3RepoForTrackService) DeleteByPrefix(ctx context.Context, prefix string) error {
 	return nil
 }
 

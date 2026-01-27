@@ -236,6 +236,11 @@ func (m *ArtistMockS3Repository) ObjectExists(ctx context.Context, key string) (
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *ArtistMockS3Repository) DeleteByPrefix(ctx context.Context, prefix string) error {
+	args := m.Called(ctx, prefix)
+	return args.Error(0)
+}
+
 func TestArtistService_CreateArtist(t *testing.T) {
 	ctx := context.Background()
 	userID := "user-123"

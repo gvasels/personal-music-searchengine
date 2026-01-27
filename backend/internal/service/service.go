@@ -28,7 +28,7 @@ const (
 type TrackService interface {
 	GetTrack(ctx context.Context, requesterID, trackID string, hasGlobal bool) (*models.TrackResponse, error)
 	UpdateTrack(ctx context.Context, userID, trackID string, req models.UpdateTrackRequest) (*models.TrackResponse, error)
-	DeleteTrack(ctx context.Context, userID, trackID string) error
+	DeleteTrack(ctx context.Context, userID, trackID string, hasGlobal bool) error
 	ListTracks(ctx context.Context, userID string, filter models.TrackFilter) (*repository.PaginatedResult[models.TrackResponse], error)
 	ListTracksByArtist(ctx context.Context, userID, artist string) ([]models.TrackResponse, error)
 	IncrementPlayCount(ctx context.Context, userID, trackID string) error
