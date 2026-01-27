@@ -50,6 +50,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - DynamoDB `Limit` applies BEFORE filter, not after
   - Now scans in batches of 100 until enough tracks collected
   - Previously, admin would only see partial tracks when table had many non-track items
+- **Admin Track Deletion** - Admins can now delete any track regardless of owner
+  - `DeleteTrack` service accepts `hasGlobal` parameter
+  - Uses `GetTrackByID` to find track regardless of owner when admin
+  - Deletes using actual track owner's userID
+  - Previously returned 404 when admin tried to delete other users' tracks
 - **Clean Track Deletion** - Added comprehensive S3 cleanup
   - `DeleteByPrefix` method for batch deletions
   - Deletes audio file, cover art, AND all HLS transcoded segments
