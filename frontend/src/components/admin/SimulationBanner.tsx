@@ -46,9 +46,6 @@ export function SimulationBanner() {
         <span className="font-medium">
           Viewing as {roleLabel}
         </span>
-        <span className="text-sm opacity-75">
-          (Write actions blocked)
-        </span>
       </div>
       <button
         onClick={stopSimulation}

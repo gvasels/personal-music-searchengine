@@ -25,6 +25,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - `FollowingList` - Display artists user is following
   - `VisibilitySelector` - Playlist visibility dropdown/radio group
   - `VisibilityBadge` - Display visibility status
+  - `RoleSwitcher` - Admin dropdown for role simulation
+  - `SimulationBanner` - Alert banner during role simulation
+- **Frontend Hooks & Stores**
+  - `useRoleSimulation` - Admin role simulation hook
+  - `roleSimulationStore` - Zustand store with localStorage persistence
+  - `useFeatureFlags` respects simulated role for `hasRole()` checks
 - **Infrastructure**
   - Cognito user groups: `admin`, `artist`, `subscriber`
   - DynamoDB entities: `ARTIST_PROFILE`, `FOLLOW`

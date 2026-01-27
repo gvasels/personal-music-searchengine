@@ -11,6 +11,8 @@ Admin panel components for user management. Only visible and accessible to admin
 | `UserSearchForm.tsx` | Debounced search input for finding users by email or display name |
 | `UserCard.tsx` | Card component displaying user summary in search results |
 | `UserDetailModal.tsx` | Modal for viewing full user details and editing role/status |
+| `RoleSwitcher.tsx` | Dropdown for admin role simulation |
+| `SimulationBanner.tsx` | Alert banner shown when role simulation is active |
 | `index.ts` | Barrel export for admin components |
 
 ## Components
@@ -177,8 +179,46 @@ These components are designed for admin-only access. The parent route (`/admin/u
 - Redirecting non-admin users with toast notification
 - Showing loading state during auth check
 
+### RoleSwitcher
+
+Admin-only dropdown component for simulating different user roles.
+
+```typescript
+export function RoleSwitcher(): JSX.Element | null
+```
+
+**Features:**
+- Only renders for admin users (returns null otherwise)
+- Dropdown with all available roles: Guest, Subscriber, Artist, Admin
+- Visual indicator (checkmark) for currently simulated role
+- Warning style (btn-warning) when simulation is active
+- Normal style (btn-ghost) when not simulating
+
+**Role Simulation Behavior:**
+- Selecting a role activates simulation mode
+- Selecting "Admin" stops simulation (returns to actual admin role)
+- Persists to localStorage via roleSimulationStore
+
+### SimulationBanner
+
+Alert banner displayed when role simulation is active.
+
+```typescript
+export function SimulationBanner(): JSX.Element | null
+```
+
+**Features:**
+- Only renders when simulation is active (returns null otherwise)
+- Shows the simulated role name (Guest/Subscriber/Artist)
+- "Exit Simulation" button to stop simulation
+- Fixed position at top of viewport
+- Warning color scheme (alert-warning)
+- ARIA role="alert" for accessibility
+
 ## Related Components
 
 - `useAdmin` hook - Data fetching and mutations for admin operations
+- `useRoleSimulation` hook - Role simulation state and actions
+- `roleSimulationStore` - Zustand store for simulation persistence
 - Admin API (`/lib/api/admin.ts`) - API client functions
 - Sidebar admin section - Navigation to admin pages

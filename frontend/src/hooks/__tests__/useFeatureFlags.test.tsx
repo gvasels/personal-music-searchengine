@@ -22,6 +22,19 @@ vi.mock('../useAuth', () => ({
   })),
 }));
 
+// Mock useRoleSimulation hook
+const mockUseRoleSimulation = vi.fn(() => ({
+  effectiveRole: 'subscriber',
+  isSimulating: false,
+  canSimulate: true,
+  startSimulation: vi.fn(),
+  stopSimulation: vi.fn(),
+}));
+
+vi.mock('../useRoleSimulation', () => ({
+  useRoleSimulation: () => mockUseRoleSimulation(),
+}));
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -36,6 +49,14 @@ describe('useFeatureFlags (WS4 Creator Studio)', () => {
     vi.clearAllMocks();
     // Reset the store before each test
     useFeatureFlagStore.getState().reset();
+    // Reset useRoleSimulation mock to default (not simulating)
+    mockUseRoleSimulation.mockReturnValue({
+      effectiveRole: 'subscriber',
+      isSimulating: false,
+      canSimulate: true,
+      startSimulation: vi.fn(),
+      stopSimulation: vi.fn(),
+          });
   });
 
   afterEach(() => {
@@ -221,6 +242,142 @@ describe('useFeatureFlags (WS4 Creator Studio)', () => {
         expect(result.current.hasRole('subscriber')).toBe(true);
         expect(result.current.hasRole('artist')).toBe(true);
         expect(result.current.hasRole('admin')).toBe(false);
+      });
+    });
+
+    describe('simulation mode', () => {
+      it('should use simulated role when isSimulating is true', async () => {
+        // Mock simulation active with guest role
+        mockUseRoleSimulation.mockReturnValue({
+          effectiveRole: 'guest',
+          isSimulating: true,
+          canSimulate: true,
+          startSimulation: vi.fn(),
+          stopSimulation: vi.fn(),
+                  });
+
+        const mockFeatures = {
+          tier: 'pro' as const,
+          features: {},
+        };
+        vi.mocked(featuresApi.getUserFeatures).mockResolvedValue(mockFeatures);
+
+        // Set the store with admin role
+        useFeatureFlagStore.getState().setFeatures('admin', {});
+
+        const { result } = renderHook(() => useFeatureFlags(), {
+          wrapper: createWrapper(),
+        });
+
+        await waitFor(() => {
+          expect(result.current.isLoaded).toBe(true);
+        });
+
+        // Should return simulated role, not actual role
+        expect(result.current.role).toBe('guest');
+        expect(result.current.actualRole).toBe('admin');
+        expect(result.current.isSimulating).toBe(true);
+      });
+
+      it('should use actual role when not simulating', async () => {
+        // Mock simulation inactive
+        mockUseRoleSimulation.mockReturnValue({
+          effectiveRole: 'subscriber',
+          isSimulating: false,
+          canSimulate: true,
+          startSimulation: vi.fn(),
+          stopSimulation: vi.fn(),
+                  });
+
+        const mockFeatures = {
+          tier: 'pro' as const,
+          features: {},
+        };
+        vi.mocked(featuresApi.getUserFeatures).mockResolvedValue(mockFeatures);
+
+        // Set the store with admin role
+        useFeatureFlagStore.getState().setFeatures('admin', {});
+
+        const { result } = renderHook(() => useFeatureFlags(), {
+          wrapper: createWrapper(),
+        });
+
+        await waitFor(() => {
+          expect(result.current.isLoaded).toBe(true);
+        });
+
+        // Should return actual role
+        expect(result.current.role).toBe('admin');
+        expect(result.current.actualRole).toBe('admin');
+        expect(result.current.isSimulating).toBe(false);
+      });
+
+      it('should check hasRole against simulated role when simulating', async () => {
+        // Mock simulation with subscriber role
+        mockUseRoleSimulation.mockReturnValue({
+          effectiveRole: 'subscriber',
+          isSimulating: true,
+          canSimulate: true,
+          startSimulation: vi.fn(),
+          stopSimulation: vi.fn(),
+                  });
+
+        const mockFeatures = {
+          tier: 'pro' as const,
+          features: {},
+        };
+        vi.mocked(featuresApi.getUserFeatures).mockResolvedValue(mockFeatures);
+
+        // Set the store with admin role
+        useFeatureFlagStore.getState().setFeatures('admin', {});
+
+        const { result } = renderHook(() => useFeatureFlags(), {
+          wrapper: createWrapper(),
+        });
+
+        await waitFor(() => {
+          expect(result.current.isLoaded).toBe(true);
+        });
+
+        // hasRole should check against simulated role (subscriber), not actual role (admin)
+        expect(result.current.hasRole('guest')).toBe(true);
+        expect(result.current.hasRole('subscriber')).toBe(true);
+        expect(result.current.hasRole('artist')).toBe(false); // subscriber < artist
+        expect(result.current.hasRole('admin')).toBe(false);  // subscriber < admin
+      });
+
+      it('should check hasRole against actual role when not simulating', async () => {
+        // Mock simulation inactive
+        mockUseRoleSimulation.mockReturnValue({
+          effectiveRole: 'subscriber',
+          isSimulating: false,
+          canSimulate: true,
+          startSimulation: vi.fn(),
+          stopSimulation: vi.fn(),
+                  });
+
+        const mockFeatures = {
+          tier: 'pro' as const,
+          features: {},
+        };
+        vi.mocked(featuresApi.getUserFeatures).mockResolvedValue(mockFeatures);
+
+        // Set the store with admin role
+        useFeatureFlagStore.getState().setFeatures('admin', {});
+
+        const { result } = renderHook(() => useFeatureFlags(), {
+          wrapper: createWrapper(),
+        });
+
+        await waitFor(() => {
+          expect(result.current.isLoaded).toBe(true);
+        });
+
+        // hasRole should check against actual role (admin)
+        expect(result.current.hasRole('guest')).toBe(true);
+        expect(result.current.hasRole('subscriber')).toBe(true);
+        expect(result.current.hasRole('artist')).toBe(true);
+        expect(result.current.hasRole('admin')).toBe(true);
       });
     });
 

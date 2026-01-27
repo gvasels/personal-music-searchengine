@@ -22,7 +22,6 @@ interface UseRoleSimulationReturn {
 
   // Utilities
   canSimulate: boolean;
-  isWriteBlocked: boolean;
 }
 
 export function useRoleSimulation(): UseRoleSimulationReturn {
@@ -39,7 +38,8 @@ export function useRoleSimulation(): UseRoleSimulationReturn {
     return actualRole;
   }, [isSimulating, simulatedRole, actualRole]);
 
-  const isWriteBlocked = isSimulating && effectiveRole !== 'admin';
+  // Note: Write blocking during simulation is a future enhancement.
+  // When implemented, mutation hooks should check effectiveRole before executing.
 
   const startSimulation = useCallback((role: UserRole) => {
     if (canSimulate) {
@@ -59,6 +59,5 @@ export function useRoleSimulation(): UseRoleSimulationReturn {
     startSimulation,
     stopSimulation,
     canSimulate,
-    isWriteBlocked,
   };
 }
