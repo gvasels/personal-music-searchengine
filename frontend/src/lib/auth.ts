@@ -6,6 +6,7 @@
 import { signIn as amplifySignIn, signOut as amplifySignOut, getCurrentUser as amplifyGetCurrentUser, fetchAuthSession, signUp as amplifySignUp, confirmSignUp as amplifyConfirmSignUp, resendSignUpCode as amplifyResendSignUpCode } from 'aws-amplify/auth';
 import { Amplify } from 'aws-amplify';
 import type { UserRole } from '../types';
+import { isLocalStackMode, logConfig } from './config';
 
 export enum AuthErrorCode {
   INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
@@ -152,6 +153,15 @@ function mapAmplifyError(error: unknown): AuthError {
 export function configureAuth(config: AuthConfig): void {
   if (!config.userPoolId || !config.userPoolClientId) {
     throw new AuthError('Invalid auth configuration', AuthErrorCode.AUTH_CONFIG_INVALID);
+  }
+
+  // Log configuration on startup
+  logConfig();
+
+  if (isLocalStackMode()) {
+    console.log('[Auth] LocalStack mode detected');
+    console.log('[Auth] Note: Amplify has limited LocalStack support.');
+    console.log('[Auth] For local testing, use test credentials directly.');
   }
 
   Amplify.configure({

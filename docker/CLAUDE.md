@@ -2,7 +2,7 @@
 
 ## Overview
 
-Docker configuration for local development using LocalStack to emulate AWS services (DynamoDB, S3).
+Docker configuration for local development using LocalStack to emulate AWS services (DynamoDB, S3, Cognito). Provides a complete local AWS environment for integration testing without requiring real AWS credentials.
 
 ## Directory Structure
 
@@ -10,7 +10,8 @@ Docker configuration for local development using LocalStack to emulate AWS servi
 docker/
 ├── docker-compose.yml       # LocalStack service definition
 ├── localstack-init/         # Initialization scripts
-│   └── init-aws.sh          # Creates DynamoDB table and S3 bucket
+│   ├── init-aws.sh          # Creates DynamoDB table and S3 bucket
+│   └── init-cognito.sh      # Creates Cognito user pool and test users
 └── CLAUDE.md                # This file
 ```
 
@@ -18,8 +19,9 @@ docker/
 
 | File | Purpose |
 |------|---------|
-| `docker-compose.yml` | Defines LocalStack container with DynamoDB and S3 services |
-| `localstack-init/init-aws.sh` | Initialization script that creates required AWS resources |
+| `docker-compose.yml` | Defines LocalStack container with DynamoDB, S3, and Cognito services |
+| `localstack-init/init-aws.sh` | Initialization script that creates DynamoDB table and S3 bucket |
+| `localstack-init/init-cognito.sh` | Creates Cognito user pool, app client, groups, and test users |
 
 ## Quick Start
 
@@ -45,6 +47,7 @@ docker-compose down
 | S3 | 4566 | Media storage for audio files and cover art |
 | STS | 4566 | Security Token Service (for credentials) |
 | IAM | 4566 | Identity and Access Management |
+| Cognito | 4566 | User authentication and authorization |
 
 ## Resources Created by init-aws.sh
 
@@ -56,6 +59,35 @@ docker-compose down
 ### S3 Bucket: `music-library-local-media`
 - Folders: `uploads/`, `media/`, `covers/`
 - CORS configured for localhost:5173 and localhost:3000
+
+## Resources Created by init-cognito.sh
+
+### Cognito User Pool: `music-library-local-pool`
+- Email-based sign-in (no username)
+- Password policy: 8+ characters, mixed case, numbers, symbols
+- Email verification enabled (auto-verified in LocalStack)
+
+### App Client: `music-library-local-client`
+- No client secret (public SPA client)
+- Auth flows: USER_PASSWORD_AUTH, USER_SRP_AUTH
+
+### User Groups
+
+| Group | Role | Purpose |
+|-------|------|---------|
+| `admin` | Admin | Full system access |
+| `artist` | Artist | Can upload tracks, manage profile |
+| `subscriber` | Subscriber | Can create playlists, follow artists |
+
+### Test Users
+
+| Email | Password | Role/Group |
+|-------|----------|------------|
+| `admin@local.test` | `LocalTest123!` | admin |
+| `subscriber@local.test` | `LocalTest123!` | subscriber |
+| `artist@local.test` | `LocalTest123!` | artist |
+
+**Note**: All test users are pre-confirmed with verified email addresses.
 
 ## AWS CLI Usage
 
@@ -71,6 +103,19 @@ aws --endpoint-url=http://localhost:4566 s3 ls
 
 # List bucket contents
 aws --endpoint-url=http://localhost:4566 s3 ls s3://music-library-local-media/
+
+# List Cognito user pools
+aws --endpoint-url=http://localhost:4566 cognito-idp list-user-pools --max-results 10
+
+# List users in pool
+aws --endpoint-url=http://localhost:4566 cognito-idp list-users --user-pool-id <pool-id>
+
+# List groups in pool
+aws --endpoint-url=http://localhost:4566 cognito-idp list-groups --user-pool-id <pool-id>
+
+# Get user info
+aws --endpoint-url=http://localhost:4566 cognito-idp admin-get-user \
+    --user-pool-id <pool-id> --username admin@local.test
 ```
 
 ## Data Persistence
@@ -115,4 +160,43 @@ bash docker/localstack-init/init-aws.sh
 ```bash
 # Fix init script permissions
 chmod +x docker/localstack-init/init-aws.sh
+chmod +x docker/localstack-init/init-cognito.sh
+```
+
+**Cognito pool not created:**
+```bash
+# Manually run Cognito init script
+bash docker/localstack-init/init-cognito.sh
+```
+
+**Test user login fails:**
+```bash
+# Verify user exists and is confirmed
+aws --endpoint-url=http://localhost:4566 cognito-idp admin-get-user \
+    --user-pool-id <pool-id> --username admin@local.test
+
+# Re-run init to recreate users
+docker-compose -f docker/docker-compose.yml down -v
+docker-compose -f docker/docker-compose.yml up -d
+./scripts/wait-for-localstack.sh 60
+./docker/localstack-init/init-aws.sh
+./docker/localstack-init/init-cognito.sh
+```
+
+## One-Command Setup
+
+For convenience, use the root Makefile or local-dev.sh script:
+
+```bash
+# Using Make
+make local           # Start full environment
+make local-stop      # Stop all services
+make test-integration # Run integration tests
+
+# Using shell script
+./scripts/local-dev.sh start   # Start full environment
+./scripts/local-dev.sh stop    # Stop all services
+./scripts/local-dev.sh test    # Run integration tests
+./scripts/local-dev.sh status  # Check service status
+./scripts/local-dev.sh reset   # Reset LocalStack data
 ```

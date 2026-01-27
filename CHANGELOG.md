@@ -8,6 +8,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### LocalStack Development Environment
+- **Docker & LocalStack Configuration**
+  - Added `cognito-idp` service to LocalStack for local authentication
+  - Created `docker/localstack-init/init-cognito.sh` for Cognito setup
+    - Creates user pool: `music-library-local-pool`
+    - Creates app client (no secret for SPA)
+    - Creates groups: `admin`, `artist`, `subscriber`
+    - Creates test users with known credentials
+  - Created `scripts/wait-for-localstack.sh` health check script
+- **Integration Test Framework** (`backend/internal/testutil/`)
+  - `localstack.go` - SetupLocalStack with TestContext and cleanup
+  - `fixtures.go` - Test users, CreateTestTrack, CreateTestUser helpers
+  - `cleanup.go` - CleanupUser, CleanupTrack, CleanupAll utilities
+  - Sample integration test: `backend/internal/service/track_integration_test.go`
+  - Tests use `//go:build integration` tag for separation
+- **Frontend Local Mode**
+  - `frontend/.env.local.example` - Environment template
+  - `frontend/src/lib/config.ts` - LocalStack mode detection
+  - `dev:local` npm script for local development
+  - Test users: admin@local.test, subscriber@local.test, artist@local.test (password: LocalTest123!)
+- **One-Command Setup**
+  - Root `Makefile` with targets: `local`, `local-stop`, `test-integration`
+  - `scripts/local-dev.sh` shell script alternative
+- **Documentation**
+  - `LOCAL_DEV.md` - Comprehensive local development guide
+  - Updated `docker/CLAUDE.md` with Cognito documentation
+  - Created `backend/internal/testutil/CLAUDE.md`
+
 #### Global User Type Feature (Role-Based Access Control)
 - **Backend Services**
   - User roles: `guest`, `subscriber`, `artist`, `admin` with Cognito Groups integration
