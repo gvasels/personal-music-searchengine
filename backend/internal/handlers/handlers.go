@@ -227,11 +227,13 @@ func (h *Handlers) getAuthContextWithDBRole(c echo.Context) AuthContext {
 	dbRole, err := h.services.User.GetUserRole(c.Request().Context(), ctx.UserID)
 	if err != nil {
 		// Fall back to JWT groups if DB lookup fails
+		c.Logger().Warnf("getAuthContextWithDBRole: failed to get role from DB for user %s: %v, falling back to JWT groups", ctx.UserID, err)
 		return ctx
 	}
 
 	// Update HasGlobal based on DB role
 	ctx.HasGlobal = dbRole == models.RoleAdmin
+	c.Logger().Infof("getAuthContextWithDBRole: userID=%s, dbRole=%s, hasGlobal=%v", ctx.UserID, dbRole, ctx.HasGlobal)
 
 	return ctx
 }

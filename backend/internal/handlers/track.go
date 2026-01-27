@@ -45,8 +45,12 @@ func (h *Handlers) GetTrack(c echo.Context) error {
 		return handleError(c, models.ErrBadRequest)
 	}
 
+	// Debug logging
+	c.Logger().Infof("GetTrack: userID=%s, trackID=%s, hasGlobal=%v", auth.UserID, trackID, auth.HasGlobal)
+
 	track, err := h.services.Track.GetTrack(c.Request().Context(), auth.UserID, trackID, auth.HasGlobal)
 	if err != nil {
+		c.Logger().Errorf("GetTrack error: %v", err)
 		return handleError(c, err)
 	}
 

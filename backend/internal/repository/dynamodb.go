@@ -106,27 +106,44 @@ func (r *DynamoDBRepository) GetTrackByID(ctx context.Context, trackID string) (
 		return nil, fmt.Errorf("failed to build expression: %w", err)
 	}
 
-	result, err := r.client.Scan(ctx, &dynamodb.ScanInput{
-		TableName:                 aws.String(r.tableName),
-		FilterExpression:          expr.Filter(),
-		ExpressionAttributeNames:  expr.Names(),
-		ExpressionAttributeValues: expr.Values(),
-		Limit:                     aws.Int32(1), // We only need one result
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan for track: %w", err)
-	}
+	// Note: We don't use Limit here because DynamoDB applies the limit BEFORE filtering,
+	// which means Limit: 1 would only scan 1 item, not return 1 matching item.
+	// The scan will stop as soon as we find a matching item (handled via pagination).
+	var lastEvaluatedKey map[string]types.AttributeValue
 
-	if len(result.Items) == 0 {
-		return nil, ErrNotFound
-	}
+	for {
+		input := &dynamodb.ScanInput{
+			TableName:                 aws.String(r.tableName),
+			FilterExpression:          expr.Filter(),
+			ExpressionAttributeNames:  expr.Names(),
+			ExpressionAttributeValues: expr.Values(),
+		}
 
-	var item models.TrackItem
-	if err := attributevalue.UnmarshalMap(result.Items[0], &item); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal track: %w", err)
-	}
+		if lastEvaluatedKey != nil {
+			input.ExclusiveStartKey = lastEvaluatedKey
+		}
 
-	return &item.Track, nil
+		result, err := r.client.Scan(ctx, input)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan for track: %w", err)
+		}
+
+		// If we found the track, return it
+		if len(result.Items) > 0 {
+			var item models.TrackItem
+			if err := attributevalue.UnmarshalMap(result.Items[0], &item); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal track: %w", err)
+			}
+			return &item.Track, nil
+		}
+
+		// If no more items to scan, the track doesn't exist
+		if result.LastEvaluatedKey == nil {
+			return nil, ErrNotFound
+		}
+
+		lastEvaluatedKey = result.LastEvaluatedKey
+	}
 }
 
 func (r *DynamoDBRepository) UpdateTrack(ctx context.Context, track models.Track) error {
