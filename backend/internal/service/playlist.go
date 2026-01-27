@@ -302,59 +302,33 @@ func (s *playlistService) ReorderTracks(ctx context.Context, userID, playlistID 
 		return nil, err
 	}
 
-	// Find the track to move
-	var trackToMove *models.PlaylistTrack
-	var currentPosition int
-	for i, pt := range playlistTracks {
-		if pt.TrackID == req.TrackID {
-			trackToMove = &playlistTracks[i]
-			currentPosition = i
-			break
+	// Verify the new order contains exactly the same tracks
+	existingSet := make(map[string]models.PlaylistTrack)
+	for _, pt := range playlistTracks {
+		existingSet[pt.TrackID] = pt
+	}
+
+	// Check same number of tracks
+	if len(req.TrackIDs) != len(playlistTracks) {
+		return nil, models.NewValidationError("Track list must contain the same tracks")
+	}
+
+	// Verify all tracks in request exist in playlist and build new order
+	newTracks := make([]models.PlaylistTrack, 0, len(req.TrackIDs))
+	seen := make(map[string]bool)
+	for i, trackID := range req.TrackIDs {
+		// Check for duplicates in request
+		if seen[trackID] {
+			return nil, models.NewValidationError("Duplicate track ID in request")
 		}
-	}
+		seen[trackID] = true
 
-	if trackToMove == nil {
-		return nil, models.NewNotFoundError("Track in playlist", req.TrackID)
-	}
-
-	// Validate new position
-	if req.NewPosition < 0 || req.NewPosition >= len(playlistTracks) {
-		return nil, models.NewValidationError("Invalid position")
-	}
-
-	// If moving to same position, nothing to do
-	if currentPosition == req.NewPosition {
-		coverArtURL := ""
-		if playlist.CoverArtKey != "" {
-			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, playlist.CoverArtKey, 24*time.Hour)
-			if err == nil {
-				coverArtURL = url
-			}
+		pt, exists := existingSet[trackID]
+		if !exists {
+			return nil, models.NewValidationError("Track " + trackID + " not in playlist")
 		}
-		response := playlist.ToResponse(coverArtURL)
-		return &response, nil
-	}
-
-	// Reorder the tracks in memory
-	// Remove track from current position
-	reordered := make([]models.PlaylistTrack, 0, len(playlistTracks))
-	for i, pt := range playlistTracks {
-		if i != currentPosition {
-			reordered = append(reordered, pt)
-		}
-	}
-
-	// Insert at new position
-	newTracks := make([]models.PlaylistTrack, 0, len(playlistTracks))
-	for i := 0; i < len(reordered); i++ {
-		if i == req.NewPosition {
-			newTracks = append(newTracks, *trackToMove)
-		}
-		newTracks = append(newTracks, reordered[i])
-	}
-	// Handle case where new position is at the end
-	if req.NewPosition >= len(reordered) {
-		newTracks = append(newTracks, *trackToMove)
+		pt.Position = i
+		newTracks = append(newTracks, pt)
 	}
 
 	// Update positions in the database

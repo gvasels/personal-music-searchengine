@@ -99,9 +99,9 @@ type RemoveTracksFromPlaylistRequest struct {
 }
 
 // ReorderPlaylistTracksRequest represents a request to reorder tracks in a playlist
+// The TrackIDs array must contain all track IDs in the playlist in the desired order
 type ReorderPlaylistTracksRequest struct {
-	TrackID      string `json:"trackId" validate:"required,uuid"`
-	NewPosition  int    `json:"newPosition" validate:"required,min=0"`
+	TrackIDs []string `json:"trackIds" validate:"required,min=1"`
 }
 
 // PlaylistResponse represents a playlist in API responses
