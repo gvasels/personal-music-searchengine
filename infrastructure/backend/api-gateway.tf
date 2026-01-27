@@ -87,6 +87,14 @@ resource "aws_apigatewayv2_route" "update_profile" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "get_features" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/features"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 # Track routes
 resource "aws_apigatewayv2_route" "list_tracks" {
   api_id             = aws_apigatewayv2_api.api.id
