@@ -1,9 +1,11 @@
 /**
  * Sidebar - Desktop Navigation
  * Shows navigation menu on desktop, hidden on mobile (MobileNav handles mobile)
+ * Respects role simulation for admin testing
  */
 import { Link } from '@tanstack/react-router';
 import { useAuth } from '../../hooks/useAuth';
+import { useFeatureFlags } from '../../hooks/useFeatureFlags';
 
 const navItems = [
   { to: '/', label: 'Home', icon: '🏠' },
@@ -12,7 +14,7 @@ const navItems = [
   { to: '/artists', label: 'Artists', icon: '🎤' },
   { to: '/playlists', label: 'Playlists', icon: '📝' },
   { to: '/tags', label: 'Tags', icon: '🏷️' },
-  { to: '/upload', label: 'Upload', icon: '⬆️' },
+  { to: '/upload', label: 'Upload', icon: '⬆️', minRole: 'artist' as const },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
@@ -22,22 +24,39 @@ const adminNavItems = [
 ];
 
 export function Sidebar() {
-  const { isAuthenticated, isLoading, isAdmin, role, groups } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  const { role, hasRole, isSimulating } = useFeatureFlags();
 
-  console.log('[Sidebar] Auth state:', { isAuthenticated, isLoading, isAdmin, role, groups });
+  // Check if current (effective) role is admin
+  const showAdminSection = hasRole('admin');
 
   // Don't show sidebar when not authenticated or still loading
   if (isLoading || !isAuthenticated) {
     return null;
   }
 
+  // Filter nav items based on role requirements
+  const visibleNavItems = navItems.filter((item) => {
+    if ('minRole' in item && item.minRole) {
+      return hasRole(item.minRole);
+    }
+    return true;
+  });
+
   return (
     <nav
       role="navigation"
       className="hidden md:block w-64 bg-base-100 p-4 overflow-y-auto"
     >
+      {/* Show simulation indicator */}
+      {isSimulating && (
+        <div className="mb-4 p-2 bg-warning/20 rounded-lg text-center text-sm">
+          Viewing as: <span className="font-semibold capitalize">{role}</span>
+        </div>
+      )}
+
       <ul className="menu">
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <li key={item.to}>
             <Link
               to={item.to}
@@ -53,8 +72,8 @@ export function Sidebar() {
           </li>
         ))}
 
-        {/* Admin section - only visible to admins */}
-        {isAdmin && (
+        {/* Admin section - only visible when effective role is admin */}
+        {showAdminSection && (
           <>
             <li className="menu-title mt-4">
               <span className="text-xs uppercase tracking-wider text-base-content/50">Admin</span>
