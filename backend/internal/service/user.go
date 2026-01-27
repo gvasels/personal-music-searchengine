@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/gvasels/personal-music-searchengine/internal/models"
@@ -139,7 +140,7 @@ func (s *userService) UpdateSettings(ctx context.Context, userID string, input *
 			return nil, ErrUserNotFound
 		}
 		// Check for validation errors
-		if err.Error() != "" && err.Error()[:7] == "invalid" {
+		if strings.HasPrefix(err.Error(), "invalid") {
 			return nil, ErrValidation
 		}
 		return nil, err
