@@ -348,7 +348,7 @@ aws s3 sync dist/ s3://music-library-prod-frontend \
 
 # Invalidate CloudFront cache
 aws cloudfront create-invalidation \
-  --distribution-id E3TZURTFP3YE5 \
+  --distribution-id EWDTYVQMDOQK2 \
   --paths "/*" \
   --profile gvasels-muza
 ```
@@ -365,7 +365,7 @@ cd backend && make build && make package && \
 # Full frontend deploy (build + sync + invalidate)
 cd frontend && npm run build && \
   aws s3 sync dist/ s3://music-library-prod-frontend --delete --profile gvasels-muza && \
-  aws cloudfront create-invalidation --distribution-id E3TZURTFP3YE5 --paths "/*" --profile gvasels-muza
+  aws cloudfront create-invalidation --distribution-id EWDTYVQMDOQK2 --paths "/*" --profile gvasels-muza
 ```
 
 ---
