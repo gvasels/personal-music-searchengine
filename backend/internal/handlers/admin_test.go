@@ -243,6 +243,21 @@ func TestAdminHandler_UpdateUserRole(t *testing.T) {
 	mockService := new(MockAdminService)
 	handler := NewAdminHandler(mockService)
 
+	now := time.Now()
+	mockUserDetails := &models.UserDetails{
+		UserSummary: models.UserSummary{
+			ID:          "user-123",
+			Email:       "test@example.com",
+			DisplayName: "Test User",
+			Role:        models.RoleAdmin,
+			Disabled:    false,
+			CreatedAt:   now,
+		},
+		TrackCount:    42,
+		PlaylistCount: 5,
+		StorageUsed:   1073741824,
+	}
+
 	tests := []struct {
 		name           string
 		userID         string
@@ -258,6 +273,7 @@ func TestAdminHandler_UpdateUserRole(t *testing.T) {
 			requestBody: `{"role": "admin"}`,
 			setupMock: func() {
 				mockService.On("UpdateUserRoleByAdmin", mock.Anything, "admin-1", "user-123", models.RoleAdmin).Return(nil).Once()
+				mockService.On("GetUserDetails", mock.Anything, "user-123").Return(mockUserDetails, nil).Once()
 			},
 			expectedStatus: http.StatusOK,
 		},
@@ -324,6 +340,34 @@ func TestAdminHandler_UpdateUserStatus(t *testing.T) {
 	mockService := new(MockAdminService)
 	handler := NewAdminHandler(mockService)
 
+	now := time.Now()
+	mockDisabledDetails := &models.UserDetails{
+		UserSummary: models.UserSummary{
+			ID:          "user-123",
+			Email:       "test@example.com",
+			DisplayName: "Test User",
+			Role:        models.RoleSubscriber,
+			Disabled:    true,
+			CreatedAt:   now,
+		},
+		TrackCount:    42,
+		PlaylistCount: 5,
+		StorageUsed:   1073741824,
+	}
+	mockEnabledDetails := &models.UserDetails{
+		UserSummary: models.UserSummary{
+			ID:          "user-123",
+			Email:       "test@example.com",
+			DisplayName: "Test User",
+			Role:        models.RoleSubscriber,
+			Disabled:    false,
+			CreatedAt:   now,
+		},
+		TrackCount:    42,
+		PlaylistCount: 5,
+		StorageUsed:   1073741824,
+	}
+
 	tests := []struct {
 		name           string
 		userID         string
@@ -339,6 +383,7 @@ func TestAdminHandler_UpdateUserStatus(t *testing.T) {
 			requestBody: `{"disabled": true}`,
 			setupMock: func() {
 				mockService.On("SetUserStatus", mock.Anything, "user-123", true).Return(nil).Once()
+				mockService.On("GetUserDetails", mock.Anything, "user-123").Return(mockDisabledDetails, nil).Once()
 			},
 			expectedStatus: http.StatusOK,
 		},
@@ -349,6 +394,7 @@ func TestAdminHandler_UpdateUserStatus(t *testing.T) {
 			requestBody: `{"disabled": false}`,
 			setupMock: func() {
 				mockService.On("SetUserStatus", mock.Anything, "user-123", false).Return(nil).Once()
+				mockService.On("GetUserDetails", mock.Anything, "user-123").Return(mockEnabledDetails, nil).Once()
 			},
 			expectedStatus: http.StatusOK,
 		},

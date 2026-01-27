@@ -70,6 +70,14 @@ func (m *MockRepository) GetTrack(ctx context.Context, userID, trackID string) (
 	return args.Get(0).(*models.Track), args.Error(1)
 }
 
+func (m *MockRepository) GetTrackByID(ctx context.Context, trackID string) (*models.Track, error) {
+	args := m.Called(ctx, trackID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Track), args.Error(1)
+}
+
 func (m *MockRepository) UpdateTrack(ctx context.Context, track models.Track) error {
 	args := m.Called(ctx, track)
 	return args.Error(0)
@@ -925,6 +933,9 @@ func (m *MockFilterTagsRepository) CreateTrack(ctx context.Context, track models
 	return nil
 }
 func (m *MockFilterTagsRepository) GetTrack(ctx context.Context, userID, trackID string) (*models.Track, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) GetTrackByID(ctx context.Context, trackID string) (*models.Track, error) {
 	return nil, nil
 }
 func (m *MockFilterTagsRepository) UpdateTrack(ctx context.Context, track models.Track) error {

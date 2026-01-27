@@ -25,6 +25,14 @@ func (m *MockSimilarityRepository) GetTrack(ctx context.Context, userID, trackID
 	return args.Get(0).(*models.Track), args.Error(1)
 }
 
+func (m *MockSimilarityRepository) GetTrackByID(ctx context.Context, trackID string) (*models.Track, error) {
+	args := m.Called(ctx, trackID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Track), args.Error(1)
+}
+
 func (m *MockSimilarityRepository) ListTracks(ctx context.Context, userID string, filter models.TrackFilter) (*repository.PaginatedResult[models.Track], error) {
 	args := m.Called(ctx, userID, filter)
 	if args.Get(0) == nil {

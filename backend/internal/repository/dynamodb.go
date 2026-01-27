@@ -92,6 +92,43 @@ func (r *DynamoDBRepository) GetTrack(ctx context.Context, userID, trackID strin
 	return &item.Track, nil
 }
 
+// GetTrackByID retrieves a track by ID without requiring the owner's userID.
+// This is used for visibility checks and admin access.
+// Uses a table scan filtered by SK, so less efficient than GetTrack.
+func (r *DynamoDBRepository) GetTrackByID(ctx context.Context, trackID string) (*models.Track, error) {
+	// Use scan with filter on SK to find the track
+	// This is less efficient but necessary for cross-user track access
+	filterExpr := expression.Name("SK").Equal(expression.Value(fmt.Sprintf("TRACK#%s", trackID)))
+
+	builder := expression.NewBuilder().WithFilter(filterExpr)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	result, err := r.client.Scan(ctx, &dynamodb.ScanInput{
+		TableName:                 aws.String(r.tableName),
+		FilterExpression:          expr.Filter(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(1), // We only need one result
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan for track: %w", err)
+	}
+
+	if len(result.Items) == 0 {
+		return nil, ErrNotFound
+	}
+
+	var item models.TrackItem
+	if err := attributevalue.UnmarshalMap(result.Items[0], &item); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal track: %w", err)
+	}
+
+	return &item.Track, nil
+}
+
 func (r *DynamoDBRepository) UpdateTrack(ctx context.Context, track models.Track) error {
 	track.UpdatedAt = time.Now()
 

@@ -30,9 +30,11 @@ func (h *Handlers) ListTracks(c echo.Context) error {
 }
 
 // GetTrack returns a single track by ID
+// Respects visibility rules: owners and admins can access any track,
+// others can only access public/unlisted tracks
 func (h *Handlers) GetTrack(c echo.Context) error {
-	userID := getUserIDFromContext(c)
-	if userID == "" {
+	auth := getAuthContext(c)
+	if auth.UserID == "" {
 		return handleError(c, models.ErrUnauthorized)
 	}
 
@@ -41,7 +43,7 @@ func (h *Handlers) GetTrack(c echo.Context) error {
 		return handleError(c, models.ErrBadRequest)
 	}
 
-	track, err := h.services.Track.GetTrack(c.Request().Context(), userID, trackID)
+	track, err := h.services.Track.GetTrack(c.Request().Context(), auth.UserID, trackID, auth.HasGlobal)
 	if err != nil {
 		return handleError(c, err)
 	}
