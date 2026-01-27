@@ -8,14 +8,14 @@ import { useAuth } from '../../hooks/useAuth';
 import { useFeatureFlags } from '../../hooks/useFeatureFlags';
 
 const navItems = [
-  { to: '/', label: 'Home', icon: '🏠' },
-  { to: '/tracks', label: 'Tracks', icon: '🎵' },
-  { to: '/albums', label: 'Albums', icon: '💿' },
-  { to: '/artists', label: 'Artists', icon: '🎤' },
-  { to: '/playlists', label: 'Playlists', icon: '📝' },
-  { to: '/tags', label: 'Tags', icon: '🏷️' },
+  { to: '/', label: 'Home', icon: '🏠', minRole: 'guest' as const },
+  { to: '/tracks', label: 'Tracks', icon: '🎵', minRole: 'subscriber' as const },
+  { to: '/albums', label: 'Albums', icon: '💿', minRole: 'subscriber' as const },
+  { to: '/artists', label: 'Artists', icon: '🎤', minRole: 'subscriber' as const },
+  { to: '/playlists', label: 'Playlists', icon: '📝', minRole: 'subscriber' as const },
+  { to: '/tags', label: 'Tags', icon: '🏷️', minRole: 'subscriber' as const },
   { to: '/upload', label: 'Upload', icon: '⬆️', minRole: 'artist' as const },
-  { to: '/settings', label: 'Settings', icon: '⚙️' },
+  { to: '/settings', label: 'Settings', icon: '⚙️', minRole: 'subscriber' as const },
 ];
 
 // Admin-only navigation items

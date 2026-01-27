@@ -98,12 +98,14 @@ const permissionDeniedRoute = createRoute({
   component: PermissionDeniedPage,
 });
 
-// Create routes - Protected routes (auth required)
+// Create routes - Public routes (guests can access dashboard)
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: withAuthGuard(HomePage),
+  component: HomePage, // Dashboard is accessible to all, including guests
 });
+
+// Create routes - Protected routes (auth required)
 
 const searchRoute = createRoute({
   getParentRoute: () => rootRoute,

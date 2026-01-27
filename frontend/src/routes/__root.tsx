@@ -1,9 +1,11 @@
 /**
  * Root Layout - Access Control Bug Fixes
  * Implements guest user route protection
+ * Supports role simulation for admin testing
  */
 import { createRootRoute, Outlet, useLocation, Navigate } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
+import { useFeatureFlags } from '../hooks/useFeatureFlags';
 
 /**
  * Routes accessible to unauthenticated (guest) users.
@@ -21,6 +23,7 @@ function isPublicRoute(pathname: string): boolean {
 
 function RootComponent() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { role, isSimulating } = useFeatureFlags();
   const location = useLocation();
 
   // Show loading state while checking auth
@@ -32,8 +35,11 @@ function RootComponent() {
     );
   }
 
-  // If not authenticated and trying to access a protected route, redirect to permission-denied
-  if (!isAuthenticated && !isPublicRoute(location.pathname)) {
+  // Check if user should be treated as guest (either not authenticated OR simulating guest)
+  const isEffectivelyGuest = !isAuthenticated || (isSimulating && role === 'guest');
+
+  // If effectively guest and trying to access a protected route, redirect to permission-denied
+  if (isEffectivelyGuest && !isPublicRoute(location.pathname)) {
     return <Navigate to="/permission-denied" />;
   }
 
