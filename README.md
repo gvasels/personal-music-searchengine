@@ -404,13 +404,52 @@ VITE_COGNITO_REGION=us-east-1
 
 ## Local Development
 
-### Backend
+The project includes a complete **LocalStack-based development environment** that emulates AWS services locally (DynamoDB, S3, Cognito).
+
+### Quick Start (LocalStack)
+
+```bash
+# Start full local environment (LocalStack + Backend + Frontend)
+make local
+
+# Or using shell script
+./scripts/local-dev.sh start
+```
+
+This starts:
+| Service | URL |
+|---------|-----|
+| **LocalStack** | http://localhost:4566 |
+| **Backend API** | http://localhost:8080 |
+| **Frontend** | http://localhost:5173 |
+
+### Test Users
+
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@local.test` | `LocalTest123!` | Admin |
+| `subscriber@local.test` | `LocalTest123!` | Subscriber |
+| `artist@local.test` | `LocalTest123!` | Artist |
+
+### Local Commands
+
+| Command | Purpose |
+|---------|---------|
+| `make local` | Start full environment |
+| `make local-stop` | Stop all services |
+| `make test-integration` | Run integration tests against LocalStack |
+| `make local-reset` | Reset LocalStack data |
+| `./scripts/local-dev.sh status` | Check service status |
+
+See [LOCAL_DEV.md](./LOCAL_DEV.md) for complete documentation.
+
+### Backend (without LocalStack)
 
 ```bash
 cd backend
 
-# Run tests
-go test ./...
+# Run unit tests
+go test -short ./...
 
 # Run tests with coverage
 go test -coverprofile=coverage.out ./...
@@ -420,7 +459,7 @@ go tool cover -html=coverage.out
 go build -o bootstrap ./cmd/api
 ```
 
-### Frontend
+### Frontend (without LocalStack)
 
 ```bash
 cd frontend
@@ -428,8 +467,11 @@ cd frontend
 # Install dependencies
 npm install
 
-# Start dev server
+# Start dev server (against production API)
 npm run dev
+
+# Start dev server (local mode)
+npm run dev:local
 
 # Run tests
 npm test

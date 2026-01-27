@@ -6,6 +6,39 @@ This document tracks planned features, improvements, and technical debt for the 
 
 ---
 
+## Immediate Roadmap
+
+**Priority tasks to address in upcoming sprints, mapped to their specs.**
+
+### High Priority
+
+| Task | Description | Spec Location | Status |
+|------|-------------|---------------|--------|
+| **E2E Track Visibility Verification** | Manual testing of track visibility enforcement | `.spec-workflow/specs/access-control-bug-fixes/tasks.md` → Task 4.1 | Pending |
+| **E2E Guest Route Verification** | Manual testing of guest route protection | `.spec-workflow/specs/access-control-bug-fixes/tasks.md` → Task 4.2 | Pending |
+| **Admin Panel Track Visibility Deployment** | Deploy infrastructure changes (GSI3) | `.spec-workflow/specs/admin-panel-track-visibility/tasks.md` → Task 9.1 | Pending |
+| **Track Visibility Migration** | Run migration and deploy | `.spec-workflow/specs/admin-panel-track-visibility/tasks.md` → Task 9.3 | Pending |
+| **GitHub Actions Fix** | Fix deployment workflow failures | `.spec-workflow/specs/global-user-type/tasks.md` → Task F.5 | Planned |
+
+### Medium Priority
+
+| Task | Description | Spec Location | Status |
+|------|-------------|---------------|--------|
+| **Backend Handler Tests** | Write integration tests for role-based endpoints | `.spec-workflow/specs/global-user-type/tasks.md` → Task 8.3 | Planned |
+| **Frontend Unit Tests** | Complete tests for artist profile/follow components | `.spec-workflow/specs/global-user-type/tasks.md` → Task 8.4 | Partial |
+| **Admin Handler Integration Tests** | Test all admin endpoints | `.spec-workflow/specs/admin-panel-track-visibility/tasks.md` → Task 8.1 | Pending |
+| **DynamoDB User Sync** | Create user profile on Cognito post-confirmation | `.spec-workflow/specs/global-user-type/tasks.md` → Task F.1-F.4 | Planned |
+
+### Deferred/Future
+
+| Task | Description | Spec Location | Status |
+|------|-------------|---------------|--------|
+| **Creator Studio** | Feature flags, crates, hot cues | `.spec-workflow/specs/creator-studio-foundation/tasks.md` | Planned |
+| **Bedrock/Marengo Integration** | AI video understanding | `.spec-workflow/specs/bedrock-marengo-gateway/tasks.md` | Planned |
+| **Rights Management** | Geographic scope rights | `.spec-workflow/specs/rights-management-foundation/tasks.md` | Planned |
+
+---
+
 ## Phase 2: Global User Type (Streaming Service Model) ✅ COMPLETE
 
 Foundation for a multi-user streaming platform with content rights management.
@@ -610,6 +643,14 @@ The Bedrock Access Gateway provides OpenAI-compatible APIs for Amazon Bedrock, e
 | BPM/Key Detection | Audio analysis for BPM and musical key | Yes |
 | Playlist Search | Search returns matching playlists | Yes |
 | Clickable Artists | Artist names link to artist page | Yes |
+| Global User Type | Role-based access (admin, artist, subscriber, guest) | Yes |
+| Public Playlists | Visibility options (private/unlisted/public) | Yes |
+| Artist Profiles | Profile management with catalog linking | Yes |
+| Follow System | Follow/unfollow artists | Yes |
+| Admin Panel | User management (search, role change, enable/disable) | Yes |
+| LocalStack Dev Environment | Local AWS emulation for integration testing | Yes |
+| Track Visibility Backend | Service-layer visibility enforcement | Yes |
+| Guest Route Protection | Redirect guests to permission-denied page | Yes |
 
 ---
 
