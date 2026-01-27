@@ -83,7 +83,8 @@ describe('SimulationBanner', () => {
     it('should handle unknown roles gracefully', () => {
       mockUseRoleSimulation.mockReturnValue({
         isSimulating: true,
-        effectiveRole: 'unknown' as any,
+        // Test unknown role fallback behavior
+        effectiveRole: 'unknown' as 'guest' | 'subscriber' | 'artist' | 'admin',
         stopSimulation: mockStopSimulation,
       });
 
