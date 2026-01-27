@@ -34,6 +34,7 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 	api.PUT("/me", h.UpdateProfile)
 	api.GET("/users/me/settings", h.GetSettings)
 	api.PATCH("/users/me/settings", h.UpdateSettings)
+	api.GET("/features", h.GetFeatures)
 
 	// Track routes
 	api.GET("/tracks", h.ListTracks)

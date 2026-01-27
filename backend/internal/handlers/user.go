@@ -2,11 +2,109 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/service"
 )
+
+// FeaturesResponse represents the user's features based on their role
+type FeaturesResponse struct {
+	Tier     string          `json:"tier"`
+	Role     string          `json:"role"`
+	Features map[string]bool `json:"features"`
+}
+
+// GetFeatures returns the current user's features based on their role
+// GET /api/v1/features
+func (h *Handlers) GetFeatures(c echo.Context) error {
+	authCtx := getAuthContext(c)
+	if authCtx.UserID == "" {
+		return handleError(c, models.ErrUnauthorized)
+	}
+
+	// Determine role from Cognito groups
+	role := determineRoleFromGroups(authCtx.Groups)
+
+	// Map role to tier for backward compatibility
+	tier := mapRoleToTier(role)
+
+	// Get features based on role
+	features := getFeaturesForRole(role)
+
+	return success(c, FeaturesResponse{
+		Tier:     tier,
+		Role:     string(role),
+		Features: features,
+	})
+}
+
+// determineRoleFromGroups extracts the user role from Cognito groups
+func determineRoleFromGroups(groups []string) models.UserRole {
+	for _, g := range groups {
+		lowerGroup := strings.ToLower(g)
+		if lowerGroup == "admin" || lowerGroup == "admins" {
+			return models.RoleAdmin
+		}
+	}
+	for _, g := range groups {
+		lowerGroup := strings.ToLower(g)
+		if lowerGroup == "artist" || lowerGroup == "artists" {
+			return models.RoleArtist
+		}
+	}
+	for _, g := range groups {
+		lowerGroup := strings.ToLower(g)
+		if lowerGroup == "subscriber" || lowerGroup == "subscribers" {
+			return models.RoleSubscriber
+		}
+	}
+	return models.RoleSubscriber // Default role
+}
+
+// mapRoleToTier maps role to subscription tier for backward compatibility
+func mapRoleToTier(role models.UserRole) string {
+	switch role {
+	case models.RoleAdmin:
+		return "creator"
+	case models.RoleArtist:
+		return "pro"
+	default:
+		return "free"
+	}
+}
+
+// getFeaturesForRole returns feature flags based on user role
+func getFeaturesForRole(role models.UserRole) map[string]bool {
+	// Base features for all authenticated users
+	features := map[string]bool{
+		"CRATES":            true,
+		"PLAYLISTS":         true,
+		"TAGS":              true,
+		"SEARCH":            true,
+		"HQ_STREAMING":      true,
+	}
+
+	// Artist features
+	if role == models.RoleArtist || role == models.RoleAdmin {
+		features["HOT_CUES"] = true
+		features["BPM_MATCHING"] = true
+		features["KEY_MATCHING"] = true
+		features["WAVEFORMS"] = true
+		features["BULK_EDIT"] = true
+	}
+
+	// Admin features (everything)
+	if role == models.RoleAdmin {
+		features["MIX_RECORDING"] = true
+		features["ADVANCED_STATS"] = true
+		features["API_ACCESS"] = true
+		features["UNLIMITED_STORAGE"] = true
+	}
+
+	return features
+}
 
 // GetProfile returns the current user's profile
 func (h *Handlers) GetProfile(c echo.Context) error {
