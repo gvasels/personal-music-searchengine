@@ -58,6 +58,22 @@ func (m *MockCognitoIdentityProviderAPI) AdminEnableUser(ctx context.Context, pa
 	return args.Get(0).(*cognitoidentityprovider.AdminEnableUserOutput), args.Error(1)
 }
 
+func (m *MockCognitoIdentityProviderAPI) ListUsers(ctx context.Context, params *cognitoidentityprovider.ListUsersInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.ListUsersOutput, error) {
+	args := m.Called(ctx, params)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*cognitoidentityprovider.ListUsersOutput), args.Error(1)
+}
+
+func (m *MockCognitoIdentityProviderAPI) AdminGetUser(ctx context.Context, params *cognitoidentityprovider.AdminGetUserInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.AdminGetUserOutput, error) {
+	args := m.Called(ctx, params)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*cognitoidentityprovider.AdminGetUserOutput), args.Error(1)
+}
+
 func TestCognitoClient_AddUserToGroup(t *testing.T) {
 	t.Run("successfully adds user to group", func(t *testing.T) {
 		ctx := context.Background()

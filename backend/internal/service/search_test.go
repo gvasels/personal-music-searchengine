@@ -306,6 +306,23 @@ func (m *MockRepository) GetFollowerCount(ctx context.Context, userID string) (i
 	return 0, nil
 }
 
+// User settings methods
+func (m *MockRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	return nil, nil
+}
+func (m *MockRepository) GetUserByCognitoID(ctx context.Context, cognitoID string) (*models.User, error) {
+	return nil, nil
+}
+func (m *MockRepository) SearchUsersByEmail(ctx context.Context, emailPrefix string, limit int, cursor string) ([]repository.UserSearchResult, string, error) {
+	return nil, "", nil
+}
+func (m *MockRepository) GetUserSettings(ctx context.Context, userID string) (*models.UserSettings, error) {
+	return nil, nil
+}
+func (m *MockRepository) UpdateUserSettings(ctx context.Context, userID string, update *repository.UserSettingsUpdate) (*models.UserSettings, error) {
+	return nil, nil
+}
+
 // MockS3Repository mocks the repository.S3Repository
 type MockS3Repository struct {
 	mock.Mock
@@ -1131,6 +1148,23 @@ func (m *MockFilterTagsRepository) GetUserDisplayName(ctx context.Context, userI
 }
 func (m *MockFilterTagsRepository) GetFollowerCount(ctx context.Context, userID string) (int, error) {
 	return 0, nil
+}
+
+// User settings methods
+func (m *MockFilterTagsRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) GetUserByCognitoID(ctx context.Context, cognitoID string) (*models.User, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) SearchUsersByEmail(ctx context.Context, emailPrefix string, limit int, cursor string) ([]repository.UserSearchResult, string, error) {
+	return nil, "", nil
+}
+func (m *MockFilterTagsRepository) GetUserSettings(ctx context.Context, userID string) (*models.UserSettings, error) {
+	return nil, nil
+}
+func (m *MockFilterTagsRepository) UpdateUserSettings(ctx context.Context, userID string, update *repository.UserSettingsUpdate) (*models.UserSettings, error) {
+	return nil, nil
 }
 
 // TestFilterByTags_EmptyTags verifies that empty tags array returns all results unchanged

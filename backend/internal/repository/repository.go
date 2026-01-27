@@ -14,7 +14,28 @@ var (
 	ErrAlreadyExists = errors.New("item already exists")
 	ErrInvalidCursor = errors.New("invalid pagination cursor")
 	ErrInvalidInput  = errors.New("invalid input")
+	ErrUserNotFound  = errors.New("user not found")
+	ErrTrackNotFound = errors.New("track not found")
+	ErrPlaylistNotFound = errors.New("playlist not found")
 )
+
+// UserSearchResult represents a user in search results
+type UserSearchResult struct {
+	ID          string          `json:"id"`
+	Email       string          `json:"email"`
+	DisplayName string          `json:"displayName"`
+	Role        models.UserRole `json:"role"`
+	Disabled    bool            `json:"disabled"`
+	CreatedAt   time.Time       `json:"createdAt"`
+}
+
+// UserSettingsUpdate represents a partial update to user settings
+type UserSettingsUpdate struct {
+	Notifications *models.NotificationSettings `json:"notifications,omitempty"`
+	Privacy       *models.PrivacySettings      `json:"privacy,omitempty"`
+	Player        *models.PlayerSettings       `json:"player,omitempty"`
+	Library       *models.LibrarySettings      `json:"library,omitempty"`
+}
 
 // PaginatedResult represents a paginated query result
 type PaginatedResult[T any] struct {
@@ -58,14 +79,21 @@ type Repository interface {
 	// User operations
 	CreateUser(ctx context.Context, user models.User) error
 	GetUser(ctx context.Context, userID string) (*models.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+	GetUserByCognitoID(ctx context.Context, cognitoID string) (*models.User, error)
 	UpdateUser(ctx context.Context, user models.User) error
 	UpdateUserStats(ctx context.Context, userID string, storageUsed int64, trackCount, albumCount, playlistCount int) error
 	UpdateUserRole(ctx context.Context, userID string, role models.UserRole) error
 	ListUsersByRole(ctx context.Context, role models.UserRole, limit int, cursor string) (*PaginatedResult[models.User], error)
 	SearchUsers(ctx context.Context, query string, limit int) ([]models.User, error)
+	SearchUsersByEmail(ctx context.Context, emailPrefix string, limit int, cursor string) ([]UserSearchResult, string, error)
 	SetUserDisabled(ctx context.Context, userID string, disabled bool) error
 	GetUserDisplayName(ctx context.Context, userID string) (string, error)
 	GetFollowerCount(ctx context.Context, userID string) (int, error)
+
+	// User settings operations
+	GetUserSettings(ctx context.Context, userID string) (*models.UserSettings, error)
+	UpdateUserSettings(ctx context.Context, userID string, update *UserSettingsUpdate) (*models.UserSettings, error)
 
 	// Playlist operations
 	CreatePlaylist(ctx context.Context, playlist models.Playlist) error

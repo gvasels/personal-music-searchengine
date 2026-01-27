@@ -32,6 +32,11 @@ type UserService interface {
 	GetProfile(ctx context.Context, userID string) (*models.UserResponse, error)
 	UpdateProfile(ctx context.Context, userID string, req models.UpdateUserRequest) (*models.UserResponse, error)
 	CreateUserIfNotExists(ctx context.Context, userID, email, displayName string) (*models.User, error)
+	// User settings operations
+	GetSettings(ctx context.Context, userID string) (*models.UserSettings, error)
+	UpdateSettings(ctx context.Context, userID string, input *UserSettingsUpdateInput) (*models.UserSettings, error)
+	// Cognito user creation
+	CreateUserFromCognito(ctx context.Context, cognitoSub, email, displayName string) (*models.User, error)
 }
 
 // PlaylistService defines playlist operations

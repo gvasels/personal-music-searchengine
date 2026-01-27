@@ -82,6 +82,19 @@ func (m *MockCognitoClient) EnableUser(ctx context.Context, userID string) error
 	return args.Error(0)
 }
 
+func (m *MockCognitoClient) GetUserStatus(ctx context.Context, userID string) (bool, error) {
+	args := m.Called(ctx, userID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockCognitoClient) SearchUsers(ctx context.Context, query string, limit int) ([]CognitoUser, error) {
+	args := m.Called(ctx, query, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]CognitoUser), args.Error(1)
+}
+
 func TestNewAdminService(t *testing.T) {
 	t.Run("creates service with dependencies", func(t *testing.T) {
 		mockRepo := new(MockAdminRepository)
@@ -99,24 +112,38 @@ func TestAdminService_SearchUsers(t *testing.T) {
 		mockCognito := new(MockCognitoClient)
 
 		now := time.Now()
-		users := []models.User{
+		cognitoUsers := []CognitoUser{
 			{
-				ID:          "user-1",
-				Email:       "john@example.com",
-				DisplayName: "John Doe",
-				Role:        models.RoleSubscriber,
-				Timestamps:  models.Timestamps{CreatedAt: now},
+				ID:      "user-1",
+				Email:   "john@example.com",
+				Name:    "John Doe",
+				Status:  "CONFIRMED",
+				Enabled: true,
+				Created: now.Format(time.RFC3339),
 			},
 			{
-				ID:          "user-2",
-				Email:       "jane@example.com",
-				DisplayName: "Jane Smith",
-				Role:        models.RoleArtist,
-				Timestamps:  models.Timestamps{CreatedAt: now},
+				ID:      "user-2",
+				Email:   "jane@example.com",
+				Name:    "Jane Smith",
+				Status:  "CONFIRMED",
+				Enabled: true,
+				Created: now.Format(time.RFC3339),
 			},
 		}
 
-		mockRepo.On("SearchUsers", ctx, "john", 20).Return(users, nil)
+		mockCognito.On("SearchUsers", ctx, "john", 20).Return(cognitoUsers, nil)
+		mockRepo.On("GetUser", ctx, "user-1").Return(&models.User{
+			ID:          "user-1",
+			Email:       "john@example.com",
+			DisplayName: "John Doe",
+			Role:        models.RoleSubscriber,
+		}, nil)
+		mockRepo.On("GetUser", ctx, "user-2").Return(&models.User{
+			ID:          "user-2",
+			Email:       "jane@example.com",
+			DisplayName: "Jane Smith",
+			Role:        models.RoleArtist,
+		}, nil)
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		result, err := svc.SearchUsers(ctx, "john", 20)
@@ -124,6 +151,7 @@ func TestAdminService_SearchUsers(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, result, 2)
 		assert.Equal(t, "John Doe", result[0].DisplayName)
+		mockCognito.AssertExpectations(t)
 		mockRepo.AssertExpectations(t)
 	})
 
@@ -132,7 +160,7 @@ func TestAdminService_SearchUsers(t *testing.T) {
 		mockRepo := new(MockAdminRepository)
 		mockCognito := new(MockCognitoClient)
 
-		mockRepo.On("SearchUsers", ctx, "nonexistent", 20).Return([]models.User{}, nil)
+		mockCognito.On("SearchUsers", ctx, "nonexistent", 20).Return([]CognitoUser{}, nil)
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		result, err := svc.SearchUsers(ctx, "nonexistent", 20)
@@ -146,27 +174,27 @@ func TestAdminService_SearchUsers(t *testing.T) {
 		mockRepo := new(MockAdminRepository)
 		mockCognito := new(MockCognitoClient)
 
-		mockRepo.On("SearchUsers", ctx, "test", 20).Return([]models.User{}, nil)
+		mockCognito.On("SearchUsers", ctx, "test", 20).Return([]CognitoUser{}, nil)
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		_, err := svc.SearchUsers(ctx, "test", 0)
 
 		require.NoError(t, err)
-		mockRepo.AssertExpectations(t)
+		mockCognito.AssertExpectations(t)
 	})
 
-	t.Run("handles repository error", func(t *testing.T) {
+	t.Run("handles cognito error", func(t *testing.T) {
 		ctx := context.Background()
 		mockRepo := new(MockAdminRepository)
 		mockCognito := new(MockCognitoClient)
 
-		mockRepo.On("SearchUsers", ctx, "error", 20).Return(([]models.User)(nil), errors.New("db error"))
+		mockCognito.On("SearchUsers", ctx, "error", 20).Return(([]CognitoUser)(nil), errors.New("cognito error"))
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		_, err := svc.SearchUsers(ctx, "error", 20)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "db error")
+		assert.Contains(t, err.Error(), "cognito error")
 	})
 }
 
@@ -191,7 +219,7 @@ func TestAdminService_GetUserDetails(t *testing.T) {
 
 		mockRepo.On("GetUser", ctx, "user-123").Return(user, nil)
 		mockRepo.On("GetFollowerCount", ctx, "user-123").Return(5, nil)
-		mockCognito.On("GetUserGroups", ctx, "user-123").Return([]string{"subscriber"}, nil)
+		mockCognito.On("GetUserStatus", ctx, "user-123").Return(true, nil)
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		details, err := svc.GetUserDetails(ctx, "user-123")
@@ -202,6 +230,7 @@ func TestAdminService_GetUserDetails(t *testing.T) {
 		assert.Equal(t, 10, details.TrackCount)
 		assert.Equal(t, 5, details.FollowerCount)
 		mockRepo.AssertExpectations(t)
+		mockCognito.AssertExpectations(t)
 	})
 
 	t.Run("returns error when user not found", func(t *testing.T) {
@@ -232,7 +261,7 @@ func TestAdminService_GetUserDetails(t *testing.T) {
 
 		mockRepo.On("GetUser", ctx, "user-123").Return(user, nil)
 		mockRepo.On("GetFollowerCount", ctx, "user-123").Return(0, errors.New("count error"))
-		mockCognito.On("GetUserGroups", ctx, "user-123").Return([]string{"subscriber"}, nil)
+		mockCognito.On("GetUserStatus", ctx, "user-123").Return(true, nil)
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		details, err := svc.GetUserDetails(ctx, "user-123")
