@@ -60,6 +60,14 @@ func (m *MockTagRepository) GetTrack(ctx context.Context, userID, trackID string
 	return args.Get(0).(*models.Track), args.Error(1)
 }
 
+func (m *MockTagRepository) GetTrackByID(ctx context.Context, trackID string) (*models.Track, error) {
+	args := m.Called(ctx, trackID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Track), args.Error(1)
+}
+
 func (m *MockTagRepository) UpdateTrack(ctx context.Context, track models.Track) error {
 	args := m.Called(ctx, track)
 	return args.Error(0)

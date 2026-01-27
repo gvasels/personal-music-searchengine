@@ -49,6 +49,7 @@ type Repository interface {
 	// Track operations
 	CreateTrack(ctx context.Context, track models.Track) error
 	GetTrack(ctx context.Context, userID, trackID string) (*models.Track, error)
+	GetTrackByID(ctx context.Context, trackID string) (*models.Track, error) // Gets track by ID regardless of owner (for admin/visibility checks)
 	UpdateTrack(ctx context.Context, track models.Track) error
 	DeleteTrack(ctx context.Context, userID, trackID string) error
 	ListTracks(ctx context.Context, userID string, filter models.TrackFilter) (*PaginatedResult[models.Track], error)

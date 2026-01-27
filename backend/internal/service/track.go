@@ -22,13 +22,38 @@ func NewTrackService(repo repository.Repository, s3Repo repository.S3Repository)
 	}
 }
 
-func (s *trackService) GetTrack(ctx context.Context, userID, trackID string) (*models.TrackResponse, error) {
-	track, err := s.repo.GetTrack(ctx, userID, trackID)
-	if err != nil {
-		if err == repository.ErrNotFound {
-			return nil, models.NewNotFoundError("Track", trackID)
-		}
+func (s *trackService) GetTrack(ctx context.Context, requesterID, trackID string, hasGlobal bool) (*models.TrackResponse, error) {
+	var track *models.Track
+	var err error
+
+	// First, try to get as owner (most common case)
+	track, err = s.repo.GetTrack(ctx, requesterID, trackID)
+	if err != nil && err != repository.ErrNotFound {
 		return nil, err
+	}
+
+	// If not found as owner, check if requester has global access or track is public
+	if track == nil {
+		// Use GetTrackByID to find the track regardless of owner
+		track, err = s.repo.GetTrackByID(ctx, trackID)
+		if err != nil {
+			if err == repository.ErrNotFound {
+				return nil, models.NewNotFoundError("Track", trackID)
+			}
+			return nil, err
+		}
+
+		// Track exists but requester doesn't own it - check access
+		if hasGlobal {
+			// Admins can access any track
+		} else if track.Visibility == models.VisibilityPublic {
+			// Public tracks can be accessed by anyone
+		} else if track.Visibility == models.VisibilityUnlisted {
+			// Unlisted tracks can be accessed via direct link (treat as accessible)
+		} else {
+			// Private track - return 403 Forbidden
+			return nil, models.NewForbiddenError("you do not have permission to access this track")
+		}
 	}
 
 	coverArtURL := ""
@@ -130,6 +155,17 @@ func (s *trackService) DeleteTrack(ctx context.Context, userID, trackID string) 
 }
 
 func (s *trackService) ListTracks(ctx context.Context, userID string, filter models.TrackFilter) (*repository.PaginatedResult[models.TrackResponse], error) {
+	// For admin users (GlobalScope=true), get all tracks
+	if filter.GlobalScope {
+		return s.listAllTracks(ctx, userID, filter)
+	}
+
+	// For regular users: get own tracks + public tracks from others
+	return s.listTracksForRegularUser(ctx, userID, filter)
+}
+
+// listAllTracks returns all tracks for admin users
+func (s *trackService) listAllTracks(ctx context.Context, userID string, filter models.TrackFilter) (*repository.PaginatedResult[models.TrackResponse], error) {
 	result, err := s.repo.ListTracks(ctx, userID, filter)
 	if err != nil {
 		return nil, err
@@ -151,6 +187,63 @@ func (s *trackService) ListTracks(ctx context.Context, userID string, filter mod
 		Items:      responses,
 		NextCursor: result.NextCursor,
 		HasMore:    result.HasMore,
+	}, nil
+}
+
+// listTracksForRegularUser returns own tracks + public tracks for non-admin users
+func (s *trackService) listTracksForRegularUser(ctx context.Context, userID string, filter models.TrackFilter) (*repository.PaginatedResult[models.TrackResponse], error) {
+	// Get user's own tracks
+	ownResult, err := s.repo.ListTracks(ctx, userID, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	// Track IDs we've seen for deduplication
+	seenIDs := make(map[string]bool)
+	responses := make([]models.TrackResponse, 0)
+
+	// Process own tracks
+	for _, track := range ownResult.Items {
+		seenIDs[track.ID] = true
+		coverArtURL := ""
+		if track.CoverArtKey != "" {
+			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
+			if err == nil {
+				coverArtURL = url
+			}
+		}
+		responses = append(responses, track.ToResponse(coverArtURL))
+	}
+
+	// Also fetch public tracks from other users
+	limit := filter.Limit
+	if limit == 0 {
+		limit = 20
+	}
+	publicResult, err := s.repo.ListPublicTracks(ctx, limit, "")
+	if err == nil {
+		// Add public tracks not already in results (avoid duplicates for user's own public tracks)
+		for _, track := range publicResult.Items {
+			if seenIDs[track.ID] {
+				continue
+			}
+			seenIDs[track.ID] = true
+
+			coverArtURL := ""
+			if track.CoverArtKey != "" {
+				url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
+				if err == nil {
+					coverArtURL = url
+				}
+			}
+			responses = append(responses, track.ToResponse(coverArtURL))
+		}
+	}
+
+	return &repository.PaginatedResult[models.TrackResponse]{
+		Items:      responses,
+		NextCursor: ownResult.NextCursor,
+		HasMore:    ownResult.HasMore || (publicResult != nil && publicResult.HasMore),
 	}, nil
 }
 

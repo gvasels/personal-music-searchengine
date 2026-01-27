@@ -9,7 +9,7 @@ import (
 
 // TrackService defines track management operations
 type TrackService interface {
-	GetTrack(ctx context.Context, userID, trackID string) (*models.TrackResponse, error)
+	GetTrack(ctx context.Context, requesterID, trackID string, hasGlobal bool) (*models.TrackResponse, error)
 	UpdateTrack(ctx context.Context, userID, trackID string, req models.UpdateTrackRequest) (*models.TrackResponse, error)
 	DeleteTrack(ctx context.Context, userID, trackID string) error
 	ListTracks(ctx context.Context, userID string, filter models.TrackFilter) (*repository.PaginatedResult[models.TrackResponse], error)

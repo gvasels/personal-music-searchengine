@@ -100,11 +100,13 @@ func (h *AdminHandler) UpdateUserRole(c echo.Context) error {
 		return handleError(c, err)
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"userId": userID,
-		"role":   newRole,
-		"message": "User role updated successfully",
-	})
+	// Return updated user details so frontend cache stays consistent
+	details, err := h.adminService.GetUserDetails(c.Request().Context(), userID)
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	return c.JSON(http.StatusOK, details)
 }
 
 // UpdateUserStatus handles PUT /api/v1/admin/users/:id/status
@@ -138,14 +140,11 @@ func (h *AdminHandler) UpdateUserStatus(c echo.Context) error {
 		return handleError(c, err)
 	}
 
-	status := "enabled"
-	if req.Disabled {
-		status = "disabled"
+	// Return updated user details so frontend cache stays consistent
+	details, err := h.adminService.GetUserDetails(c.Request().Context(), userID)
+	if err != nil {
+		return handleError(c, err)
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"userId":   userID,
-		"disabled": req.Disabled,
-		"message":  "User " + status + " successfully",
-	})
+	return c.JSON(http.StatusOK, details)
 }

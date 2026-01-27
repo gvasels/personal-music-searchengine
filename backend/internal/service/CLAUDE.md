@@ -33,12 +33,25 @@ Business logic layer implementing domain operations for the Personal Music Searc
 ## Service Interfaces
 
 ### TrackService
-- `GetTrack` - Get track with cover art URL
+- `GetTrack(ctx, userID, trackID, hasGlobal)` - Get track with visibility enforcement
+  - **hasGlobal=true**: Admin/global access - can access any track
+  - **hasGlobal=false**: Regular user - must own track OR track must be public/unlisted
+  - Returns **403 Forbidden** for unauthorized access to private tracks
+  - Returns **404 Not Found** only for truly non-existent tracks
 - `UpdateTrack` - Update track metadata
 - `DeleteTrack` - Delete track and S3 files
-- `ListTracks` - Paginated track listing with cover art URLs
+- `ListTracks(ctx, userID, hasGlobal, filter)` - Paginated track listing with visibility filtering
+  - **hasGlobal=true**: Returns ALL tracks (admin view)
+  - **hasGlobal=false**: Returns only user's own tracks + public tracks from others
 - `ListTracksByArtist` - Query tracks by artist
 - `IncrementPlayCount` - Update play count and last played
+
+### TrackVisibilityService
+- `ListTracksWithVisibility` - List tracks with proper visibility enforcement and owner display names
+  - Admins see all tracks globally
+  - Regular users see own tracks + public tracks
+  - Deduplicates public tracks that appear in both queries
+  - Sets `OwnerDisplayName` to "You" for own tracks
 
 ### AlbumService
 - `GetAlbum` - Get album with tracks
@@ -144,6 +157,13 @@ Services use the repository's `PaginatedResult[T]` type with opaque cursors. The
 
 ### Error Handling
 Services convert repository `ErrNotFound` to `models.NewNotFoundError()` for proper API error responses.
+
+### Access Control & Visibility
+Track visibility is enforced at the service layer (not just handlers):
+- **403 Forbidden**: Returned when user lacks permission to access a track they aren't authorized to view
+- **404 Not Found**: Returned only when the resource truly doesn't exist
+- The `hasGlobal` parameter determines if the user has admin/global read permissions
+- Visibility levels: `private` (owner only), `unlisted` (anyone with link), `public` (discoverable)
 
 ### Async Play Count
 Play count is incremented asynchronously in a goroutine to avoid blocking the stream URL response.

@@ -149,8 +149,9 @@ TanStack Router file-based routing:
 | Route | File | Description |
 |-------|------|-------------|
 | `/` | `index.tsx` | Home page with library stats |
-| `/__root` | `__root.tsx` | Root layout with auth guard |
+| `/__root` | `__root.tsx` | Root layout with auth guard and guest route protection |
 | `/login` | `login.tsx` | Login page with Cognito auth |
+| `/permission-denied` | `permission-denied.tsx` | Access denied page for unauthenticated users |
 | `/tracks` | `tracks/index.tsx` | Track listing |
 | `/tracks/$trackId` | `tracks/$trackId.tsx` | Track detail with TagInput |
 | `/albums` | `albums/index.tsx` | Album grid view |
@@ -163,6 +164,27 @@ TanStack Router file-based routing:
 | `/tags/$tagName` | `tags/$tagName.tsx` | Tracks by tag |
 | `/upload` | `upload.tsx` | File upload page |
 | `/search` | `search.tsx` | Search results page |
+
+### Route Protection
+
+The `__root.tsx` implements guest user route protection:
+
+**Public Routes** (accessible without authentication):
+- `/` - Dashboard/home page
+- `/login` - Login page
+- `/permission-denied` - Access denied page
+
+**Protected Routes** (require authentication):
+All other routes redirect unauthenticated users to `/permission-denied`.
+
+```typescript
+// PUBLIC_ROUTES constant in __root.tsx
+const PUBLIC_ROUTES = ['/', '/login', '/permission-denied'];
+
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.includes(pathname);
+}
+```
 
 ## DaisyUI Themes
 

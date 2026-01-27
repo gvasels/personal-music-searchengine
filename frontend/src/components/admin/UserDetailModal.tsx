@@ -160,28 +160,28 @@ export function UserDetailModal({ isOpen, onClose, userId }: UserDetailModalProp
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
               <div className="stat bg-base-200 rounded-lg p-3">
                 <div className="stat-title text-xs">Tracks</div>
-                <div className="stat-value text-lg">{user.trackCount}</div>
+                <div className="stat-value text-lg">{user.trackCount ?? 0}</div>
               </div>
               <div className="stat bg-base-200 rounded-lg p-3">
                 <div className="stat-title text-xs">Playlists</div>
-                <div className="stat-value text-lg">{user.playlistCount}</div>
+                <div className="stat-value text-lg">{user.playlistCount ?? 0}</div>
               </div>
               <div className="stat bg-base-200 rounded-lg p-3">
                 <div className="stat-title text-xs">Albums</div>
-                <div className="stat-value text-lg">{user.albumCount}</div>
+                <div className="stat-value text-lg">{user.albumCount ?? 0}</div>
               </div>
               <div className="stat bg-base-200 rounded-lg p-3">
                 <div className="stat-title text-xs">Followers</div>
-                <div className="stat-value text-lg">{user.followerCount}</div>
+                <div className="stat-value text-lg">{user.followerCount ?? 0}</div>
               </div>
               <div className="stat bg-base-200 rounded-lg p-3">
                 <div className="stat-title text-xs">Following</div>
-                <div className="stat-value text-lg">{user.followingCount}</div>
+                <div className="stat-value text-lg">{user.followingCount ?? 0}</div>
               </div>
               <div className="stat bg-base-200 rounded-lg p-3">
                 <div className="stat-title text-xs">Storage</div>
                 <div className="stat-value text-lg">
-                  {(user.storageUsed / (1024 * 1024)).toFixed(1)} MB
+                  {((user.storageUsed ?? 0) / (1024 * 1024)).toFixed(1)} MB
                 </div>
               </div>
             </div>

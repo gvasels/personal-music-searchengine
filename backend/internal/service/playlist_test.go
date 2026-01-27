@@ -84,6 +84,14 @@ func (m *MockPlaylistRepository) GetTrack(ctx context.Context, userID, trackID s
 	return args.Get(0).(*models.Track), args.Error(1)
 }
 
+func (m *MockPlaylistRepository) GetTrackByID(ctx context.Context, trackID string) (*models.Track, error) {
+	args := m.Called(ctx, trackID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Track), args.Error(1)
+}
+
 // Stub implementations for Repository interface (required but not used in playlist tests)
 func (m *MockPlaylistRepository) CreateTrack(ctx context.Context, track models.Track) error    { return nil }
 func (m *MockPlaylistRepository) UpdateTrack(ctx context.Context, track models.Track) error    { return nil }
