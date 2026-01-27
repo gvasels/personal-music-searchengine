@@ -86,6 +86,8 @@ frontend/
 | `useSearch` | `useSearch.ts` | Search queries and autocomplete with `searchKeys` factory |
 | `usePlaylists` | `usePlaylists.ts` | Playlist CRUD queries with `playlistKeys` factory |
 | `useTags` | `useTags.ts` | Tag queries and tracks-by-tag with `tagKeys` factory |
+| `useFeatureFlags` | `useFeatureFlags.ts` | Feature flags with role-based access, respects simulation |
+| `useRoleSimulation` | `useRoleSimulation.ts` | Admin role simulation for testing UI as different roles |
 
 ## Utilities (`src/lib/`)
 
@@ -131,6 +133,12 @@ export const usePlayerStore: {
 // Theme store with persistence (themeStore.ts)
 export const useThemeStore: {
   theme, toggleTheme
+}
+
+// Role simulation store with persistence (roleSimulationStore.ts)
+export const useRoleSimulationStore: {
+  simulatedRole, startedAt,
+  setSimulatedRole, clearSimulation
 }
 ```
 

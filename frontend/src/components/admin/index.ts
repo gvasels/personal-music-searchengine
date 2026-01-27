@@ -1,7 +1,5 @@
-/**
- * Admin Components - Admin Panel & Track Visibility Feature
- * Barrel export for admin user management components
- */
+export { RoleSwitcher } from './RoleSwitcher';
+export { SimulationBanner } from './SimulationBanner';
 export { UserSearchForm } from './UserSearchForm';
 export { UserCard } from './UserCard';
 export { UserDetailModal } from './UserDetailModal';

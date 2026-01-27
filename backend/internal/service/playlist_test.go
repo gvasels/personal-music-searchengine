@@ -290,6 +290,23 @@ func (m *MockPlaylistRepository) GetFollowerCount(ctx context.Context, userID st
 	return 0, nil
 }
 
+// User settings methods
+func (m *MockPlaylistRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) GetUserByCognitoID(ctx context.Context, cognitoID string) (*models.User, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) SearchUsersByEmail(ctx context.Context, emailPrefix string, limit int, cursor string) ([]repository.UserSearchResult, string, error) {
+	return nil, "", nil
+}
+func (m *MockPlaylistRepository) GetUserSettings(ctx context.Context, userID string) (*models.UserSettings, error) {
+	return nil, nil
+}
+func (m *MockPlaylistRepository) UpdateUserSettings(ctx context.Context, userID string, update *repository.UserSettingsUpdate) (*models.UserSettings, error) {
+	return nil, nil
+}
+
 // MockPlaylistS3Repository provides mockable S3 repository methods
 type MockPlaylistS3Repository struct {
 	mock.Mock

@@ -88,7 +88,7 @@ locals {
   cognito_user_pool_arn      = data.terraform_remote_state.shared.outputs.cognito_user_pool_arn
   lambda_role_arn            = data.terraform_remote_state.global.outputs.lambda_execution_role_arn
   # Derive role name from ARN (arn:aws:iam::ACCOUNT:role/ROLE_NAME)
-  lambda_role_name           = element(split("/", data.terraform_remote_state.global.outputs.lambda_execution_role_arn), 1)
+  lambda_role_name = element(split("/", data.terraform_remote_state.global.outputs.lambda_execution_role_arn), 1)
 }
 
 # Outputs
