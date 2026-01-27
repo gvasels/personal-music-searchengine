@@ -17,6 +17,8 @@ type S3Client interface {
 	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 	GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
+	DeleteObjects(ctx context.Context, params *s3.DeleteObjectsInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectsOutput, error)
+	ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
 	CopyObject(ctx context.Context, params *s3.CopyObjectInput, optFns ...func(*s3.Options)) (*s3.CopyObjectOutput, error)
 	HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
 	CreateMultipartUpload(ctx context.Context, params *s3.CreateMultipartUploadInput, optFns ...func(*s3.Options)) (*s3.CreateMultipartUploadOutput, error)
@@ -188,6 +190,58 @@ func (r *S3RepositoryImpl) DeleteObject(ctx context.Context, key string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to delete object: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteByPrefix deletes all objects with the given prefix from S3
+func (r *S3RepositoryImpl) DeleteByPrefix(ctx context.Context, prefix string) error {
+	if prefix == "" {
+		return fmt.Errorf("prefix cannot be empty")
+	}
+
+	// List all objects with the prefix
+	var continuationToken *string
+	for {
+		listResult, err := r.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket:            aws.String(r.bucketName),
+			Prefix:            aws.String(prefix),
+			ContinuationToken: continuationToken,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to list objects with prefix %s: %w", prefix, err)
+		}
+
+		if len(listResult.Contents) == 0 {
+			break
+		}
+
+		// Build list of objects to delete
+		objectsToDelete := make([]types.ObjectIdentifier, 0, len(listResult.Contents))
+		for _, obj := range listResult.Contents {
+			objectsToDelete = append(objectsToDelete, types.ObjectIdentifier{
+				Key: obj.Key,
+			})
+		}
+
+		// Delete the batch of objects
+		_, err = r.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+			Bucket: aws.String(r.bucketName),
+			Delete: &types.Delete{
+				Objects: objectsToDelete,
+				Quiet:   aws.Bool(true),
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to delete objects with prefix %s: %w", prefix, err)
+		}
+
+		// Check if there are more objects
+		if !*listResult.IsTruncated {
+			break
+		}
+		continuationToken = listResult.NextContinuationToken
 	}
 
 	return nil

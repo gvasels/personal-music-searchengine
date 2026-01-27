@@ -162,6 +162,7 @@ type S3Repository interface {
 
 	// Object operations
 	DeleteObject(ctx context.Context, key string) error
+	DeleteByPrefix(ctx context.Context, prefix string) error // Deletes all objects with the given prefix
 	CopyObject(ctx context.Context, sourceKey, destKey string) error
 	GetObjectMetadata(ctx context.Context, key string) (map[string]string, error)
 	ObjectExists(ctx context.Context, key string) (bool, error)

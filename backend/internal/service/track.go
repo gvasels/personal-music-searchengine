@@ -166,6 +166,13 @@ func (s *trackService) DeleteTrack(ctx context.Context, userID, trackID string) 
 		_ = s.s3Repo.DeleteObject(ctx, track.CoverArtKey)
 	}
 
+	// Delete HLS transcoded files if they exist (best effort)
+	// HLS files are stored at hls/{userID}/{trackID}/
+	if track.HLSPlaylistKey != "" {
+		hlsPrefix := "hls/" + userID + "/" + trackID + "/"
+		_ = s.s3Repo.DeleteByPrefix(ctx, hlsPrefix)
+	}
+
 	return nil
 }
 
