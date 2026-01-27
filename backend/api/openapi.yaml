@@ -40,6 +40,24 @@ tags:
     description: Audio streaming and playback
 
 paths:
+  /features:
+    get:
+      tags: [User]
+      summary: Get user's feature flags based on role
+      description: |
+        Returns the current user's role-based feature flags. Features are determined
+        by the user's Cognito group membership (admin, artist, subscriber).
+      operationId: getUserFeatures
+      responses:
+        '200':
+          description: User features
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /me:
     get:
       tags: [User]
@@ -961,6 +979,40 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
+    FeaturesResponse:
+      type: object
+      required: [tier, role, features]
+      description: User's role-based feature flags
+      properties:
+        tier:
+          type: string
+          description: Legacy tier mapping (creator, pro, free)
+          enum: [creator, pro, free]
+        role:
+          type: string
+          description: User's role from Cognito groups
+          enum: [admin, artist, subscriber]
+        features:
+          type: object
+          description: Map of feature flags and their enabled status
+          additionalProperties:
+            type: boolean
+          example:
+            SEARCH: true
+            PLAYLISTS: true
+            TAGS: true
+            CRATES: true
+            HQ_STREAMING: true
+            HOT_CUES: true
+            BPM_MATCHING: true
+            KEY_MATCHING: true
+            WAVEFORMS: true
+            BULK_EDIT: true
+            MIX_RECORDING: true
+            ADVANCED_STATS: true
+            API_ACCESS: true
+            UNLIMITED_STORAGE: true
+
     ErrorResponse:
       type: object
       required: [error]
@@ -1453,14 +1505,18 @@ components:
 
     ReorderPlaylistTracksRequest:
       type: object
-      required: [trackId, newPosition]
+      required: [trackIds]
+      description: |
+        Reorder tracks by providing the complete list of track IDs in the desired order.
+        All track IDs currently in the playlist must be included.
       properties:
-        trackId:
-          type: string
-          format: uuid
-        newPosition:
-          type: integer
-          minimum: 0
+        trackIds:
+          type: array
+          description: Complete list of track IDs in the new order
+          minItems: 1
+          items:
+            type: string
+            format: uuid
 
     PlaylistListResponse:
       type: object

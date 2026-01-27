@@ -25,8 +25,11 @@ All routes are registered under `/api/v1`:
 ### User Routes
 | Method | Path | Handler | Description |
 |--------|------|---------|-------------|
+| GET | `/features` | GetFeatures | Get user's role-based feature flags |
 | GET | `/me` | GetProfile | Get current user's profile |
 | PUT | `/me` | UpdateProfile | Update current user's profile |
+| GET | `/users/me/settings` | GetSettings | Get user settings |
+| PATCH | `/users/me/settings` | UpdateSettings | Update user settings |
 
 ### Track Routes
 | Method | Path | Handler | Description |

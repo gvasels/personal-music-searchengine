@@ -489,6 +489,16 @@ npm run lint
 
 All endpoints require authentication via Cognito JWT.
 
+### User
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/features` | Get user's role-based feature flags |
+| GET | `/api/v1/users/me` | Get current user's profile |
+| PUT | `/api/v1/users/me` | Update current user's profile |
+| GET | `/api/v1/users/me/settings` | Get user settings |
+| PATCH | `/api/v1/users/me/settings` | Update user settings |
+| GET | `/api/v1/users/me/following` | Get artists user is following |
+
 ### Tracks
 | Method | Path | Description |
 |--------|------|-------------|
@@ -522,6 +532,7 @@ All endpoints require authentication via Cognito JWT.
 | DELETE | `/api/v1/playlists/:id` | Delete playlist |
 | POST | `/api/v1/playlists/:id/tracks` | Add tracks |
 | DELETE | `/api/v1/playlists/:id/tracks` | Remove tracks |
+| PUT | `/api/v1/playlists/:id/tracks/reorder` | Reorder tracks (full array) |
 
 ### Tags
 | Method | Path | Description |
