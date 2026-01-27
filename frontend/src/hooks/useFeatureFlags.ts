@@ -1,10 +1,12 @@
 /**
  * useFeatureFlags Hook
  * Fetches and caches user features with role-based access
+ * Respects role simulation for admin testing
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useAuth } from './useAuth';
+import { useRoleSimulation } from './useRoleSimulation';
 import { getUserFeatures } from '@/lib/api/features';
 import { useFeatureFlagStore } from '@/lib/store/featureFlagStore';
 import type { FeatureKey, UserRole } from '@/types';
@@ -17,6 +19,7 @@ export const featureKeys = {
 
 export function useFeatureFlags() {
   const { isAuthenticated, user } = useAuth();
+  const { effectiveRole, isSimulating } = useRoleSimulation();
   const queryClient = useQueryClient();
   const { role, features, isLoaded, setFeatures, isEnabled: storeIsEnabled, reset } = useFeatureFlagStore();
 
@@ -57,9 +60,11 @@ export function useFeatureFlags() {
   };
 
   // Check if user has at least a certain role level
+  // Uses effective role (simulated or actual) for UI rendering
   const hasRole = (minRole: UserRole): boolean => {
     const roleOrder: UserRole[] = ['guest', 'subscriber', 'artist', 'admin'];
-    const userRoleIndex = roleOrder.indexOf(role);
+    const currentRole = isSimulating ? effectiveRole : role;
+    const userRoleIndex = roleOrder.indexOf(currentRole);
     const requiredRoleIndex = roleOrder.indexOf(minRole);
     return userRoleIndex >= requiredRoleIndex;
   };
@@ -70,7 +75,8 @@ export function useFeatureFlags() {
   };
 
   return {
-    role,
+    role: isSimulating ? effectiveRole : role,
+    actualRole: role,
     features,
     isLoading: query.isLoading,
     isError: query.isError,
@@ -79,6 +85,7 @@ export function useFeatureFlags() {
     hasRole,
     invalidate,
     refetch: query.refetch,
+    isSimulating,
   };
 }
 

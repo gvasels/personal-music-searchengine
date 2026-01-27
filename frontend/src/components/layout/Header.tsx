@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useThemeStore } from '@/lib/store/themeStore';
 import { useAuth } from '@/hooks/useAuth';
 import { SearchBar } from '@/components/search/SearchBar';
+import { RoleSwitcher } from '@/components/admin/RoleSwitcher';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -39,7 +40,8 @@ export function Header({ onMenuClick }: HeaderProps) {
           <SearchBar />
         </div>
       )}
-      <div className="flex-none gap-2 z-10">
+      <div className="flex-none gap-2 z-10 flex items-center">
+        {isAuthenticated && <RoleSwitcher />}
         <button
           onClick={toggleTheme}
           className="btn btn-ghost btn-circle text-secondary-content hover:bg-secondary-content/20"

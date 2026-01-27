@@ -3,6 +3,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { PlayerBar } from '../player/PlayerBar';
+import { SimulationBanner } from '../admin/SimulationBanner';
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-base-200 flex flex-col">
       <Header onMenuClick={() => setMobileNavOpen(true)} />
+      <SimulationBanner />
       <div className="flex flex-1">
         {/* Desktop sidebar */}
         <Sidebar />
