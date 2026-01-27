@@ -8,7 +8,8 @@ import (
 // ListTracks returns a paginated list of tracks
 // If user has GLOBAL permission, returns tracks from all users
 func (h *Handlers) ListTracks(c echo.Context) error {
-	auth := getAuthContext(c)
+	// Use DB role for real-time permission checking
+	auth := h.getAuthContextWithDBRole(c)
 	if auth.UserID == "" {
 		return handleError(c, models.ErrUnauthorized)
 	}
@@ -18,7 +19,7 @@ func (h *Handlers) ListTracks(c echo.Context) error {
 		return handleError(c, models.ErrBadRequest)
 	}
 
-	// Set global scope if user has GLOBAL permission
+	// Set global scope if user has GLOBAL permission (admin)
 	filter.GlobalScope = auth.HasGlobal
 
 	tracks, err := h.services.Track.ListTracks(c.Request().Context(), auth.UserID, filter)
@@ -33,7 +34,8 @@ func (h *Handlers) ListTracks(c echo.Context) error {
 // Respects visibility rules: owners and admins can access any track,
 // others can only access public/unlisted tracks
 func (h *Handlers) GetTrack(c echo.Context) error {
-	auth := getAuthContext(c)
+	// Use DB role for real-time permission checking
+	auth := h.getAuthContextWithDBRole(c)
 	if auth.UserID == "" {
 		return handleError(c, models.ErrUnauthorized)
 	}

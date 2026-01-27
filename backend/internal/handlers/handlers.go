@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -35,6 +36,7 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 	api.GET("/users/me/settings", h.GetSettings)
 	api.PATCH("/users/me/settings", h.UpdateSettings)
 	api.GET("/features", h.GetFeatures)
+	api.GET("/stats", h.GetLibraryStats)
 
 	// Track routes
 	api.GET("/tracks", h.ListTracks)
@@ -140,7 +142,6 @@ func getAuthContext(c echo.Context) AuthContext {
 			}
 
 			// Extract Cognito groups from cognito:groups claim
-			// Groups come as a space-separated string or array
 			if groups, exists := claims["cognito:groups"]; exists {
 				ctx.Groups = parseGroups(groups)
 				ctx.HasGlobal = containsGlobalGroup(ctx.Groups)
@@ -161,24 +162,46 @@ func getAuthContext(c echo.Context) AuthContext {
 	return ctx
 }
 
-// parseGroups parses Cognito groups from JWT claim (can be string or []interface{})
+// parseGroups parses Cognito groups from JWT claim
+// Groups can come as:
+// - JSON array: ["admin","GlobalReaders"]
+// - Bracketed space-separated: [admin GlobalReaders]
+// - Plain space-separated: admin GlobalReaders
 func parseGroups(groupsClaim string) []string {
 	if groupsClaim == "" {
 		return nil
 	}
-	// Cognito groups come as space-separated in the JWT
+
+	// Try parsing as JSON array first
+	if strings.HasPrefix(groupsClaim, "[") {
+		var groups []string
+		if err := json.Unmarshal([]byte(groupsClaim), &groups); err == nil {
+			return groups
+		}
+		// Not valid JSON - strip brackets and parse as space-separated
+		// API Gateway formats arrays as "[admin GlobalReaders]"
+		groupsClaim = strings.TrimPrefix(groupsClaim, "[")
+		groupsClaim = strings.TrimSuffix(groupsClaim, "]")
+		groupsClaim = strings.TrimSpace(groupsClaim)
+	}
+
+	if groupsClaim == "" {
+		return nil
+	}
+
+	// Space-separated format
 	return strings.Split(groupsClaim, " ")
 }
 
 // containsGlobalGroup checks if user belongs to a group with global read access
 func containsGlobalGroup(groups []string) bool {
 	globalGroups := map[string]bool{
-		"GlobalReaders": true,
-		"Admin":         true,
-		"Admins":        true,
+		"globalreaders": true,
+		"admin":         true,
+		"admins":        true,
 	}
 	for _, g := range groups {
-		if globalGroups[g] {
+		if globalGroups[strings.ToLower(g)] {
 			return true
 		}
 	}
@@ -189,6 +212,28 @@ func containsGlobalGroup(groups []string) bool {
 // In production, this comes from the Cognito JWT authorizer via API Gateway
 func getUserIDFromContext(c echo.Context) string {
 	return getAuthContext(c).UserID
+}
+
+// getAuthContextWithDBRole returns AuthContext with the role checked from DynamoDB.
+// This allows role changes to take effect immediately without re-login.
+// Use this for authorization decisions that need real-time role checking.
+func (h *Handlers) getAuthContextWithDBRole(c echo.Context) AuthContext {
+	ctx := getAuthContext(c)
+	if ctx.UserID == "" {
+		return ctx
+	}
+
+	// Fetch the current role from DB - this overrides JWT groups
+	dbRole, err := h.services.User.GetUserRole(c.Request().Context(), ctx.UserID)
+	if err != nil {
+		// Fall back to JWT groups if DB lookup fails
+		return ctx
+	}
+
+	// Update HasGlobal based on DB role
+	ctx.HasGlobal = dbRole == models.RoleAdmin
+
+	return ctx
 }
 
 // handleError converts errors to appropriate HTTP responses

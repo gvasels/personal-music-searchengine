@@ -25,11 +25,16 @@ func NewTrackService(repo repository.Repository, s3Repo repository.S3Repository)
 func (s *trackService) GetTrack(ctx context.Context, requesterID, trackID string, hasGlobal bool) (*models.TrackResponse, error) {
 	var track *models.Track
 	var err error
+	var isOwner bool
 
 	// First, try to get as owner (most common case)
 	track, err = s.repo.GetTrack(ctx, requesterID, trackID)
 	if err != nil && err != repository.ErrNotFound {
 		return nil, err
+	}
+
+	if track != nil {
+		isOwner = true
 	}
 
 	// If not found as owner, check if requester has global access or track is public
@@ -62,6 +67,16 @@ func (s *trackService) GetTrack(ctx context.Context, requesterID, trackID string
 		url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
 		if err == nil {
 			coverArtURL = url
+		}
+	}
+
+	// For admin view of other users' tracks, populate owner display name
+	if hasGlobal && !isOwner && track.UserID != "" {
+		name, err := s.repo.GetUserDisplayName(ctx, track.UserID)
+		if err == nil && name != "" {
+			track.OwnerDisplayName = name
+		} else {
+			track.OwnerDisplayName = track.UserID
 		}
 	}
 
@@ -164,11 +179,31 @@ func (s *trackService) ListTracks(ctx context.Context, userID string, filter mod
 	return s.listTracksForRegularUser(ctx, userID, filter)
 }
 
-// listAllTracks returns all tracks for admin users
+// listAllTracks returns all tracks for admin users, including owner display names
 func (s *trackService) listAllTracks(ctx context.Context, userID string, filter models.TrackFilter) (*repository.PaginatedResult[models.TrackResponse], error) {
 	result, err := s.repo.ListTracks(ctx, userID, filter)
 	if err != nil {
 		return nil, err
+	}
+
+	// Collect unique user IDs to look up display names
+	userIDSet := make(map[string]bool)
+	for _, track := range result.Items {
+		if track.UserID != "" {
+			userIDSet[track.UserID] = true
+		}
+	}
+
+	// Look up display names for all unique users
+	displayNames := make(map[string]string)
+	for uid := range userIDSet {
+		name, err := s.repo.GetUserDisplayName(ctx, uid)
+		if err == nil && name != "" {
+			displayNames[uid] = name
+		} else {
+			// Fallback to user ID if display name not found
+			displayNames[uid] = uid
+		}
 	}
 
 	responses := make([]models.TrackResponse, 0, len(result.Items))
@@ -179,6 +214,13 @@ func (s *trackService) listAllTracks(ctx context.Context, userID string, filter 
 			if err == nil {
 				coverArtURL = url
 			}
+		}
+		// Set owner display name for admin view
+		// Show "You" for current user's tracks, otherwise show the owner's display name
+		if track.UserID == userID {
+			track.OwnerDisplayName = "You"
+		} else {
+			track.OwnerDisplayName = displayNames[track.UserID]
 		}
 		responses = append(responses, track.ToResponse(coverArtURL))
 	}
@@ -303,4 +345,78 @@ func (s *trackService) UpdateVisibility(ctx context.Context, userID, trackID str
 
 	// Update visibility in repository (this also updates GSI3 keys for public discovery)
 	return s.repo.UpdateTrackVisibility(ctx, userID, trackID, visibility)
+}
+
+// GetLibraryStats returns aggregated library statistics based on scope
+func (s *trackService) GetLibraryStats(ctx context.Context, userID string, scope StatsScope, hasGlobal bool) (*LibraryStats, error) {
+	var tracks []models.Track
+
+	switch scope {
+	case StatsScopeAll:
+		// Admin scope - get all tracks across all users
+		if !hasGlobal {
+			return nil, models.NewForbiddenError("admin access required for global stats")
+		}
+		filter := models.TrackFilter{Limit: 10000, GlobalScope: true}
+		result, err := s.repo.ListTracks(ctx, userID, filter)
+		if err != nil {
+			return nil, err
+		}
+		tracks = result.Items
+
+	case StatsScopePublic:
+		// Public scope - only public tracks (for subscriber simulation)
+		result, err := s.repo.ListPublicTracks(ctx, 10000, "")
+		if err != nil {
+			return nil, err
+		}
+		tracks = result.Items
+
+	case StatsScopeOwn:
+		fallthrough
+	default:
+		// Own scope - user's own tracks + public tracks
+		filter := models.TrackFilter{Limit: 10000, GlobalScope: false}
+		result, err := s.repo.ListTracks(ctx, userID, filter)
+		if err != nil {
+			return nil, err
+		}
+		tracks = result.Items
+
+		// Also add public tracks from others
+		publicResult, err := s.repo.ListPublicTracks(ctx, 10000, "")
+		if err == nil {
+			seenIDs := make(map[string]bool)
+			for _, t := range tracks {
+				seenIDs[t.ID] = true
+			}
+			for _, t := range publicResult.Items {
+				if !seenIDs[t.ID] {
+					tracks = append(tracks, t)
+				}
+			}
+		}
+	}
+
+	// Aggregate stats
+	albums := make(map[string]bool)
+	artists := make(map[string]bool)
+	totalDuration := 0
+
+	for _, track := range tracks {
+		if track.Album != "" {
+			albums[track.Album] = true
+		}
+		if track.Artist != "" {
+			artists[track.Artist] = true
+		}
+		totalDuration += track.Duration
+	}
+
+	return &LibraryStats{
+		TotalTracks:   len(tracks),
+		TotalAlbums:   len(albums),
+		TotalArtists:  len(artists),
+		TotalDuration: totalDuration,
+	}, nil
 }

@@ -7,6 +7,23 @@ import (
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
 )
 
+// LibraryStats represents aggregated library statistics
+type LibraryStats struct {
+	TotalTracks   int `json:"totalTracks"`
+	TotalAlbums   int `json:"totalAlbums"`
+	TotalArtists  int `json:"totalArtists"`
+	TotalDuration int `json:"totalDuration"` // in seconds
+}
+
+// StatsScope defines what data to include in stats
+type StatsScope string
+
+const (
+	StatsScopeOwn    StatsScope = "own"    // User's own tracks only
+	StatsScopePublic StatsScope = "public" // Only public tracks (for subscriber view)
+	StatsScopeAll    StatsScope = "all"    // All tracks (admin only)
+)
+
 // TrackService defines track management operations
 type TrackService interface {
 	GetTrack(ctx context.Context, requesterID, trackID string, hasGlobal bool) (*models.TrackResponse, error)
@@ -17,6 +34,8 @@ type TrackService interface {
 	IncrementPlayCount(ctx context.Context, userID, trackID string) error
 	// Visibility operations
 	UpdateVisibility(ctx context.Context, userID, trackID string, visibility models.TrackVisibility) error
+	// Stats operations
+	GetLibraryStats(ctx context.Context, userID string, scope StatsScope, hasGlobal bool) (*LibraryStats, error)
 }
 
 // AlbumService defines album management operations
@@ -37,6 +56,8 @@ type UserService interface {
 	UpdateSettings(ctx context.Context, userID string, input *UserSettingsUpdateInput) (*models.UserSettings, error)
 	// Cognito user creation
 	CreateUserFromCognito(ctx context.Context, cognitoSub, email, displayName string) (*models.User, error)
+	// Role operations - get current role from database for real-time permission checking
+	GetUserRole(ctx context.Context, userID string) (models.UserRole, error)
 }
 
 // PlaylistService defines playlist operations

@@ -971,7 +971,7 @@ func (r *DynamoDBRepository) SetUserDisabled(ctx context.Context, userID string,
 	return nil
 }
 
-// GetUserDisplayName returns a user's display name
+// GetUserDisplayName returns a user's display name, falling back to email if not set
 func (r *DynamoDBRepository) GetUserDisplayName(ctx context.Context, userID string) (string, error) {
 	user, err := r.GetUser(ctx, userID)
 	if err != nil {
@@ -979,6 +979,9 @@ func (r *DynamoDBRepository) GetUserDisplayName(ctx context.Context, userID stri
 	}
 	if user.DisplayName != "" {
 		return user.DisplayName, nil
+	}
+	if user.Email != "" {
+		return user.Email, nil
 	}
 	return "Unknown", nil
 }

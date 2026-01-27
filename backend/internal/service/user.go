@@ -174,3 +174,17 @@ func (s *userService) CreateUserFromCognito(ctx context.Context, cognitoSub, ema
 
 	return &user, nil
 }
+
+// GetUserRole returns the user's current role from the database.
+// This allows real-time role checking without requiring re-login.
+func (s *userService) GetUserRole(ctx context.Context, userID string) (models.UserRole, error) {
+	user, err := s.repo.GetUser(ctx, userID)
+	if err != nil {
+		if err == repository.ErrNotFound || err == repository.ErrUserNotFound {
+			// User not in DB yet - default to subscriber
+			return models.RoleSubscriber, nil
+		}
+		return models.RoleGuest, err
+	}
+	return user.Role, nil
+}
