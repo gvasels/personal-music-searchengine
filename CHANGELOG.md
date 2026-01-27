@@ -8,6 +8,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Access Control & Admin Features
+- **Real-Time Role Checking**
+  - `getAuthContextWithDBRole` handler method for DB role lookup
+  - `RequireRoleWithDBCheck` middleware for admin routes
+  - DB role takes precedence over JWT claims for immediate effect
+  - Role changes take effect without requiring re-login
+- **Admin User Management**
+  - Admin routes: `/api/v1/admin/users` (search, details, role, status)
+  - Role syncing between DynamoDB and Cognito groups
+  - Self-modification prevention (admins cannot modify own role/status)
+  - User search via Cognito with DynamoDB role enrichment
+- **Track Visibility Enforcement**
+  - Service-layer visibility checking (not just handlers)
+  - 403 Forbidden for unauthorized access to private tracks
+  - 404 Not Found only for truly non-existent resources
+  - Admins (`hasGlobal=true`) can access any track
+  - Visibility levels: `private`, `unlisted`, `public`
+- **"Uploaded By" Column**
+  - Added to `/tracks` page for admin users
+  - Shows when: user is admin AND preference enabled in settings
+  - `OwnerDisplayName` populated in track listings
+  - Falls back to email, then "Unknown" if display name empty
+- **Guest User Route Protection**
+  - Public routes: `/`, `/login`, `/permission-denied`
+  - All other routes redirect unauthenticated users to `/permission-denied`
+  - `isPublicRoute()` helper in `__root.tsx`
+
+### Fixed
+
+#### Authentication & Session Management
+- **JWT Groups Parsing** - API Gateway sends groups as `[admin GlobalReaders]` (bracket-separated), not JSON array
+- **Data Leakage Prevention** - Clear React Query cache on sign-in/out to prevent data leakage between users
+- **DynamoDB GetTrackByID** - Fixed pagination bug where `Limit: 1` only scanned 1 item instead of limiting returned results
+- **Stream/Download Admin Access** - Updated handlers and services to support `hasGlobal` parameter for admin streaming
+- **S3 CORS Configuration** - Added `https://music.vasels.com` to allowed origins for media bucket
+- **Audio CORS Attribute** - Added `crossOrigin = 'anonymous'` to audio element for proper CORS handling
+
 #### LocalStack Development Environment
 - **Docker & LocalStack Configuration**
   - Added `cognito-idp` service to LocalStack for local authentication

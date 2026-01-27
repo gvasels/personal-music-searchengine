@@ -1,5 +1,6 @@
 /**
  * Home Page Tests - Task 1.11
+ * Updated to mock new /stats API and useFeatureFlags
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -13,7 +14,13 @@ vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-// Mock API
+// Mock useFeatureFlags
+const mockUseFeatureFlags = vi.fn();
+vi.mock('../../hooks/useFeatureFlags', () => ({
+  useFeatureFlags: () => mockUseFeatureFlags(),
+}));
+
+// Mock tracks API
 vi.mock('../../lib/api/client', () => ({
   getTracks: vi.fn(() =>
     Promise.resolve({
@@ -24,6 +31,18 @@ vi.mock('../../lib/api/client', () => ({
       total: 2,
       limit: 5,
       offset: 0,
+    })
+  ),
+}));
+
+// Mock stats API
+vi.mock('../../lib/api/stats', () => ({
+  getLibraryStats: vi.fn(() =>
+    Promise.resolve({
+      totalTracks: 2,
+      totalAlbums: 2,
+      totalArtists: 2,
+      totalDuration: 420,
     })
   ),
 }));
@@ -85,6 +104,13 @@ describe('Home Page (Task 1.11)', () => {
       user: mockUser,
       isLoading: false,
       isAuthenticated: true,
+    });
+    mockUseFeatureFlags.mockReturnValue({
+      role: 'admin',
+      isSimulating: false,
+      isLoaded: true,
+      features: {},
+      tier: 'pro',
     });
   });
 
@@ -157,7 +183,12 @@ describe('Home Page (Task 1.11)', () => {
       renderHome();
 
       await waitFor(() => {
-        expect(screen.getByText(/tracks/i)).toBeInTheDocument();
+        // Look specifically for the stat title, not any tracks text
+        const statTitles = screen.getAllByText(/tracks/i);
+        // Should have at least the stat title "Tracks"
+        expect(statTitles.length).toBeGreaterThan(0);
+        // Verify the stat title specifically
+        expect(screen.getByText('Tracks', { selector: '.stat-title' })).toBeInTheDocument();
       });
     });
 

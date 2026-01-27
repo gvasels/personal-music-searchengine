@@ -108,9 +108,12 @@ func (s *adminService) GetUserDetails(ctx context.Context, userID string) (*mode
 	followerCount, _ := s.repo.GetFollowerCount(ctx, userID)
 
 	// Get disabled status from Cognito (enabled=true means disabled=false)
+	// Use email as the Cognito username, not the userID (sub)
 	disabled := false
-	if enabled, err := s.cognito.GetUserStatus(ctx, userID); err == nil {
-		disabled = !enabled
+	if user.Email != "" {
+		if enabled, err := s.cognito.GetUserStatus(ctx, user.Email); err == nil {
+			disabled = !enabled
+		}
 	}
 
 	details := user.ToUserDetails(disabled, nil, followerCount)
@@ -140,13 +143,19 @@ func (s *adminService) UpdateUserRole(ctx context.Context, userID string, newRol
 
 	oldRole := user.Role
 
+	// Cognito uses email as the username, not the sub (userID)
+	cognitoUsername := user.Email
+	if cognitoUsername == "" {
+		return fmt.Errorf("user has no email address for Cognito operations")
+	}
+
 	// Step 1: Update DynamoDB
 	if err := s.repo.UpdateUserRole(ctx, userID, newRole); err != nil {
 		return fmt.Errorf("failed to update role in DynamoDB: %w", err)
 	}
 
 	// Step 2: Get current Cognito groups
-	currentGroups, err := s.cognito.GetUserGroups(ctx, userID)
+	currentGroups, err := s.cognito.GetUserGroups(ctx, cognitoUsername)
 	if err != nil {
 		// Rollback DynamoDB
 		_ = s.repo.UpdateUserRole(ctx, userID, oldRole)
@@ -155,7 +164,7 @@ func (s *adminService) UpdateUserRole(ctx context.Context, userID string, newRol
 
 	// Step 3: Remove from old groups
 	for _, group := range currentGroups {
-		if err := s.cognito.RemoveUserFromGroup(ctx, userID, group); err != nil {
+		if err := s.cognito.RemoveUserFromGroup(ctx, cognitoUsername, group); err != nil {
 			// Rollback DynamoDB
 			_ = s.repo.UpdateUserRole(ctx, userID, oldRole)
 			return fmt.Errorf("failed to remove user from group %s: %w", group, err)
@@ -164,11 +173,11 @@ func (s *adminService) UpdateUserRole(ctx context.Context, userID string, newRol
 
 	// Step 4: Add to new group
 	newGroupName := newRole.CognitoGroupName()
-	if err := s.cognito.AddUserToGroup(ctx, userID, newGroupName); err != nil {
+	if err := s.cognito.AddUserToGroup(ctx, cognitoUsername, newGroupName); err != nil {
 		// Rollback DynamoDB and restore old Cognito groups
 		_ = s.repo.UpdateUserRole(ctx, userID, oldRole)
 		for _, group := range currentGroups {
-			_ = s.cognito.AddUserToGroup(ctx, userID, group)
+			_ = s.cognito.AddUserToGroup(ctx, cognitoUsername, group)
 		}
 		return fmt.Errorf("failed to add user to group %s: %w", newGroupName, err)
 	}
@@ -187,13 +196,19 @@ func (s *adminService) UpdateUserRoleByAdmin(ctx context.Context, adminID, userI
 
 // SetUserStatus enables or disables a user in both DynamoDB and Cognito.
 func (s *adminService) SetUserStatus(ctx context.Context, userID string, disabled bool) error {
-	// Verify user exists
-	_, err := s.repo.GetUser(ctx, userID)
+	// Verify user exists and get their email
+	user, err := s.repo.GetUser(ctx, userID)
 	if err != nil {
 		if err == repository.ErrNotFound {
 			return models.NewNotFoundError("user", userID)
 		}
 		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Cognito uses email as the username, not the sub (userID)
+	cognitoUsername := user.Email
+	if cognitoUsername == "" {
+		return fmt.Errorf("user has no email address for Cognito operations")
 	}
 
 	// Step 1: Update DynamoDB
@@ -204,9 +219,9 @@ func (s *adminService) SetUserStatus(ctx context.Context, userID string, disable
 	// Step 2: Update Cognito
 	var cognitoErr error
 	if disabled {
-		cognitoErr = s.cognito.DisableUser(ctx, userID)
+		cognitoErr = s.cognito.DisableUser(ctx, cognitoUsername)
 	} else {
-		cognitoErr = s.cognito.EnableUser(ctx, userID)
+		cognitoErr = s.cognito.EnableUser(ctx, cognitoUsername)
 	}
 
 	if cognitoErr != nil {

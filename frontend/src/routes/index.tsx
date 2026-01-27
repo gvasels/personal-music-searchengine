@@ -1,45 +1,29 @@
 /**
  * Home Page
  * Task 1.11 - Protected home page with library stats and recent tracks
+ * Updated: Role-aware stats using /stats API with scope parameter
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
+import { useFeatureFlags } from '../hooks/useFeatureFlags';
 import { getTracks, Track } from '../lib/api/client';
-
-interface LibraryStats {
-  totalTracks: number;
-  totalAlbums: number;
-  totalArtists: number;
-  totalPlaylists: number;
-  totalDuration: number;
-}
+import { getLibraryStats } from '../lib/api/stats';
+import type { StatsScope, LibraryStats } from '../types';
 
 async function fetchRecentTracks(): Promise<{ items: Track[] }> {
   return getTracks({ limit: 5 });
 }
 
-async function fetchLibraryStats(): Promise<LibraryStats> {
-  // For now, derive stats from tracks data
-  const { items: tracks } = await getTracks({ limit: 1000 });
-  const albums = new Set(tracks.map((t) => t.album).filter(Boolean));
-  const artists = new Set(tracks.map((t) => t.artist).filter(Boolean));
-
-  return {
-    totalTracks: tracks.length,
-    totalAlbums: albums.size,
-    totalArtists: artists.size,
-    totalPlaylists: 0,
-    totalDuration: tracks.reduce((sum, t) => sum + (t.duration || 0), 0),
-  };
-}
-
 function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  if (hours > 0) {
+    return `${hours}h ${mins}m`;
+  }
+  return `${mins}m`;
 }
 
 function formatNumber(num: number): string {
@@ -49,6 +33,41 @@ function formatNumber(num: number): string {
 function HomePage() {
   const navigate = useNavigate();
   const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
+  const { role, isSimulating, isLoaded: isFeaturesLoaded } = useFeatureFlags();
+
+  // Determine the appropriate stats scope based on role and simulation
+  const statsScope: StatsScope = useMemo(() => {
+    if (!isFeaturesLoaded) return 'own';
+
+    // If simulating subscriber, show only public tracks
+    if (isSimulating && role === 'subscriber') {
+      return 'public';
+    }
+
+    // If simulating guest, no stats (will be redirected anyway)
+    if (isSimulating && role === 'guest') {
+      return 'public';
+    }
+
+    // If admin (not simulating), show all tracks
+    if (role === 'admin' && !isSimulating) {
+      return 'all';
+    }
+
+    // Default: own tracks + public tracks
+    return 'own';
+  }, [role, isSimulating, isFeaturesLoaded]);
+
+  // Get descriptive text for the stats view
+  const statsDescription = useMemo(() => {
+    if (statsScope === 'all') {
+      return 'All tracks across all users';
+    }
+    if (statsScope === 'public') {
+      return 'Public tracks only';
+    }
+    return 'Your library + public tracks';
+  }, [statsScope]);
 
   useEffect(() => {
     document.title = 'Home - Music Search Engine';
@@ -74,13 +93,13 @@ function HomePage() {
     data: stats,
     isLoading: isLoadingStats,
     error: statsError,
-  } = useQuery({
-    queryKey: ['library', 'stats'],
-    queryFn: fetchLibraryStats,
-    enabled: isAuthenticated,
+  } = useQuery<LibraryStats>({
+    queryKey: ['library', 'stats', statsScope],
+    queryFn: () => getLibraryStats(statsScope),
+    enabled: isAuthenticated && isFeaturesLoaded,
   });
 
-  if (isAuthLoading) {
+  if (isAuthLoading || !isFeaturesLoaded) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-base-200">
         <span className="loading loading-spinner loading-lg" role="status" aria-label="Loading"></span>
@@ -107,10 +126,15 @@ function HomePage() {
 
         {/* Library Stats */}
         <section aria-label="Library statistics" className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Library Stats</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Library Stats</h2>
+            <span className="text-sm text-base-content/60 badge badge-ghost">
+              {statsDescription}
+            </span>
+          </div>
           {isLoadingStats ? (
             <div data-testid="stats-loading" className="flex gap-4">
-              {[1, 2, 3].map((i) => (
+              {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="skeleton h-24 w-32"></div>
               ))}
             </div>
@@ -131,6 +155,10 @@ function HomePage() {
               <div className="stat">
                 <div className="stat-title">Artists</div>
                 <div className="stat-value">{formatNumber(stats.totalArtists)}</div>
+              </div>
+              <div className="stat">
+                <div className="stat-title">Total Duration</div>
+                <div className="stat-value text-lg">{formatDuration(stats.totalDuration)}</div>
               </div>
             </div>
           ) : null}
@@ -201,7 +229,7 @@ function HomePage() {
                         </p>
                       </div>
                       <div className="ml-4 text-sm text-base-content/50">
-                        {formatDuration(track.duration)}
+                        {Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}
                       </div>
                     </div>
                   </li>

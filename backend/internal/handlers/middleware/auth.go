@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -11,10 +12,14 @@ import (
 
 // Context keys for auth data
 const (
-	UserIDKey   = "user_id"
-	UserRoleKey = "user_role"
+	UserIDKey     = "user_id"
+	UserRoleKey   = "user_role"
 	UserGroupsKey = "user_groups"
 )
+
+// RoleResolver is a function that looks up a user's role from the database.
+// This allows middleware to check real-time role rather than just JWT claims.
+type RoleResolver func(ctx context.Context, userID string) (models.UserRole, error)
 
 // RequireAuth middleware ensures the user is authenticated.
 func RequireAuth() echo.MiddlewareFunc {
@@ -53,27 +58,46 @@ func OptionalAuth() echo.MiddlewareFunc {
 }
 
 // RequireRole middleware ensures the user has a specific role (or admin).
+// This version only checks JWT claims. Use RequireRoleWithDBCheck for real-time DB role checking.
 func RequireRole(requiredRole models.UserRole) echo.MiddlewareFunc {
+	return RequireRoleWithDBCheck(requiredRole, nil)
+}
+
+// RequireRoleWithDBCheck ensures the user has a specific role, checking both JWT and DB.
+// If roleResolver is provided, it will also check the database for the user's current role.
+// This allows role changes to take effect immediately without requiring re-login.
+func RequireRoleWithDBCheck(requiredRole models.UserRole, roleResolver RoleResolver) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			userID, role, groups := extractAuthFromContext(c)
+			userID, jwtRole, groups := extractAuthFromContext(c)
 
 			if userID == "" {
 				return echo.NewHTTPError(http.StatusUnauthorized, "authentication required")
 			}
 
+			// Determine the effective role - check DB if resolver provided
+			effectiveRole := jwtRole
+			if roleResolver != nil {
+				dbRole, err := roleResolver(c.Request().Context(), userID)
+				if err == nil {
+					// DB role takes precedence over JWT role
+					effectiveRole = dbRole
+				}
+				// If DB lookup fails, fall back to JWT role
+			}
+
 			// Store auth info in context
 			c.Set(UserIDKey, userID)
-			c.Set(UserRoleKey, role)
+			c.Set(UserRoleKey, effectiveRole)
 			c.Set(UserGroupsKey, groups)
 
 			// Admin can do anything
-			if role == models.RoleAdmin {
+			if effectiveRole == models.RoleAdmin {
 				return next(c)
 			}
 
 			// Check if user has the required role
-			if role != requiredRole {
+			if effectiveRole != requiredRole {
 				return echo.NewHTTPError(http.StatusForbidden, "insufficient permissions")
 			}
 

@@ -219,7 +219,8 @@ func TestAdminService_GetUserDetails(t *testing.T) {
 
 		mockRepo.On("GetUser", ctx, "user-123").Return(user, nil)
 		mockRepo.On("GetFollowerCount", ctx, "user-123").Return(5, nil)
-		mockCognito.On("GetUserStatus", ctx, "user-123").Return(true, nil)
+		// Cognito uses email as username, not userID
+		mockCognito.On("GetUserStatus", ctx, "test@example.com").Return(true, nil)
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		details, err := svc.GetUserDetails(ctx, "user-123")
@@ -261,7 +262,8 @@ func TestAdminService_GetUserDetails(t *testing.T) {
 
 		mockRepo.On("GetUser", ctx, "user-123").Return(user, nil)
 		mockRepo.On("GetFollowerCount", ctx, "user-123").Return(0, errors.New("count error"))
-		mockCognito.On("GetUserStatus", ctx, "user-123").Return(true, nil)
+		// Cognito uses email as username, not userID
+		mockCognito.On("GetUserStatus", ctx, "test@example.com").Return(true, nil)
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		details, err := svc.GetUserDetails(ctx, "user-123")
@@ -279,15 +281,17 @@ func TestAdminService_UpdateUserRole(t *testing.T) {
 		mockCognito := new(MockCognitoClient)
 
 		user := &models.User{
-			ID:   "user-123",
-			Role: models.RoleSubscriber,
+			ID:    "user-123",
+			Email: "test@example.com",
+			Role:  models.RoleSubscriber,
 		}
 
 		mockRepo.On("GetUser", ctx, "user-123").Return(user, nil)
 		mockRepo.On("UpdateUserRole", ctx, "user-123", models.RoleArtist).Return(nil)
-		mockCognito.On("GetUserGroups", ctx, "user-123").Return([]string{"subscriber"}, nil)
-		mockCognito.On("RemoveUserFromGroup", ctx, "user-123", "subscriber").Return(nil)
-		mockCognito.On("AddUserToGroup", ctx, "user-123", "artist").Return(nil)
+		// Cognito uses email as username, not userID
+		mockCognito.On("GetUserGroups", ctx, "test@example.com").Return([]string{"subscriber"}, nil)
+		mockCognito.On("RemoveUserFromGroup", ctx, "test@example.com", "subscriber").Return(nil)
+		mockCognito.On("AddUserToGroup", ctx, "test@example.com", "artist").Return(nil)
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		err := svc.UpdateUserRole(ctx, "user-123", models.RoleArtist)
@@ -303,18 +307,20 @@ func TestAdminService_UpdateUserRole(t *testing.T) {
 		mockCognito := new(MockCognitoClient)
 
 		user := &models.User{
-			ID:   "user-123",
-			Role: models.RoleSubscriber,
+			ID:    "user-123",
+			Email: "test@example.com",
+			Role:  models.RoleSubscriber,
 		}
 
 		mockRepo.On("GetUser", ctx, "user-123").Return(user, nil)
 		mockRepo.On("UpdateUserRole", ctx, "user-123", models.RoleArtist).Return(nil)
-		mockCognito.On("GetUserGroups", ctx, "user-123").Return([]string{"subscriber"}, nil)
-		mockCognito.On("RemoveUserFromGroup", ctx, "user-123", "subscriber").Return(nil)
-		mockCognito.On("AddUserToGroup", ctx, "user-123", "artist").Return(errors.New("cognito error"))
+		// Cognito uses email as username, not userID
+		mockCognito.On("GetUserGroups", ctx, "test@example.com").Return([]string{"subscriber"}, nil)
+		mockCognito.On("RemoveUserFromGroup", ctx, "test@example.com", "subscriber").Return(nil)
+		mockCognito.On("AddUserToGroup", ctx, "test@example.com", "artist").Return(errors.New("cognito error"))
 		// Rollback
 		mockRepo.On("UpdateUserRole", ctx, "user-123", models.RoleSubscriber).Return(nil)
-		mockCognito.On("AddUserToGroup", ctx, "user-123", "subscriber").Return(nil)
+		mockCognito.On("AddUserToGroup", ctx, "test@example.com", "subscriber").Return(nil)
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		err := svc.UpdateUserRole(ctx, "user-123", models.RoleArtist)
@@ -370,8 +376,9 @@ func TestAdminService_UpdateUserRole(t *testing.T) {
 		mockCognito := new(MockCognitoClient)
 
 		user := &models.User{
-			ID:   "user-123",
-			Role: models.RoleArtist,
+			ID:    "user-123",
+			Email: "test@example.com",
+			Role:  models.RoleArtist,
 		}
 
 		mockRepo.On("GetUser", ctx, "user-123").Return(user, nil)
@@ -384,6 +391,32 @@ func TestAdminService_UpdateUserRole(t *testing.T) {
 		mockCognito.AssertNotCalled(t, "AddUserToGroup")
 		mockCognito.AssertNotCalled(t, "RemoveUserFromGroup")
 	})
+
+	t.Run("demotes to guest and adds to guest Cognito group", func(t *testing.T) {
+		ctx := context.Background()
+		mockRepo := new(MockAdminRepository)
+		mockCognito := new(MockCognitoClient)
+
+		user := &models.User{
+			ID:    "user-123",
+			Email: "test@example.com",
+			Role:  models.RoleSubscriber,
+		}
+
+		mockRepo.On("GetUser", ctx, "user-123").Return(user, nil)
+		mockRepo.On("UpdateUserRole", ctx, "user-123", models.RoleGuest).Return(nil)
+		// Cognito uses email as username
+		mockCognito.On("GetUserGroups", ctx, "test@example.com").Return([]string{"subscriber"}, nil)
+		mockCognito.On("RemoveUserFromGroup", ctx, "test@example.com", "subscriber").Return(nil)
+		mockCognito.On("AddUserToGroup", ctx, "test@example.com", "guest").Return(nil)
+
+		svc := NewAdminService(mockRepo, mockCognito)
+		err := svc.UpdateUserRole(ctx, "user-123", models.RoleGuest)
+
+		require.NoError(t, err)
+		mockRepo.AssertExpectations(t)
+		mockCognito.AssertExpectations(t)
+	})
 }
 
 func TestAdminService_SetUserStatus(t *testing.T) {
@@ -393,13 +426,15 @@ func TestAdminService_SetUserStatus(t *testing.T) {
 		mockCognito := new(MockCognitoClient)
 
 		user := &models.User{
-			ID:   "user-123",
-			Role: models.RoleSubscriber,
+			ID:    "user-123",
+			Email: "test@example.com",
+			Role:  models.RoleSubscriber,
 		}
 
 		mockRepo.On("GetUser", ctx, "user-123").Return(user, nil)
 		mockRepo.On("SetUserDisabled", ctx, "user-123", true).Return(nil)
-		mockCognito.On("DisableUser", ctx, "user-123").Return(nil)
+		// Cognito uses email as username, not userID
+		mockCognito.On("DisableUser", ctx, "test@example.com").Return(nil)
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		err := svc.SetUserStatus(ctx, "user-123", true)
@@ -415,13 +450,15 @@ func TestAdminService_SetUserStatus(t *testing.T) {
 		mockCognito := new(MockCognitoClient)
 
 		user := &models.User{
-			ID:   "user-123",
-			Role: models.RoleSubscriber,
+			ID:    "user-123",
+			Email: "test@example.com",
+			Role:  models.RoleSubscriber,
 		}
 
 		mockRepo.On("GetUser", ctx, "user-123").Return(user, nil)
 		mockRepo.On("SetUserDisabled", ctx, "user-123", false).Return(nil)
-		mockCognito.On("EnableUser", ctx, "user-123").Return(nil)
+		// Cognito uses email as username, not userID
+		mockCognito.On("EnableUser", ctx, "test@example.com").Return(nil)
 
 		svc := NewAdminService(mockRepo, mockCognito)
 		err := svc.SetUserStatus(ctx, "user-123", false)
@@ -451,13 +488,15 @@ func TestAdminService_SetUserStatus(t *testing.T) {
 		mockCognito := new(MockCognitoClient)
 
 		user := &models.User{
-			ID:   "user-123",
-			Role: models.RoleSubscriber,
+			ID:    "user-123",
+			Email: "test@example.com",
+			Role:  models.RoleSubscriber,
 		}
 
 		mockRepo.On("GetUser", ctx, "user-123").Return(user, nil)
 		mockRepo.On("SetUserDisabled", ctx, "user-123", true).Return(nil)
-		mockCognito.On("DisableUser", ctx, "user-123").Return(errors.New("cognito error"))
+		// Cognito uses email as username, not userID
+		mockCognito.On("DisableUser", ctx, "test@example.com").Return(errors.New("cognito error"))
 		// Rollback
 		mockRepo.On("SetUserDisabled", ctx, "user-123", false).Return(nil)
 

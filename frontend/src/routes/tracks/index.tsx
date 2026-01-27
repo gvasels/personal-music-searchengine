@@ -9,6 +9,8 @@ import { usePlayerStore } from '@/lib/store/playerStore';
 import { TagsCell } from '@/components/library/TagsCell';
 import { AddToPlaylistDropdown } from '@/components/library';
 import { getDownloadUrl } from '@/lib/api/client';
+import { useShowUploadedBy } from '@/lib/store/preferencesStore';
+import { useAuth } from '@/hooks/useAuth';
 import type { Track } from '../../types';
 
 type SortField = 'title' | 'artist' | 'album' | 'duration' | 'createdAt';
@@ -37,6 +39,11 @@ export default function TracksPage() {
   const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const showUploadedByPref = useShowUploadedBy();
+  const { isAdmin } = useAuth();
+
+  // Show "Uploaded By" column if: setting is enabled AND user is admin/global
+  const showUploadedByColumn = showUploadedByPref && isAdmin;
 
   // Sort tracks client-side
   const sortedTracks = useMemo(() => {
@@ -238,6 +245,7 @@ export default function TracksPage() {
                   <SortIcon field="createdAt" />
                 </button>
               </th>
+              {showUploadedByColumn && <th>Uploaded By</th>}
               <th className="w-24">Actions</th>
             </tr>
           </thead>
@@ -281,6 +289,11 @@ export default function TracksPage() {
                   </td>
                   <td>{formatDuration(track.duration)}</td>
                   <td className="text-sm text-base-content/60">{formatDate(track.createdAt)}</td>
+                  {showUploadedByColumn && (
+                    <td className="text-sm text-base-content/60">
+                      {track.ownerDisplayName || 'You'}
+                    </td>
+                  )}
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-1">
                       <AddToPlaylistDropdown trackId={track.id} />

@@ -18,33 +18,30 @@ export const featureKeys = {
 };
 
 export function useFeatureFlags() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { effectiveRole, isSimulating } = useRoleSimulation();
   const queryClient = useQueryClient();
   const { role, features, isLoaded, setFeatures, isEnabled: storeIsEnabled, reset } = useFeatureFlagStore();
 
   // Fetch features when authenticated
+  // Short staleTime so role changes are detected quickly without re-login
   const query = useQuery({
     queryKey: featureKeys.user(),
     queryFn: getUserFeatures,
     enabled: isAuthenticated,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 30, // 30 minutes
+    staleTime: 1000 * 30, // 30 seconds - role changes take effect quickly
+    gcTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 
-  // Update store when data changes - map tier to role for backward compatibility
+  // Update store when data changes - use role from API response (real-time from DB)
   useEffect(() => {
     if (query.data) {
-      // Map subscription tier to role (backward compatibility during migration)
-      const roleFromTier: UserRole =
-        query.data.tier === 'pro' ? 'artist' :
-        query.data.tier === 'creator' ? 'artist' :
-        'subscriber';
-      // Use actual role from user if available, otherwise infer from tier
-      const actualRole = (user?.role as UserRole) || roleFromTier;
+      // Use role from API response - this is fetched from DB, so role changes take effect immediately
+      const actualRole: UserRole = query.data.role || 'subscriber';
       setFeatures(actualRole, query.data.features);
     }
-  }, [query.data, setFeatures, user?.role]);
+  }, [query.data, setFeatures]);
 
   // Reset store on logout
   useEffect(() => {

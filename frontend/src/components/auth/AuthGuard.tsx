@@ -16,10 +16,14 @@ interface AuthGuardProps {
 export function AuthGuard({ children }: AuthGuardProps) {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useAuth();
-  const { role, isSimulating, isLoaded } = useFeatureFlags();
+  const { role: effectiveRole, isLoaded } = useFeatureFlags();
 
-  // Check if user should be treated as guest (either not authenticated OR simulating guest)
-  const isEffectivelyGuest = !isAuthenticated || (isSimulating && role === 'guest');
+  // Check if user should be treated as guest:
+  // 1. Not authenticated at all
+  // 2. Guest role from API (real-time from DB) - includes demoted users and simulated guests
+  const isEffectivelyGuest =
+    !isAuthenticated ||
+    effectiveRole === 'guest';
 
   useEffect(() => {
     // Wait for both auth and feature flags to load

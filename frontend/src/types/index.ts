@@ -177,6 +177,16 @@ export interface PaginatedResponse<T> {
   offset: number;
 }
 
+// Library statistics
+export type StatsScope = 'own' | 'public' | 'all';
+
+export interface LibraryStats {
+  totalTracks: number;
+  totalAlbums: number;
+  totalArtists: number;
+  totalDuration: number; // in seconds
+}
+
 export type RepeatMode = 'off' | 'all' | 'one';
 export type Theme = 'light' | 'dark';
 
@@ -201,6 +211,7 @@ export type FeatureKey =
 
 export interface UserFeaturesResponse {
   tier: SubscriptionTier;
+  role: UserRole; // Current role from database (real-time, not from JWT)
   features: Record<FeatureKey, boolean>;
 }
 

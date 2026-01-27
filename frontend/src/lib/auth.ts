@@ -70,7 +70,10 @@ export interface Tokens {
 
 /**
  * Extract user role from Cognito groups.
- * Priority: admin > artist > subscriber > guest
+ * Priority: admin > artist > subscriber
+ *
+ * Note: Authenticated users without a specific group get 'subscriber' (default role).
+ * 'guest' is only for unauthenticated users and is set elsewhere.
  */
 function roleFromGroups(groups: string[]): UserRole {
   const lowerGroups = groups.map((g) => g.toLowerCase());
@@ -84,12 +87,13 @@ function roleFromGroups(groups: string[]): UserRole {
     console.log('[Auth] Detected role: artist');
     return 'artist';
   }
-  if (lowerGroups.includes('subscriber') || lowerGroups.includes('subscribers')) {
-    console.log('[Auth] Detected role: subscriber');
-    return 'subscriber';
+  if (lowerGroups.includes('guest')) {
+    console.log('[Auth] Detected role: guest (demoted user)');
+    return 'guest';
   }
-  console.log('[Auth] Detected role: guest (no matching groups)');
-  return 'guest';
+  // Authenticated users default to subscriber (not guest)
+  console.log('[Auth] Detected role: subscriber (default for authenticated users)');
+  return 'subscriber';
 }
 
 /**

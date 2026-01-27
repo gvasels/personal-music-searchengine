@@ -55,6 +55,9 @@ export function useAuth(): UseAuthReturn {
     mutationFn: ({ email, password }: { email: string; password: string }) =>
       authSignIn(email, password),
     onSuccess: (data) => {
+      // Clear ALL cached data from previous user to prevent data leakage
+      queryClient.clear();
+      // Set the new user
       queryClient.setQueryData(['auth', 'user'], data);
       setError(null);
     },
@@ -70,7 +73,8 @@ export function useAuth(): UseAuthReturn {
   const signOutMutation = useMutation({
     mutationFn: () => authSignOut(),
     onSuccess: () => {
-      queryClient.setQueryData(['auth', 'user'], null);
+      // Clear ALL cached data to prevent data leakage to next user
+      queryClient.clear();
       setError(null);
     },
     onError: (err: unknown) => {

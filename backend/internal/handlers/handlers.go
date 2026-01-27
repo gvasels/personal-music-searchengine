@@ -106,16 +106,16 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 }
 
 // RegisterAdminRoutes registers admin routes with proper middleware protection.
-// Admin routes require the admin role.
-func RegisterAdminRoutes(e *echo.Echo, adminHandler *AdminHandler) {
-	// Admin route group with role-based protection
+// Admin routes require the admin role, checked against the database for real-time updates.
+func RegisterAdminRoutes(e *echo.Echo, adminHandler *AdminHandler, roleResolver middleware.RoleResolver) {
+	// Admin route group with role-based protection using DB role check
 	admin := e.Group("/api/v1/admin")
-	admin.Use(middleware.RequireRole(models.RoleAdmin))
+	admin.Use(middleware.RequireRoleWithDBCheck(models.RoleAdmin, roleResolver))
 
 	// User management routes
-	admin.GET("/users", adminHandler.SearchUsers)           // Search users by email/name
-	admin.GET("/users/:id", adminHandler.GetUserDetails)    // Get user details
-	admin.PUT("/users/:id/role", adminHandler.UpdateUserRole)   // Update user role
+	admin.GET("/users", adminHandler.SearchUsers)             // Search users by email/name
+	admin.GET("/users/:id", adminHandler.GetUserDetails)      // Get user details
+	admin.PUT("/users/:id/role", adminHandler.UpdateUserRole) // Update user role
 	admin.PUT("/users/:id/status", adminHandler.UpdateUserStatus) // Enable/disable user
 }
 

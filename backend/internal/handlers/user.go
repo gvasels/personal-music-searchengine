@@ -9,6 +9,38 @@ import (
 	"github.com/gvasels/personal-music-searchengine/internal/service"
 )
 
+// GetLibraryStats returns library statistics based on user role and requested scope
+// GET /api/v1/stats?scope=own|public|all
+func (h *Handlers) GetLibraryStats(c echo.Context) error {
+	// Use DB role for real-time permission checking (role changes take effect immediately)
+	authCtx := h.getAuthContextWithDBRole(c)
+	if authCtx.UserID == "" {
+		return handleError(c, models.ErrUnauthorized)
+	}
+
+	// Get scope from query parameter
+	scopeParam := c.QueryParam("scope")
+	scope := service.StatsScopeOwn // default
+
+	switch scopeParam {
+	case "all":
+		scope = service.StatsScopeAll
+	case "public":
+		scope = service.StatsScopePublic
+	case "own", "":
+		scope = service.StatsScopeOwn
+	default:
+		return handleError(c, models.NewValidationError("invalid scope: must be 'own', 'public', or 'all'"))
+	}
+
+	stats, err := h.services.Track.GetLibraryStats(c.Request().Context(), authCtx.UserID, scope, authCtx.HasGlobal)
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	return success(c, stats)
+}
+
 // FeaturesResponse represents the user's features based on their role
 type FeaturesResponse struct {
 	Tier     string          `json:"tier"`
@@ -24,8 +56,13 @@ func (h *Handlers) GetFeatures(c echo.Context) error {
 		return handleError(c, models.ErrUnauthorized)
 	}
 
-	// Determine role from Cognito groups
-	role := determineRoleFromGroups(authCtx.Groups)
+	// Get role from DB for real-time permission checking (role changes take effect immediately)
+	dbRole, err := h.services.User.GetUserRole(c.Request().Context(), authCtx.UserID)
+	if err != nil {
+		// Fall back to JWT groups if DB lookup fails
+		dbRole = determineRoleFromGroups(authCtx.Groups)
+	}
+	role := dbRole
 
 	// Map role to tier for backward compatibility
 	tier := mapRoleToTier(role)

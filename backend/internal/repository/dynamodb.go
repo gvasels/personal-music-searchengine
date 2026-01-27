@@ -275,13 +275,9 @@ func (r *DynamoDBRepository) listAllTracks(ctx context.Context, limit int, filte
 		return nil, fmt.Errorf("failed to build expression: %w", err)
 	}
 
-	input := &dynamodb.ScanInput{
-		TableName:                 aws.String(r.tableName),
-		FilterExpression:          expr.Filter(),
-		ExpressionAttributeNames:  expr.Names(),
-		ExpressionAttributeValues: expr.Values(),
-		Limit:                     aws.Int32(int32(limit + 1)),
-	}
+	var tracks []models.Track
+	var lastEvaluatedKey map[string]types.AttributeValue
+	var scanLastEvaluatedKey map[string]types.AttributeValue
 
 	// Handle pagination cursor for scan
 	if filter.LastKey != "" {
@@ -289,31 +285,57 @@ func (r *DynamoDBRepository) listAllTracks(ctx context.Context, limit int, filte
 		if err != nil {
 			return nil, ErrInvalidCursor
 		}
-		input.ExclusiveStartKey = cursorToAttributeValue(cursor)
+		lastEvaluatedKey = cursorToAttributeValue(cursor)
 	}
 
-	result, err := r.client.Scan(ctx, input)
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan tracks: %w", err)
-	}
+	// Scan in batches until we have enough tracks
+	// DynamoDB Limit applies BEFORE filter, so we need to keep scanning
+	for len(tracks) < limit+1 {
+		input := &dynamodb.ScanInput{
+			TableName:                 aws.String(r.tableName),
+			FilterExpression:          expr.Filter(),
+			ExpressionAttributeNames:  expr.Names(),
+			ExpressionAttributeValues: expr.Values(),
+			// Scan more items per batch since many will be filtered out
+			Limit: aws.Int32(100),
+		}
 
-	var items []models.TrackItem
-	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal tracks: %w", err)
-	}
+		if lastEvaluatedKey != nil {
+			input.ExclusiveStartKey = lastEvaluatedKey
+		}
 
-	tracks := make([]models.Track, 0, len(items))
-	for _, item := range items {
-		tracks = append(tracks, item.Track)
+		result, err := r.client.Scan(ctx, input)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan tracks: %w", err)
+		}
+
+		var items []models.TrackItem
+		if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal tracks: %w", err)
+		}
+
+		for _, item := range items {
+			tracks = append(tracks, item.Track)
+		}
+
+		// Track where we left off for pagination
+		scanLastEvaluatedKey = result.LastEvaluatedKey
+
+		// If no more items to scan, break
+		if result.LastEvaluatedKey == nil {
+			break
+		}
+		lastEvaluatedKey = result.LastEvaluatedKey
 	}
 
 	// Determine if there are more results
-	hasMore := len(tracks) > limit
-	if hasMore {
+	hasMore := len(tracks) > limit || scanLastEvaluatedKey != nil
+	if len(tracks) > limit {
 		tracks = tracks[:limit]
+		hasMore = true
 	}
 
-	// Build next cursor
+	// Build next cursor from the last track for pagination
 	var nextCursor string
 	if hasMore && len(tracks) > 0 {
 		lastTrack := tracks[len(tracks)-1]

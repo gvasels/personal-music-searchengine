@@ -2,6 +2,7 @@
  * Root Layout - Access Control Bug Fixes
  * Implements guest user route protection
  * Supports role simulation for admin testing
+ * Updated: 2026-01-27 - Added demoted guest detection
  */
 import { createRootRoute, Outlet, useLocation, Navigate } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
@@ -22,8 +23,8 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 function RootComponent() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const { role, isSimulating } = useFeatureFlags();
+  const { isAuthenticated, isLoading, role: authRole } = useAuth();
+  const { role: effectiveRole, isSimulating } = useFeatureFlags();
   const location = useLocation();
 
   // Show loading state while checking auth
@@ -35,11 +36,32 @@ function RootComponent() {
     );
   }
 
-  // Check if user should be treated as guest (either not authenticated OR simulating guest)
-  const isEffectivelyGuest = !isAuthenticated || (isSimulating && role === 'guest');
+  // Check if user should be treated as guest:
+  // 1. Not authenticated at all
+  // 2. Authenticated but with guest role (demoted user)
+  // 3. Admin simulating guest role
+  const isEffectivelyGuest =
+    !isAuthenticated ||
+    authRole === 'guest' ||
+    (isSimulating && effectiveRole === 'guest');
+
+  // Debug: log access control check
+  if (typeof window !== 'undefined') {
+    (window as unknown as Record<string, unknown>).__routeDebug = {
+      pathname: location.pathname,
+      isAuthenticated,
+      authRole,
+      isSimulating,
+      effectiveRole,
+      isEffectivelyGuest,
+      isPublicRoute: isPublicRoute(location.pathname),
+    };
+    console.log('[Route] Access check v2:', (window as unknown as Record<string, unknown>).__routeDebug);
+  }
 
   // If effectively guest and trying to access a protected route, redirect to permission-denied
   if (isEffectivelyGuest && !isPublicRoute(location.pathname)) {
+    console.log('[Route] Redirecting guest to permission-denied');
     return <Navigate to="/permission-denied" />;
   }
 

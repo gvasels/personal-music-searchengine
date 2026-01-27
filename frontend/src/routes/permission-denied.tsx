@@ -9,15 +9,27 @@ import { useAuth } from '../hooks/useAuth';
 
 function PermissionDeniedPage() {
   const { isSimulating, stopSimulation, simulatedRole } = useRoleSimulation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role } = useAuth();
 
   // Check if this is a simulated guest view
   const isSimulatedGuest = isAuthenticated && isSimulating && simulatedRole === 'guest';
+  // Check if this is a demoted guest (authenticated but with guest role)
+  const isDemotedGuest = isAuthenticated && role === 'guest' && !isSimulating;
 
   return (
     <main className="min-h-screen bg-base-200 flex items-center justify-center p-4">
       <div className="card bg-base-100 shadow-xl max-w-md w-full">
         <div className="card-body items-center text-center">
+          {/* Permission Denied Banner - only for demoted or simulated guests */}
+          {(isDemotedGuest || isSimulatedGuest) && (
+            <div className="alert alert-error mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+              <span className="font-semibold">Permission Denied</span>
+            </div>
+          )}
+
           {/* Simulation indicator */}
           {isSimulatedGuest && (
             <div className="alert alert-warning mb-4">
@@ -47,13 +59,19 @@ function PermissionDeniedPage() {
           </div>
 
           <h1 className="text-2xl font-bold mb-2">
-            {isSimulatedGuest ? 'Guest View' : 'Welcome to Music Library'}
+            {isSimulatedGuest
+              ? 'Guest View'
+              : isDemotedGuest
+                ? 'Access Restricted'
+                : 'Welcome to Music Library'}
           </h1>
 
           <p className="text-base-content/70 mb-6">
             {isSimulatedGuest
               ? 'This is what unauthenticated users see. Guest users are immediately redirected here and must sign in or create an account to access the app.'
-              : 'Please sign in or create an account to access your personal music library.'}
+              : isDemotedGuest
+                ? 'Your account does not have permission to access this content. Please contact an administrator if you believe this is an error.'
+                : 'Please sign in or create an account to access your personal music library.'}
           </p>
 
           <div className="flex flex-col gap-3 w-full">
@@ -61,6 +79,10 @@ function PermissionDeniedPage() {
               <button onClick={stopSimulation} className="btn btn-primary w-full">
                 Stop Simulation
               </button>
+            ) : isDemotedGuest ? (
+              <Link to="/" className="btn btn-primary w-full">
+                Go to Home
+              </Link>
             ) : (
               <>
                 <Link to="/login" className="btn btn-primary w-full">

@@ -41,6 +41,7 @@ export class AudioService {
   private initAudioElement(): void {
     this.audio = new Audio();
     this.audio.preload = 'metadata';
+    this.audio.crossOrigin = 'anonymous'; // Enable CORS for audio loading
 
     this.audio.addEventListener('timeupdate', () => {
       this.callbacks.onTimeUpdate?.(

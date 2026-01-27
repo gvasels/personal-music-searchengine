@@ -85,14 +85,29 @@ go test ./...
 go test -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out
 
-# Build API Lambda
-GOOS=linux GOARCH=amd64 go build -o bootstrap cmd/api/main.go
+# Build API Lambda (ARM64 - default for AWS Lambda)
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o bootstrap cmd/api/main.go
 
-# Build all processors
+# Build all processors (ARM64)
 for dir in cmd/processor/*/; do
-  GOOS=linux GOARCH=amd64 go build -o "${dir}bootstrap" "${dir}main.go"
+  GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o "${dir}bootstrap" "${dir}main.go"
 done
+
+# Deploy to Lambda
+zip -j function.zip bootstrap
+aws lambda update-function-code --function-name <function-name> --zip-file fileb://function.zip
+rm bootstrap function.zip
 ```
+
+### Build Flags Explained
+| Flag | Purpose |
+|------|---------|
+| `GOOS=linux` | Target Linux OS (Lambda runtime) |
+| `GOARCH=arm64` | Target ARM64 architecture (Graviton2) - **default** |
+| `CGO_ENABLED=0` | Disable CGO for static linking |
+| `-ldflags="-s -w"` | Strip debug info for smaller binary |
+
+> **Note**: All Lambda functions use ARM64 (Graviton2) unless explicitly configured otherwise. Use `GOARCH=amd64` only if the Lambda is configured for x86_64.
 
 ## Environment Variables
 

@@ -166,7 +166,9 @@ func setupEcho() (*echo.Echo, error) {
 	// Register admin routes if admin service is configured
 	if services.Admin != nil {
 		adminHandler := handlers.NewAdminHandler(services.Admin)
-		handlers.RegisterAdminRoutes(e, adminHandler)
+		// Create a role resolver that checks the database for real-time role updates
+		roleResolver := services.User.GetUserRole
+		handlers.RegisterAdminRoutes(e, adminHandler, roleResolver)
 	}
 
 	// Health check endpoint
