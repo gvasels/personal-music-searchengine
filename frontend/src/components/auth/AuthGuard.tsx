@@ -4,7 +4,7 @@
  */
 
 import { ReactNode, useEffect } from 'react';
-import { useNavigate, useLocation } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../../hooks/useAuth';
 
 interface AuthGuardProps {
@@ -13,18 +13,14 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const navigate = useNavigate();
-  const location = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      // Redirect to login with the current path as redirect param
-      navigate({
-        to: '/login',
-        search: { redirect: location.pathname },
-      });
+      // Redirect to permission-denied page for guest users
+      navigate({ to: '/permission-denied' });
     }
-  }, [isLoading, isAuthenticated, navigate, location.pathname]);
+  }, [isLoading, isAuthenticated, navigate]);
 
   // Show loading spinner while checking auth
   if (isLoading) {
