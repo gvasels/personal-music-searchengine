@@ -33,13 +33,37 @@ func NewStreamService(repo repository.Repository, cloudfront repository.CloudFro
 	}
 }
 
-func (s *streamService) GetStreamURL(ctx context.Context, userID, trackID string) (*models.StreamResponse, error) {
-	track, err := s.repo.GetTrack(ctx, userID, trackID)
-	if err != nil {
-		if err == repository.ErrNotFound {
-			return nil, models.NewNotFoundError("Track", trackID)
-		}
+func (s *streamService) GetStreamURL(ctx context.Context, userID, trackID string, hasGlobal bool) (*models.StreamResponse, error) {
+	var track *models.Track
+	var err error
+
+	// First try to get as owner
+	track, err = s.repo.GetTrack(ctx, userID, trackID)
+	if err != nil && err != repository.ErrNotFound {
 		return nil, err
+	}
+
+	// If not found as owner, check if requester has global access or track is public
+	if track == nil {
+		track, err = s.repo.GetTrackByID(ctx, trackID)
+		if err != nil {
+			if err == repository.ErrNotFound {
+				return nil, models.NewNotFoundError("Track", trackID)
+			}
+			return nil, err
+		}
+
+		// Track exists but requester doesn't own it - check access
+		if hasGlobal {
+			// Admins can access any track
+		} else if track.Visibility == models.VisibilityPublic {
+			// Public tracks can be accessed by anyone
+		} else if track.Visibility == models.VisibilityUnlisted {
+			// Unlisted tracks can be accessed via direct link
+		} else {
+			// Private track - return 403 Forbidden
+			return nil, models.NewForbiddenError("you do not have permission to stream this track")
+		}
 	}
 
 	var hlsURL, fallbackURL string
@@ -95,13 +119,37 @@ func (s *streamService) GetStreamURL(ctx context.Context, userID, trackID string
 	}, nil
 }
 
-func (s *streamService) GetDownloadURL(ctx context.Context, userID, trackID string) (*models.DownloadResponse, error) {
-	track, err := s.repo.GetTrack(ctx, userID, trackID)
-	if err != nil {
-		if err == repository.ErrNotFound {
-			return nil, models.NewNotFoundError("Track", trackID)
-		}
+func (s *streamService) GetDownloadURL(ctx context.Context, userID, trackID string, hasGlobal bool) (*models.DownloadResponse, error) {
+	var track *models.Track
+	var err error
+
+	// First try to get as owner
+	track, err = s.repo.GetTrack(ctx, userID, trackID)
+	if err != nil && err != repository.ErrNotFound {
 		return nil, err
+	}
+
+	// If not found as owner, check if requester has global access or track is public
+	if track == nil {
+		track, err = s.repo.GetTrackByID(ctx, trackID)
+		if err != nil {
+			if err == repository.ErrNotFound {
+				return nil, models.NewNotFoundError("Track", trackID)
+			}
+			return nil, err
+		}
+
+		// Track exists but requester doesn't own it - check access
+		if hasGlobal {
+			// Admins can access any track
+		} else if track.Visibility == models.VisibilityPublic {
+			// Public tracks can be accessed by anyone
+		} else if track.Visibility == models.VisibilityUnlisted {
+			// Unlisted tracks can be accessed via direct link
+		} else {
+			// Private track - return 403 Forbidden
+			return nil, models.NewForbiddenError("you do not have permission to download this track")
+		}
 	}
 
 	// Generate friendly filename

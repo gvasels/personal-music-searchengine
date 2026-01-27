@@ -100,8 +100,8 @@ type UploadService interface {
 
 // StreamService defines streaming and download operations
 type StreamService interface {
-	GetStreamURL(ctx context.Context, userID, trackID string) (*models.StreamResponse, error)
-	GetDownloadURL(ctx context.Context, userID, trackID string) (*models.DownloadResponse, error)
+	GetStreamURL(ctx context.Context, userID, trackID string, hasGlobal bool) (*models.StreamResponse, error)
+	GetDownloadURL(ctx context.Context, userID, trackID string, hasGlobal bool) (*models.DownloadResponse, error)
 	GetCoverArtURL(ctx context.Context, userID, trackID string) (string, error)
 }
 

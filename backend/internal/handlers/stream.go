@@ -7,8 +7,9 @@ import (
 
 // GetStreamURL returns a signed URL for streaming a track
 func (h *Handlers) GetStreamURL(c echo.Context) error {
-	userID := getUserIDFromContext(c)
-	if userID == "" {
+	// Use DB role for real-time permission checking
+	auth := h.getAuthContextWithDBRole(c)
+	if auth.UserID == "" {
 		return handleError(c, models.ErrUnauthorized)
 	}
 
@@ -17,7 +18,7 @@ func (h *Handlers) GetStreamURL(c echo.Context) error {
 		return handleError(c, models.ErrBadRequest)
 	}
 
-	resp, err := h.services.Stream.GetStreamURL(c.Request().Context(), userID, trackID)
+	resp, err := h.services.Stream.GetStreamURL(c.Request().Context(), auth.UserID, trackID, auth.HasGlobal)
 	if err != nil {
 		return handleError(c, err)
 	}
@@ -27,8 +28,9 @@ func (h *Handlers) GetStreamURL(c echo.Context) error {
 
 // GetDownloadURL returns a signed URL for downloading a track
 func (h *Handlers) GetDownloadURL(c echo.Context) error {
-	userID := getUserIDFromContext(c)
-	if userID == "" {
+	// Use DB role for real-time permission checking
+	auth := h.getAuthContextWithDBRole(c)
+	if auth.UserID == "" {
 		return handleError(c, models.ErrUnauthorized)
 	}
 
@@ -37,7 +39,7 @@ func (h *Handlers) GetDownloadURL(c echo.Context) error {
 		return handleError(c, models.ErrBadRequest)
 	}
 
-	resp, err := h.services.Stream.GetDownloadURL(c.Request().Context(), userID, trackID)
+	resp, err := h.services.Stream.GetDownloadURL(c.Request().Context(), auth.UserID, trackID, auth.HasGlobal)
 	if err != nil {
 		return handleError(c, err)
 	}
