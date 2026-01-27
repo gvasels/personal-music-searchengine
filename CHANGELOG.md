@@ -45,6 +45,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **S3 CORS Configuration** - Added `https://music.vasels.com` to allowed origins for media bucket
 - **Audio CORS Attribute** - Added `crossOrigin = 'anonymous'` to audio element for proper CORS handling
 
+#### Track Listing & Data Management
+- **Admin Track Listing Pagination** - Fixed `listAllTracks` DynamoDB Scan to properly paginate
+  - DynamoDB `Limit` applies BEFORE filter, not after
+  - Now scans in batches of 100 until enough tracks collected
+  - Previously, admin would only see partial tracks when table had many non-track items
+- **Clean Track Deletion** - Added comprehensive S3 cleanup
+  - `DeleteByPrefix` method for batch deletions
+  - Deletes audio file, cover art, AND all HLS transcoded segments
+  - HLS files stored at `hls/{userId}/{trackId}/` now properly cleaned up
+
 #### LocalStack Development Environment
 - **Docker & LocalStack Configuration**
   - Added `cognito-idp` service to LocalStack for local authentication
