@@ -46,26 +46,30 @@ function PermissionDeniedPage() {
             </svg>
           </div>
 
-          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+          <h1 className="text-2xl font-bold mb-2">
+            {isSimulatedGuest ? 'Guest View' : 'Welcome to Music Library'}
+          </h1>
 
           <p className="text-base-content/70 mb-6">
             {isSimulatedGuest
-              ? 'Guest users cannot access this page. This is how unauthenticated users experience the app.'
-              : 'You do not have permission to view this page. Please sign in to access your music library.'}
+              ? 'This is what unauthenticated users see. Guest users are immediately redirected here and must sign in or create an account to access the app.'
+              : 'Please sign in or create an account to access your personal music library.'}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full">
-            <Link to="/" className="btn btn-outline flex-1">
-              Go to Dashboard
-            </Link>
+          <div className="flex flex-col gap-3 w-full">
             {isSimulatedGuest ? (
-              <button onClick={stopSimulation} className="btn btn-primary flex-1">
+              <button onClick={stopSimulation} className="btn btn-primary w-full">
                 Stop Simulation
               </button>
             ) : (
-              <Link to="/login" className="btn btn-primary flex-1">
-                Sign In
-              </Link>
+              <>
+                <Link to="/login" className="btn btn-primary w-full">
+                  Sign In
+                </Link>
+                <Link to="/signup" className="btn btn-outline w-full">
+                  Create Account
+                </Link>
+              </>
             )}
           </div>
         </div>
