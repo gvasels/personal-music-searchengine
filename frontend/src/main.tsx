@@ -33,6 +33,7 @@ import TagsPage from './routes/tags/index';
 import TagDetailPage from './routes/tags/$tagName';
 import SettingsPage from './routes/settings';
 import AdminUsersPage from './routes/admin/users';
+import PermissionDeniedPage from './routes/permission-denied';
 
 // Import layout components
 import { Layout } from './components/layout';
@@ -89,6 +90,12 @@ const signupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/signup',
   component: SignupPage,
+});
+
+const permissionDeniedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/permission-denied',
+  component: PermissionDeniedPage,
 });
 
 // Create routes - Protected routes (auth required)
@@ -187,6 +194,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   signupRoute,
+  permissionDeniedRoute,
   searchRoute,
   uploadRoute,
   tracksRoute,

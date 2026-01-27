@@ -17,6 +17,8 @@ bin/
 backend/bin/
 backend/dist/
 backend/test/
+backend/bootstrap
+backend/lambda.zip
 
 # Frontend
 frontend/node_modules/

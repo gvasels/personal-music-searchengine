@@ -3,11 +3,6 @@
  * Displays when guest users try to access protected routes
  */
 import { Link } from '@tanstack/react-router';
-import { createFileRoute } from '@tanstack/react-router';
-
-export const Route = createFileRoute('/permission-denied')({
-  component: PermissionDeniedPage,
-});
 
 function PermissionDeniedPage() {
   return (
