@@ -45,13 +45,13 @@ export function Layout({ children }: LayoutProps) {
   }, [isLoaded, isSimulating, role, location.pathname, navigate, isAuthenticated]);
 
   return (
-    <div className="min-h-screen bg-base-200 flex flex-col">
+    <div className="h-screen bg-base-200 flex flex-col overflow-hidden">
       <Header onMenuClick={() => setMobileNavOpen(true)} />
       <SimulationBanner />
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0">
         {/* Desktop sidebar */}
         <Sidebar />
-        <main className="flex-1 p-6 pb-24">{children}</main>
+        <main className="flex-1 p-6 pb-28 overflow-auto">{children}</main>
       </div>
       <PlayerBar />
 
