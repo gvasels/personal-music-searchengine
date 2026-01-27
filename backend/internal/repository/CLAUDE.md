@@ -74,7 +74,15 @@ Signed URL generation for streaming via CloudFront.
 | `CompleteMultipartUpload` | Complete multipart upload |
 | `AbortMultipartUpload` | Abort multipart upload |
 | `DeleteObject`, `CopyObject` | Object operations |
+| `DeleteByPrefix(ctx, prefix)` | Batch delete all objects with given prefix (used for HLS cleanup) |
 | `GetObjectMetadata`, `ObjectExists` | Metadata operations |
+
+### S3Client Interface Methods
+```go
+// Object operations interface
+DeleteObjects(ctx context.Context, params *s3.DeleteObjectsInput, ...) (*s3.DeleteObjectsOutput, error)
+ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, ...) (*s3.ListObjectsV2Output, error)
+```
 
 ## Error Handling
 

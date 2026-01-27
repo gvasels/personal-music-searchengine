@@ -98,16 +98,47 @@ All routes are registered under `/api/v1`:
 | GET | `/search` | SimpleSearch | Simple text search |
 | POST | `/search` | AdvancedSearch | Advanced search with filters |
 
+### Admin Routes (Admin role required)
+| Method | Path | Handler | Description |
+|--------|------|---------|-------------|
+| GET | `/admin/users` | SearchUsers | Search users by email |
+| GET | `/admin/users/:id` | GetUser | Get user details (DynamoDB + Cognito) |
+| PUT | `/admin/users/:id/role` | UpdateUserRole | Update role (syncs to Cognito groups) |
+| PUT | `/admin/users/:id/status` | UpdateUserStatus | Enable/disable user account |
+| POST | `/admin/users/:id/sync` | SyncUserRole | Sync DynamoDB role to Cognito |
+
+### Admin-Enabled Routes
+These routes support admin global access via `hasGlobal` parameter:
+| Route | Admin Behavior |
+|-------|----------------|
+| `GET /tracks` | Returns ALL tracks from all users |
+| `GET /tracks/:id` | Can access any track regardless of visibility |
+| `DELETE /tracks/:id` | Can delete any user's track (cleans up S3 + HLS files) |
+
 ## Helper Functions
 
 | Function | Purpose |
 |----------|---------|
 | `getUserIDFromContext` | Extract user ID from API Gateway claims or X-User-ID header |
+| `getAuthContextWithDBRole` | Get auth context with real-time DB role check (overrides JWT claims) |
+| `hasGlobalAccess` | Check if user has admin/global access based on DB role |
 | `handleError` | Convert errors to appropriate HTTP responses |
 | `bindAndValidate` | Bind and validate request body |
 | `success` | Return 200 OK with JSON data |
 | `created` | Return 201 Created with JSON data |
 | `noContent` | Return 204 No Content |
+
+### Authentication Context
+```go
+type AuthContext struct {
+    UserID    string
+    Role      models.UserRole
+    HasGlobal bool  // true for admin role
+}
+```
+
+- `getAuthContextWithDBRole(c)` - Fetches user role from DynamoDB for real-time enforcement
+- Critical operations (delete, access control) use DB role, not just JWT claims
 
 ## Dependencies
 

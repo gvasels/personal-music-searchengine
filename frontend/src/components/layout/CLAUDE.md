@@ -24,9 +24,28 @@ export function Layout({ children }: { children: React.ReactNode }): JSX.Element
 Renders the main app shell with:
 - Sidebar navigation (left)
 - Header (top)
-- Main content area (center)
+- Main content area (center, scrollable)
 - PlayerBar (bottom, fixed)
 - SimulationBanner (when admin is simulating another role)
+
+**Layout Structure (fixed viewport height):**
+```tsx
+<div className="h-screen bg-base-200 flex flex-col overflow-hidden">
+  <Header />
+  <SimulationBanner />
+  <div className="flex flex-1 min-h-0">  {/* min-h-0 enables flex child scroll */}
+    <Sidebar />
+    <main className="flex-1 p-6 pb-28 overflow-auto">{children}</main>
+  </div>
+  <PlayerBar />
+</div>
+```
+
+**Key CSS Classes:**
+- `h-screen overflow-hidden`: Constrain to viewport, no body scroll
+- `min-h-0`: Allow flex child to shrink below content height (enables scroll)
+- `pb-28`: Bottom padding to prevent content overlapping PlayerBar
+- `overflow-auto`: Main content area scrolls independently
 
 **Role Simulation Behavior:**
 - When admin simulates **Guest** role → automatically redirects to `/permission-denied`

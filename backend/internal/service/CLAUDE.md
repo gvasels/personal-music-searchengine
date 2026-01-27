@@ -39,9 +39,15 @@ Business logic layer implementing domain operations for the Personal Music Searc
   - Returns **403 Forbidden** for unauthorized access to private tracks
   - Returns **404 Not Found** only for truly non-existent tracks
 - `UpdateTrack` - Update track metadata
-- `DeleteTrack` - Delete track and S3 files
+- `DeleteTrack(ctx, userID, trackID, hasGlobal)` - Delete track with admin support
+  - **hasGlobal=false**: Can only delete own tracks
+  - **hasGlobal=true**: Admin can delete ANY track
+  - Uses `GetTrackByID` for admin to find track regardless of owner
+  - Deletes from DynamoDB using actual owner's ID
+  - Cleans up S3 files: audio, cover art, HLS transcoded files
+  - HLS cleanup uses `DeleteByPrefix("hls/{ownerID}/{trackID}/")`
 - `ListTracks(ctx, userID, hasGlobal, filter)` - Paginated track listing with visibility filtering
-  - **hasGlobal=true**: Returns ALL tracks (admin view)
+  - **hasGlobal=true**: Returns ALL tracks (admin view) - scans in batches of 100
   - **hasGlobal=false**: Returns only user's own tracks + public tracks from others
 - `ListTracksByArtist` - Query tracks by artist
 - `IncrementPlayCount` - Update play count and last played

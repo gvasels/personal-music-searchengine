@@ -35,9 +35,16 @@ frontend/
 ### Layout (`src/components/layout/`)
 | Component | File | Description |
 |-----------|------|-------------|
-| `Layout` | `Layout.tsx` | App shell with sidebar, header, and PlayerBar |
+| `Layout` | `Layout.tsx` | App shell with sidebar, header, PlayerBar, fixed viewport height (`h-screen overflow-hidden`) |
 | `Header` | `Header.tsx` | Top navigation with SearchBar and theme toggle |
-| `Sidebar` | `Sidebar.tsx` | Navigation menu with mobile hamburger support |
+| `Sidebar` | `Sidebar.tsx` | Role-aware navigation menu with mobile hamburger support |
+| `SimulationBanner` | `SimulationBanner.tsx` | Admin role simulation alert banner |
+
+**Layout Structure:**
+- Fixed viewport height prevents body scroll
+- Main content scrolls independently (`overflow-auto`)
+- `min-h-0` on flex container enables proper shrinking
+- `pb-28` bottom padding prevents content overlap with PlayerBar
 
 ### Library (`src/components/library/`)
 | Component | File | Description |

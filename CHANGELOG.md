@@ -60,6 +60,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Deletes audio file, cover art, AND all HLS transcoded segments
   - HLS files stored at `hls/{userId}/{trackId}/` now properly cleaned up
 
+#### UI/Layout Fixes
+- **Content Overlapping Player Bar** - Fixed layout so tables don't overlap fixed PlayerBar
+  - Changed `min-h-screen` to `h-screen overflow-hidden` on root container
+  - Added `min-h-0` to flex container to allow shrinking below content height
+  - Main content area now scrolls independently with `overflow-auto`
+  - Added `pb-28` (7rem) bottom padding to prevent content overlap
+
 #### LocalStack Development Environment
 - **Docker & LocalStack Configuration**
   - Added `cognito-idp` service to LocalStack for local authentication

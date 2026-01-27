@@ -112,7 +112,35 @@
 | Follow artists | | ✓ | ✓ | ✓ |
 | Upload tracks | | | ✓ | ✓ |
 | Manage artist profile | | | ✓ | ✓ |
+| View ALL tracks globally | | | | ✓ |
+| Delete ANY track | | | | ✓ |
 | Manage users/roles | | | | ✓ |
+
+### Admin-Specific Capabilities
+
+| Capability | Description |
+|------------|-------------|
+| **Global Track View** | Admins see ALL tracks from all users (not just own + public) |
+| **Delete Any Track** | Admins can delete tracks owned by any user (including S3 + HLS files) |
+| **User Management** | Search users by email, view details, change roles, enable/disable |
+| **Role Simulation** | Test UI as different roles via Admin Panel without changing real role |
+| **Cognito Sync** | Sync DynamoDB roles with Cognito groups for consistency |
+
+### Track Visibility Levels
+
+| Level | Who Can Access |
+|-------|----------------|
+| `private` | Owner only (and admins with global access) |
+| `unlisted` | Anyone with direct link |
+| `public` | Everyone, discoverable in search |
+
+### Access Control Implementation
+
+- **403 Forbidden**: Returned when user lacks permission to access a resource
+- **404 Not Found**: Returned ONLY when the resource truly doesn't exist
+- Service layer enforces visibility (not just handlers)
+- `hasGlobal` parameter determines admin/global read permissions
+- Real-time DB role checking overrides JWT claims for critical operations
 
 ### Playlist Visibility
 
@@ -282,9 +310,20 @@ Current specs: `.spec-workflow/specs/global-user-type/`
 
 ---
 
-## Recent Updates (2025-01-26)
+## Recent Updates
 
-### Global User Type Feature (PR #18)
+### 2025-01-27: Admin Access Control Bug Fixes
+
+**Bug Fixes:**
+- **Admin Track Listing**: Fixed DynamoDB Scan pagination - was only showing 5 of 9 tracks. Now scans in batches of 100 until enough filtered tracks are collected.
+- **Admin Track Deletion**: Fixed 404 error when admin deletes other users' tracks. Now uses `GetTrackByID` for global lookup, then deletes with actual owner's ID.
+- **Clean Track Deletion**: Added `DeleteByPrefix` to S3Repository for batch deletion of HLS transcoded files at `hls/{userId}/{trackId}/`.
+- **UI Layout Overlap**: Fixed table overlapping player bar with `h-screen overflow-hidden` and `min-h-0` flex constraints.
+
+**API Changes:**
+- `DeleteTrack(ctx, userID, trackID, hasGlobal)` - Added `hasGlobal` parameter for admin access
+
+### 2025-01-26: Global User Type Feature (PR #18)
 Replaced subscription tier system with role-based access control:
 
 **Backend Changes:**

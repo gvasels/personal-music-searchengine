@@ -485,9 +485,39 @@ npm run lint
 
 ---
 
+## User Roles & Access Control
+
+The application uses Cognito Groups for role-based access control.
+
+### Roles
+
+| Role | Description | Capabilities |
+|------|-------------|--------------|
+| **Guest** | Unauthenticated | Browse dashboard only, redirected to permission-denied for other routes |
+| **Subscriber** | Default authenticated | Listen, create playlists, follow artists, see own tracks + public tracks |
+| **Artist** | Content creator | All subscriber + upload tracks, manage artist profile |
+| **Admin** | System administrator | ALL permissions + view ALL tracks, delete ANY track, manage users |
+
+### Track Visibility
+
+| Level | Access |
+|-------|--------|
+| `private` | Owner only (and admins) |
+| `unlisted` | Anyone with direct link |
+| `public` | Discoverable by all |
+
+### Access Control Behavior
+
+- **403 Forbidden**: User lacks permission to access a resource they're not authorized to view
+- **404 Not Found**: Resource truly doesn't exist
+- Service layer enforces visibility (not just handlers)
+- Real-time DB role checking overrides JWT claims for critical operations
+
+---
+
 ## API Endpoints
 
-All endpoints require authentication via Cognito JWT.
+All endpoints require authentication via Cognito JWT (except public discovery endpoints).
 
 ### User
 | Method | Path | Description |
@@ -576,9 +606,16 @@ All endpoints require authentication via Cognito JWT.
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/admin/users` | Search users by email |
-| GET | `/api/v1/admin/users/:id` | Get user details |
-| PUT | `/api/v1/admin/users/:id/role` | Update user role |
-| PUT | `/api/v1/admin/users/:id/status` | Enable/disable user |
+| GET | `/api/v1/admin/users/:id` | Get user details (DynamoDB + Cognito) |
+| PUT | `/api/v1/admin/users/:id/role` | Update user role (syncs to Cognito groups) |
+| PUT | `/api/v1/admin/users/:id/status` | Enable/disable user account |
+| POST | `/api/v1/admin/users/:id/sync` | Sync DynamoDB role to Cognito groups |
+
+### Admin Track Operations
+Admins have global access (`hasGlobal=true`):
+- **GET `/api/v1/tracks`**: Returns ALL tracks from all users (not just own + public)
+- **DELETE `/api/v1/tracks/:id`**: Can delete any user's track (cleans up S3 audio, cover art, and HLS files)
+- **GET `/api/v1/tracks/:id`**: Can access any track regardless of visibility
 
 ---
 
