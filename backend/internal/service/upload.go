@@ -19,6 +19,9 @@ const (
 	// Multipart upload thresholds
 	multipartThreshold = 100 * 1024 * 1024 // 100 MB
 	partSize           = 5 * 1024 * 1024   // 5 MB parts
+
+	// Default storage limit for users without an explicit limit set
+	defaultStorageLimit = 10 * 1024 * 1024 * 1024 // 10 GB
 )
 
 // StepFunctionsClient interface for starting executions
@@ -69,8 +72,16 @@ func (s *UploadServiceImpl) CreatePresignedUpload(ctx context.Context, userID st
 	if err != nil && err != repository.ErrNotFound {
 		return nil, err
 	}
-	if user != nil && user.StorageUsed+req.FileSize > user.StorageLimit {
-		return nil, models.ErrStorageLimitExceeded
+	if user != nil {
+		limit := user.StorageLimit
+		// StorageLimit of 0 means field was never set - use default
+		if limit == 0 {
+			limit = defaultStorageLimit
+		}
+		// StorageLimit of -1 means unlimited storage
+		if limit > 0 && user.StorageUsed+req.FileSize > limit {
+			return nil, models.ErrStorageLimitExceeded
+		}
 	}
 
 	// Generate upload ID and S3 key
