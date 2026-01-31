@@ -232,23 +232,22 @@ func WithArtistBio(bio string) ArtistProfileOption {
 }
 
 // CreateTestArtistProfile creates an artist profile in DynamoDB and registers it for cleanup.
-// PK=ARTIST_PROFILE#{id}, SK=PROFILE, GSI1PK=USER#{userID}, GSI1SK=ARTIST_PROFILE
-// Returns the artist profile ID.
+// PK=USER#{userID}, SK=ARTIST_PROFILE, GSI1PK=ARTIST_PROFILE, GSI1SK=USER#{userID}
+// Returns the userID (which is also the profile identifier).
 func (tc *TestContext) CreateTestArtistProfile(t *testing.T, userID string, opts ...ArtistProfileOption) string {
 	t.Helper()
 
-	profileID := uuid.New().String()
 	now := time.Now().UTC().Format(time.RFC3339)
 
-	pk := "ARTIST_PROFILE#" + profileID
-	sk := "PROFILE"
+	pk := "USER#" + userID
+	sk := "ARTIST_PROFILE"
 
 	item := map[string]dynamodbtypes.AttributeValue{
 		"PK":            &dynamodbtypes.AttributeValueMemberS{Value: pk},
 		"SK":            &dynamodbtypes.AttributeValueMemberS{Value: sk},
-		"GSI1PK":        &dynamodbtypes.AttributeValueMemberS{Value: "USER#" + userID},
-		"GSI1SK":        &dynamodbtypes.AttributeValueMemberS{Value: "ARTIST_PROFILE"},
-		"ID":            &dynamodbtypes.AttributeValueMemberS{Value: profileID},
+		"GSI1PK":        &dynamodbtypes.AttributeValueMemberS{Value: "ARTIST_PROFILE"},
+		"GSI1SK":        &dynamodbtypes.AttributeValueMemberS{Value: "USER#" + userID},
+		"Type":          &dynamodbtypes.AttributeValueMemberS{Value: "ARTIST_PROFILE"},
 		"userId":        &dynamodbtypes.AttributeValueMemberS{Value: userID},
 		"displayName":   &dynamodbtypes.AttributeValueMemberS{Value: "Test Artist"},
 		"bio":           &dynamodbtypes.AttributeValueMemberS{Value: "Test bio"},
@@ -257,8 +256,8 @@ func (tc *TestContext) CreateTestArtistProfile(t *testing.T, userID string, opts
 		"albumCount":    &dynamodbtypes.AttributeValueMemberN{Value: "0"},
 		"totalPlays":    &dynamodbtypes.AttributeValueMemberN{Value: "0"},
 		"isVerified":    &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
-		"CreatedAt":     &dynamodbtypes.AttributeValueMemberS{Value: now},
-		"UpdatedAt":     &dynamodbtypes.AttributeValueMemberS{Value: now},
+		"createdAt":     &dynamodbtypes.AttributeValueMemberS{Value: now},
+		"updatedAt":     &dynamodbtypes.AttributeValueMemberS{Value: now},
 	}
 
 	for _, opt := range opts {
@@ -275,27 +274,28 @@ func (tc *TestContext) CreateTestArtistProfile(t *testing.T, userID string, opts
 	}
 
 	tc.RegisterCleanup("artist_profile", pk, sk)
-	return profileID
+	return userID
 }
 
 // CreateTestFollow creates a follow relationship in DynamoDB and registers it for cleanup.
-// PK=FOLLOW#{followerID}, SK=FOLLOWING#{followedID}, GSI1PK=ARTIST_PROFILE#{followedID}, GSI1SK=FOLLOWER#{followerID}
+// PK=USER#{followerID}, SK=FOLLOWING#{followedID}, GSI1PK=FOLLOWERS#{followedID}, GSI1SK=USER#{followerID}
 func (tc *TestContext) CreateTestFollow(t *testing.T, followerID, followedID string) {
 	t.Helper()
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
-	pk := "FOLLOW#" + followerID
+	pk := "USER#" + followerID
 	sk := "FOLLOWING#" + followedID
 
 	item := map[string]dynamodbtypes.AttributeValue{
 		"PK":         &dynamodbtypes.AttributeValueMemberS{Value: pk},
 		"SK":         &dynamodbtypes.AttributeValueMemberS{Value: sk},
-		"GSI1PK":     &dynamodbtypes.AttributeValueMemberS{Value: "ARTIST_PROFILE#" + followedID},
-		"GSI1SK":     &dynamodbtypes.AttributeValueMemberS{Value: "FOLLOWER#" + followerID},
+		"GSI1PK":     &dynamodbtypes.AttributeValueMemberS{Value: "FOLLOWERS#" + followedID},
+		"GSI1SK":     &dynamodbtypes.AttributeValueMemberS{Value: "USER#" + followerID},
+		"Type":       &dynamodbtypes.AttributeValueMemberS{Value: "FOLLOW"},
 		"followerId": &dynamodbtypes.AttributeValueMemberS{Value: followerID},
 		"followedId": &dynamodbtypes.AttributeValueMemberS{Value: followedID},
-		"CreatedAt":  &dynamodbtypes.AttributeValueMemberS{Value: now},
+		"createdAt":  &dynamodbtypes.AttributeValueMemberS{Value: now},
 	}
 
 	ctx := context.Background()

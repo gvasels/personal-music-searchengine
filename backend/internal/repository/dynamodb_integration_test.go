@@ -334,7 +334,7 @@ func TestIntegration_TagCRUD(t *testing.T) {
 		require.NoError(t, err)
 
 		got, err := repo.GetTag(ctx, userID, "chill")
-		require.NoError(t, err)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 		assert.Nil(t, got)
 	})
 }

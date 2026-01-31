@@ -60,9 +60,9 @@ func TestIntegration_ArtistProfileCRUD(t *testing.T) {
 		assert.False(t, got.CreatedAt.IsZero())
 	})
 
-	t.Run("get non-existent profile returns nil", func(t *testing.T) {
+	t.Run("get non-existent profile returns ErrNotFound", func(t *testing.T) {
 		got, err := repo.GetArtistProfile(ctx, "nonexistent-user")
-		require.NoError(t, err)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 		assert.Nil(t, got)
 	})
 
@@ -86,7 +86,7 @@ func TestIntegration_ArtistProfileCRUD(t *testing.T) {
 		require.NoError(t, err)
 
 		got, err := repo.GetArtistProfile(ctx, "artist-user-1")
-		require.NoError(t, err)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 		assert.Nil(t, got)
 	})
 }
@@ -239,9 +239,9 @@ func TestIntegration_FollowCRUD(t *testing.T) {
 		assert.False(t, got.CreatedAt.IsZero())
 	})
 
-	t.Run("get follow returns nil for nonexistent", func(t *testing.T) {
+	t.Run("get follow returns ErrNotFound for nonexistent", func(t *testing.T) {
 		got, err := repo.GetFollow(ctx, "follower-1", "nobody")
-		require.NoError(t, err)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 		assert.Nil(t, got)
 	})
 
@@ -274,7 +274,7 @@ func TestIntegration_FollowCRUD(t *testing.T) {
 		require.NoError(t, err)
 
 		got, err := repo.GetFollow(ctx, "follower-1", "followed-artist")
-		require.NoError(t, err)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 		assert.Nil(t, got, "follow should be deleted")
 
 		// Verify follower list reflects deletion
@@ -283,9 +283,9 @@ func TestIntegration_FollowCRUD(t *testing.T) {
 		assert.Len(t, result.Items, 1, "should have 1 follower after unfollow")
 	})
 
-	t.Run("delete follow on nonexistent is idempotent", func(t *testing.T) {
+	t.Run("delete follow on nonexistent returns ErrNotFound", func(t *testing.T) {
 		err := repo.DeleteFollow(ctx, "follower-1", "followed-artist")
-		assert.NoError(t, err)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 }
 

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -60,8 +61,8 @@ func TestIntegration_TrackService_VisibilityEnforcement(t *testing.T) {
 	t.Run("other user cannot access private track", func(t *testing.T) {
 		_, err := svc.GetTrack(ctx, "other-user", "private-track", false)
 		require.Error(t, err)
-		// Should be a forbidden error, not a not-found
-		assert.Contains(t, err.Error(), "forbidden")
+		// Should be a forbidden error, not a not-found (case-insensitive check)
+		assert.Contains(t, strings.ToLower(err.Error()), "forbidden")
 	})
 
 	t.Run("admin with hasGlobal can access private track", func(t *testing.T) {

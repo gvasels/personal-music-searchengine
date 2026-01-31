@@ -92,8 +92,8 @@ func SetupTestServer(t *testing.T) (*TestServerContext, func()) {
 		return c.JSON(200, map[string]string{"status": "ok"})
 	})
 
-	// Follow system routes (registered via handlers)
-	registerFollowRoutes(e, services)
+	// Follow system routes (not in RegisterRoutes yet - wire manually)
+	registerFollowRoutes(e, repo)
 
 	// Start test server
 	server := httptest.NewServer(e)
@@ -115,20 +115,18 @@ func SetupTestServer(t *testing.T) (*TestServerContext, func()) {
 }
 
 // registerFollowRoutes adds follow-related routes.
-// These may be registered by handlers.RegisterRoutes already — this is a safety net
-// for any routes that need explicit handler setup.
-func registerFollowRoutes(e *echo.Echo, services *service.Services) {
-	// Follow routes are under /api/v1/artists/entity/:id/follow
-	// These should already be registered by handlers.RegisterRoutes
-	// via the artist entity routes. Check if they exist and add if missing.
-	api := e.Group("/api/v1")
+// Follow/ArtistProfile handlers are not yet wired in RegisterRoutes,
+// so we create the service and handler here for integration tests.
+func registerFollowRoutes(e *echo.Echo, repo *repository.DynamoDBRepository) {
+	followSvc := service.NewFollowService(repo)
+	followHandler := handlers.NewFollowHandler(followSvc)
 
-	// Follow endpoints
-	if services.Artist != nil {
-		// Follow routes are registered via the handlers already
-		// Only add the user's following list if not present
-		_ = api // Routes are registered in handlers.RegisterRoutes
-	}
+	// Follow routes under /api/v1/artists/entity/:id with auth middleware
+	artists := e.Group("/api/v1/artists/entity/:id", handlermw.RequireAuth())
+	artists.POST("/follow", followHandler.Follow)
+	artists.DELETE("/follow", followHandler.Unfollow)
+	artists.GET("/following", followHandler.IsFollowing)
+	artists.GET("/followers", followHandler.GetFollowers)
 }
 
 // RequireRoleForTest is a test helper middleware that checks X-User-Role header.

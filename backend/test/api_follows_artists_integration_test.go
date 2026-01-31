@@ -22,14 +22,13 @@ func TestIntegration_API_ArtistProfileCRUD(t *testing.T) {
 		resp := tsc.DoRequest(t, http.MethodPost, "/api/v1/artists/entity",
 			testutil.AsUser(artistUserID, models.RoleArtist),
 			testutil.WithJSON(map[string]interface{}{
-				"displayName": "DJ API Test",
-				"bio":         "Integration test artist",
-				"genres":      []string{"Electronic", "House"},
+				"name": "DJ API Test",
+				"bio":  "Integration test artist",
 			}),
 		)
 		testutil.AssertStatus(t, resp, http.StatusCreated)
 		body := testutil.DecodeJSONBody(t, resp)
-		assert.Equal(t, "DJ API Test", body["displayName"])
+		assert.Equal(t, "DJ API Test", body["name"])
 	})
 
 	t.Run("get artist profile", func(t *testing.T) {
@@ -38,7 +37,7 @@ func TestIntegration_API_ArtistProfileCRUD(t *testing.T) {
 		)
 		testutil.AssertStatus(t, resp, http.StatusOK)
 		body := testutil.DecodeJSONBody(t, resp)
-		assert.Equal(t, "DJ API Test", body["displayName"])
+		assert.Equal(t, "DJ API Test", body["name"])
 	})
 
 	t.Run("list artist profiles", func(t *testing.T) {
@@ -73,7 +72,7 @@ func TestIntegration_API_FollowSystem(t *testing.T) {
 		resp := tsc.DoRequest(t, http.MethodPost, fmt.Sprintf("/api/v1/artists/entity/%s/follow", artistID),
 			testutil.AsUser(followerID, models.RoleSubscriber),
 		)
-		testutil.AssertStatus(t, resp, http.StatusOK)
+		testutil.AssertStatus(t, resp, http.StatusCreated)
 	})
 
 	t.Run("check is following", func(t *testing.T) {
@@ -96,7 +95,7 @@ func TestIntegration_API_FollowSystem(t *testing.T) {
 		resp := tsc.DoRequest(t, http.MethodDelete, fmt.Sprintf("/api/v1/artists/entity/%s/follow", artistID),
 			testutil.AsUser(followerID, models.RoleSubscriber),
 		)
-		testutil.AssertStatus(t, resp, http.StatusOK)
+		testutil.AssertStatus(t, resp, http.StatusNoContent)
 	})
 
 	t.Run("verify not following anymore", func(t *testing.T) {

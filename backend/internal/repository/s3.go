@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -312,27 +313,21 @@ func (r *S3RepositoryImpl) ObjectExists(ctx context.Context, key string) (bool, 
 	return true, nil
 }
 
-// isNotFoundError checks if an error is a "not found" error from S3
+// isNotFoundError checks if an error is a "not found" error from S3.
+// Uses errors.As to unwrap the AWS SDK error chain (e.g. *smithyhttp.ResponseError).
 func isNotFoundError(err error) bool {
-	// Check for common S3 not found error types
 	var notFound *types.NotFound
-	var noSuchKey *types.NoSuchKey
-	if errorAs(err, &notFound) || errorAs(err, &noSuchKey) {
+	if errors.As(err, &notFound) {
 		return true
 	}
-	return false
-}
-
-// errorAs is a helper to check error types
-func errorAs(err error, target interface{}) bool {
-	// Use type assertion instead of errors.As for interface types
-	switch target.(type) {
-	case **types.NotFound:
-		_, ok := err.(*types.NotFound)
-		return ok
-	case **types.NoSuchKey:
-		_, ok := err.(*types.NoSuchKey)
-		return ok
+	var noSuchKey *types.NoSuchKey
+	if errors.As(err, &noSuchKey) {
+		return true
+	}
+	// Fallback: check HTTP status code for wrapped 404 responses
+	var respErr interface{ HTTPStatusCode() int }
+	if errors.As(err, &respErr) && respErr.HTTPStatusCode() == 404 {
+		return true
 	}
 	return false
 }

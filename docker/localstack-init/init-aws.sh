@@ -29,6 +29,10 @@ aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 dynamodb create-table \
         AttributeName=SK,AttributeType=S \
         AttributeName=GSI1PK,AttributeType=S \
         AttributeName=GSI1SK,AttributeType=S \
+        AttributeName=GSI2PK,AttributeType=S \
+        AttributeName=GSI2SK,AttributeType=S \
+        AttributeName=GSI3PK,AttributeType=S \
+        AttributeName=GSI3SK,AttributeType=S \
     --key-schema \
         AttributeName=PK,KeyType=HASH \
         AttributeName=SK,KeyType=RANGE \
@@ -38,6 +42,22 @@ aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 dynamodb create-table \
             \"KeySchema\": [
                 {\"AttributeName\": \"GSI1PK\", \"KeyType\": \"HASH\"},
                 {\"AttributeName\": \"GSI1SK\", \"KeyType\": \"RANGE\"}
+            ],
+            \"Projection\": {\"ProjectionType\": \"ALL\"}
+        },
+        {
+            \"IndexName\": \"GSI2\",
+            \"KeySchema\": [
+                {\"AttributeName\": \"GSI2PK\", \"KeyType\": \"HASH\"},
+                {\"AttributeName\": \"GSI2SK\", \"KeyType\": \"RANGE\"}
+            ],
+            \"Projection\": {\"ProjectionType\": \"ALL\"}
+        },
+        {
+            \"IndexName\": \"GSI3\",
+            \"KeySchema\": [
+                {\"AttributeName\": \"GSI3PK\", \"KeyType\": \"HASH\"},
+                {\"AttributeName\": \"GSI3SK\", \"KeyType\": \"RANGE\"}
             ],
             \"Projection\": {\"ProjectionType\": \"ALL\"}
         }]" \
