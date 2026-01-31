@@ -128,16 +128,46 @@ All code must follow TDD:
 
 ### Test File Naming
 - Unit tests: `*_test.go` in same package
-- Integration tests: `*_integration_test.go`
+- Integration tests: `*_integration_test.go` with `//go:build integration` tag
 
 ### Running Tests
 ```bash
 # Unit tests only
-go test -short ./...
-
-# All tests including integration
 go test ./...
+
+# Integration tests (requires LocalStack running on port 4566)
+go test -tags=integration ./internal/repository/ ./internal/service/ ./test/
+
+# All tests
+go test -tags=integration ./...
 
 # Specific package
 go test ./internal/models/...
 ```
+
+### Integration Test Infrastructure (`internal/testutil/`)
+
+| File | Purpose |
+|------|---------|
+| `localstack.go` | `SetupLocalStack(t)` — creates `TestContext` with DynamoDB, S3, Cognito clients pointing to LocalStack |
+| `server.go` | `SetupTestServer(t)` — full Echo HTTP server backed by LocalStack for API testing |
+| `http_helpers.go` | `AsUser()`, `WithJSON()`, `DoRequest()`, `AssertStatus()`, `DecodeJSON[T]()` request helpers |
+| `fixtures.go` | Entity creation helpers: `CreateTestTrack`, `CreateTestUser`, `CreateTestPlaylist`, `CreateTestArtistProfile`, `CreateTestFollow`, `CreateTestTag`, `CreateTestAlbum`, `CreateTestS3Object` |
+| `cleanup.go` | Automatic cleanup of DynamoDB items and S3 objects after tests |
+
+### Integration Test Locations
+
+| Package | File | Tests |
+|---------|------|-------|
+| `repository` | `dynamodb_integration_test.go` | DynamoDB CRUD + pagination |
+| `repository` | `artist_follow_integration_test.go` | Artist profile and follow GSI queries |
+| `repository` | `s3_integration_test.go` | S3 ops, presigned URLs, prefix delete |
+| `service` | `track_service_integration_test.go` | Visibility enforcement, admin access |
+| `service` | `playlist_service_integration_test.go` | Playlist CRUD, public discovery |
+| `service` | `other_services_integration_test.go` | Tag, User, Role, Follow, ArtistProfile |
+| `service` | `cognito_integration_test.go` | Cognito auth, groups, user management |
+| `test` | `api_auth_integration_test.go` | Auth middleware, role-based access |
+| `test` | `api_tracks_integration_test.go` | Track CRUD and visibility via HTTP |
+| `test` | `api_playlists_tags_integration_test.go` | Playlist and tag endpoints |
+| `test` | `api_follows_artists_integration_test.go` | Follow system and artist profiles |
+| `test` | `api_admin_integration_test.go` | Admin routes, DB role resolution |
