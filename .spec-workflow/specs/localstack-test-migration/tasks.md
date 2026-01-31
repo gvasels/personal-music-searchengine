@@ -49,7 +49,7 @@
 
 ## Phase 2: Repository Integration Tests
 
-- [ ] 2.1. DynamoDB repository integration tests
+- [x] 2.1. DynamoDB repository integration tests
   - File: `backend/internal/repository/dynamodb_integration_test.go`
   - Test Track CRUD: Create, Get, GetByID, Update, Delete, List with pagination
   - Test User CRUD: CreateIfNotExists, Get, Update, UpdateRole
@@ -61,7 +61,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
   - _Prompt: Implement the task for spec localstack-test-migration, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Go Backend Developer specializing in DynamoDB and integration testing | Task: Create `repository/dynamodb_integration_test.go`. Read `backend/internal/repository/repository.go` for the `Repository` interface, then `dynamodb.go` and `tracks.go` for implementations. For each major entity (Track, User, Playlist, Tag), write integration tests that: (1) setup LocalStack, (2) create a real `DynamoDBRepository`, (3) test CRUD operations, (4) verify data in DynamoDB via `TestContext.GetItem`. Test pagination by creating 20+ items and verifying cursor works. Use `//go:build integration` tag and `t.Parallel()` for independent subtests. | Restrictions: Do not mock anything — use real LocalStack. Do not modify repository code. Each test must clean up via `defer cleanup()`. | _Leverage: `testutil.SetupLocalStack()`, `repository.NewDynamoDBRepository()`, `repository/repository.go` | _Requirements: Req 1 (Repository Integration Tests) | Success: All major repository CRUD operations verified against real DynamoDB. Pagination produces correct pages. Mark task in-progress in tasks.md, log implementation, mark complete._
 
-- [ ] 2.2. Artist profile and follow repository integration tests
+- [x] 2.2. Artist profile and follow repository integration tests
   - File: `backend/internal/repository/artist_profile_integration_test.go`
   - Test ArtistProfile CRUD with GSI1 queries (lookup by userID via GSI1PK=`USER#{userId}`, GSI1SK=`ARTIST_PROFILE`)
   - Test Follow CRUD with GSI1 queries (lookup followers via GSI1PK=`ARTIST_PROFILE#{followedId}`)
@@ -71,7 +71,7 @@
   - _Requirements: 1.4_
   - _Prompt: Implement the task for spec localstack-test-migration, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Go Developer specializing in DynamoDB GSI queries | Task: Create `repository/artist_profile_integration_test.go`. Read `repository/artist_profile.go` and `repository/follow.go` to understand the GSI query patterns. Write integration tests that: (1) create artist profiles and verify GSI1 lookup by userID, (2) create follows and verify GSI1 lookup of followers for an artist, (3) test atomic counter increments for follower/following counts. These are the most important tests because GSI behavior is where mocks diverge most from real DynamoDB. | Restrictions: Must verify actual GSI query results (not just PK/SK access). Use `//go:build integration` tag. | _Leverage: `repository/artist_profile.go`, `repository/follow.go` | _Requirements: Req 1 | Success: GSI1 queries return correct results. Atomic counter increments work. Mark task in-progress in tasks.md, log implementation, mark complete._
 
-- [ ] 2.3. S3 repository integration tests
+- [x] 2.3. S3 repository integration tests
   - File: `backend/internal/repository/s3_integration_test.go`
   - Test PutObject, GetObject, DeleteObject
   - Test GeneratePresignedUploadURL and GeneratePresignedDownloadURL
