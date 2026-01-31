@@ -68,10 +68,13 @@ aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3api put-bucket-cors \
     }' \
     --region ${AWS_REGION}
 
-# Create bucket folders (use s3api put-object with a temp file to avoid trailer header issues)
+# Create bucket folders
+# AWS CLI v2 sends checksum trailers that LocalStack doesn't support.
+# Disable with AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED.
 echo "Creating bucket folders..."
 EMPTY_FILE=$(mktemp)
 for folder in uploads media covers; do
+    AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED \
     aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3api put-object \
         --bucket ${MEDIA_BUCKET} --key "${folder}/.keep" --body "${EMPTY_FILE}" \
         --region ${AWS_REGION} > /dev/null
