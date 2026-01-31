@@ -83,8 +83,8 @@
 
 ## Phase 3: Service Integration Tests
 
-- [ ] 3.1. Track service integration tests
-  - File: `backend/internal/service/track_integration_test.go` (extend existing)
+- [x] 3.1. Track service integration tests
+  - File: `backend/internal/service/track_service_integration_test.go`
   - Test visibility enforcement: private track → owner 200, other user 403, admin 200
   - Test `ListTracks` with `hasGlobal=true` (admin) returns all tracks vs `hasGlobal=false` returns own + public
   - Test `DeleteTrack` with `hasGlobal=true` (admin can delete any track) including S3 cleanup
@@ -94,8 +94,8 @@
   - _Requirements: 2.1, 2.2, 2.3_
   - _Prompt: Implement the task for spec localstack-test-migration, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Go Backend Developer | Task: Extend `service/track_integration_test.go` with service-level integration tests. Read `service/track.go` for `TrackService` implementation — focus on the `hasGlobal` parameter in `GetTrack`, `ListTracks`, `DeleteTrack`. Create real `DynamoDBRepository` + `S3Repository` + `TrackService`. Test: (1) create users with different roles, (2) create private/public tracks, (3) verify GetTrack visibility enforcement (owner OK, other 403, admin OK), (4) verify ListTracks filtering, (5) verify admin DeleteTrack with S3 cleanup. | Restrictions: Use real services and repos, not mocks. Do not modify service code. | _Leverage: `service/track.go`, `testutil.SetupLocalStack()` | _Requirements: Req 2 | Success: Visibility enforcement verified end-to-end. Admin access works. Mark task in-progress in tasks.md, log implementation, mark complete._
 
-- [ ] 3.2. Playlist service integration tests
-  - File: `backend/internal/service/playlist_integration_test.go`
+- [x] 3.2. Playlist service integration tests
+  - File: `backend/internal/service/playlist_service_integration_test.go`
   - Test Playlist CRUD via service layer with real DynamoDB
   - Test visibility: set public → verify appears in `ListPublicPlaylists` (GSI2 query), set private → verify disappears
   - Test AddTracks/RemoveTracks with real track data
@@ -104,8 +104,8 @@
   - _Requirements: 2.4_
   - _Prompt: Implement the task for spec localstack-test-migration, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Go Backend Developer | Task: Create `service/playlist_integration_test.go`. Read `service/playlist.go` for implementation. Test: (1) create playlist, (2) add tracks, (3) list playlists, (4) set visibility to public, (5) verify ListPublicPlaylists returns it, (6) set private, verify it disappears from public list. Also test RemoveTracks and DeletePlaylist. | Restrictions: Use real repos, not mocks. | _Leverage: `service/playlist.go` | _Requirements: Req 2 | Success: Playlist visibility toggle verified against real DynamoDB GSI. Mark task in-progress in tasks.md, log implementation, mark complete._
 
-- [ ] 3.3. Tag, Follow, ArtistProfile, Role, User service integration tests
-  - Files: `backend/internal/service/tag_integration_test.go`, `follow_integration_test.go`, `artist_profile_integration_test.go`, `role_integration_test.go`, `user_integration_test.go`
+- [x] 3.3. Tag, Follow, ArtistProfile, Role, User service integration tests
+  - File: `backend/internal/service/other_services_integration_test.go`
   - Tag: create tag, add to track, list tracks by tag, case-insensitive lookup, rename, delete
   - Follow: follow, verify count increment, unfollow, verify count decrement, prevent duplicate follow
   - ArtistProfile: create, get, update, link to user via GSI
