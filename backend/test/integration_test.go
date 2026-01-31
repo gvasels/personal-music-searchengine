@@ -446,5 +446,9 @@ func TestMain(m *testing.M) {
 	fmt.Printf("Region: %s\n", awsRegion)
 	fmt.Println("==========================================")
 
-	os.Exit(m.Run())
+	// Do not use os.Exit(m.Run()) — it bypasses cleanup for the race
+	// detector and coverage profiler, causing spurious FAIL with -race
+	// and -coverpkg. Go 1.20+ handles the exit code automatically when
+	// TestMain returns.
+	m.Run()
 }
