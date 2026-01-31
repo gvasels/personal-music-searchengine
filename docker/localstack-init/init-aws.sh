@@ -68,14 +68,17 @@ aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3api put-bucket-cors \
     }' \
     --region ${AWS_REGION}
 
-# Create bucket folders
+# Create bucket folders (use s3api put-object to avoid trailer header issues with LocalStack)
 echo "Creating bucket folders..."
-echo "" | aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3 cp - s3://${MEDIA_BUCKET}/uploads/.keep \
-    --region ${AWS_REGION}
-echo "" | aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3 cp - s3://${MEDIA_BUCKET}/media/.keep \
-    --region ${AWS_REGION}
-echo "" | aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3 cp - s3://${MEDIA_BUCKET}/covers/.keep \
-    --region ${AWS_REGION}
+aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3api put-object \
+    --bucket ${MEDIA_BUCKET} --key uploads/.keep --body /dev/null \
+    --region ${AWS_REGION} > /dev/null
+aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3api put-object \
+    --bucket ${MEDIA_BUCKET} --key media/.keep --body /dev/null \
+    --region ${AWS_REGION} > /dev/null
+aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3api put-object \
+    --bucket ${MEDIA_BUCKET} --key covers/.keep --body /dev/null \
+    --region ${AWS_REGION} > /dev/null
 
 echo ""
 echo "============================================"
