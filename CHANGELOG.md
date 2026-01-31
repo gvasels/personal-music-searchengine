@@ -105,6 +105,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Main content area now scrolls independently with `overflow-auto`
   - Added `pb-28` (7rem) bottom padding to prevent content overlap
 
+#### Integration Test CI Fixes (PR #22)
+- **S3 Error Handling** - Fixed `isNotFoundError` in S3 repository to use `errors.As` instead of direct type assertion, which fails with AWS SDK v2's wrapped error chains (e.g. `*smithyhttp.ResponseError`)
+- **Missing GSI2/GSI3 in LocalStack** - Added GSI2 (public playlists) and GSI3 (public tracks) to `init-aws.sh` DynamoDB table creation; `ListPublicPlaylists` and `ListPublicTracks` queries failed without them
+- **Test Fixture Key Schemas** - Fixed `CreateTestArtistProfile` and `CreateTestFollow` to use correct DynamoDB key patterns matching repository implementations (`PK=USER#` instead of `PK=ARTIST_PROFILE#`/`PK=FOLLOW#`)
+- **ErrNotFound Assertions** - Fixed 6 repository test assertions that expected `(nil, nil)` for non-existent items; `GetArtistProfile`, `GetFollow`, `GetTag`, and `DeleteFollow` all return `ErrNotFound`
+- **Case-Insensitive Error Check** - Track visibility test used `assert.Contains(err, "forbidden")` but error message is uppercase `FORBIDDEN`; fixed with `strings.ToLower()`
+- **Artist Entity ID vs User ID** - API artist CRUD test used user ID to GET/PUT artist entities, but `CreateArtist` generates a separate entity UUID; now captures entity ID from create response
+- **Follow Route Wiring** - `FollowHandler` existed but routes were not registered; wired follow routes in test server with `RequireAuth` middleware since handler uses `middleware.GetUserID(c)`
+- **Artist Response Field Names** - Test asserted `body["displayName"]` but `ArtistResponse` uses `json:"name"`; also fixed status codes to match handler responses (201 Created for follow, 204 NoContent for unfollow)
+
 #### LocalStack Development Environment
 - **Docker & LocalStack Configuration**
   - Added `cognito-idp` service to LocalStack for local authentication
