@@ -118,7 +118,7 @@
 
 ## Phase 4: Cognito Integration Tests
 
-- [ ] 4.1. Cognito client integration tests
+- [x] 4.1. Cognito client integration tests
   - File: `backend/internal/service/cognito_integration_test.go`
   - Test authentication: authenticate pre-created test users (admin, subscriber, artist), verify tokens
   - Test group operations: add user to group, remove from group, list groups for user
