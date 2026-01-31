@@ -131,7 +131,7 @@
 
 ## Phase 5: Full API Integration Tests
 
-- [ ] 5.1. API auth and health integration tests
+- [x] 5.1. API auth and health integration tests
   - File: `backend/test/api_auth_integration_test.go`
   - Test `/health` returns 200 without auth
   - Test protected endpoints return 401 without auth headers
@@ -142,7 +142,7 @@
   - _Requirements: 6.9_
   - _Prompt: Implement the task for spec localstack-test-migration, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Go Developer specializing in API testing | Task: Create `test/api_auth_integration_test.go`. Use `testutil.SetupTestServer(t)` to spin up the full Echo server. Test: (1) GET `/health` → 200 without auth, (2) GET `/api/v1/tracks` without headers → 401, (3) GET `/api/v1/admin/users` as subscriber → 403, (4) GET `/api/v1/admin/users` as admin → 200. Use `AsUser()` to set auth headers. | Restrictions: Use `//go:build integration` tag. Create test users in DynamoDB for DB role checks. | _Leverage: `testutil/server.go`, `testutil/http_helpers.go` | _Requirements: Req 6 | Success: Full auth chain verified via HTTP. Mark task in-progress in tasks.md, log implementation, mark complete._
 
-- [ ] 5.2. API tracks CRUD and visibility integration tests
+- [x] 5.2. API tracks CRUD and visibility integration tests
   - File: `backend/test/api_tracks_integration_test.go`
   - Test full CRUD cycle via HTTP: list tracks (empty), create track data via fixture, GET track, list tracks (1 result), DELETE track, verify 404
   - Test visibility enforcement via HTTP: user A private track → user B GET returns 403 → admin GET returns 200
@@ -153,7 +153,7 @@
   - _Requirements: 6.1, 6.3, 6.4_
   - _Prompt: Implement the task for spec localstack-test-migration, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Go API Developer | Task: Create `test/api_tracks_integration_test.go`. Use `SetupTestServer` for full Echo + LocalStack. Test the complete track lifecycle via HTTP requests: (1) create users with different roles, (2) create tracks via fixtures, (3) GET /api/v1/tracks as different users — verify filtering, (4) GET /api/v1/tracks/:id — verify visibility (owner OK, other 403, admin OK), (5) DELETE /api/v1/tracks/:id as admin — verify deleted, (6) verify DynamoDB directly via `tsc.ItemExists`. | Restrictions: Use HTTP requests only for the operations being tested. Use fixtures for setup data. | _Leverage: `testutil/server.go`, `testutil/http_helpers.go` | _Requirements: Req 6 | Success: Full track CRUD and visibility verified through HTTP. Mark task in-progress in tasks.md, log implementation, mark complete._
 
-- [ ] 5.3. API playlists and tags integration tests
+- [x] 5.3. API playlists and tags integration tests
   - File: `backend/test/api_playlists_integration_test.go`, `backend/test/api_tags_integration_test.go`
   - Playlists: create via POST, list, update visibility, verify public playlist discovery via GET `/playlists/public`, add/remove tracks
   - Tags: create via POST, add to track, list tracks by tag, remove from track, verify case-insensitive behavior
@@ -162,7 +162,7 @@
   - _Requirements: 6.6, 6.7_
   - _Prompt: Implement the task for spec localstack-test-migration, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Go API Developer | Task: Create `test/api_playlists_integration_test.go` and `test/api_tags_integration_test.go`. For playlists: POST create → GET list → PUT visibility to public → GET /playlists/public (verify appears) → PUT visibility to private → GET /playlists/public (verify gone). For tags: POST create → POST add-to-track → GET tracks-by-tag → DELETE remove-from-track. All via HTTP to test server. | Restrictions: Use `//go:build integration` tag. Both files. | _Leverage: `testutil/server.go`, `testutil/http_helpers.go` | _Requirements: Req 6 | Success: Playlist visibility and tag operations verified through HTTP. Mark task in-progress in tasks.md, log implementation, mark complete._
 
-- [ ] 5.4. API follows and artist profiles integration tests
+- [x] 5.4. API follows and artist profiles integration tests
   - File: `backend/test/api_follows_integration_test.go`, `backend/test/api_artists_integration_test.go`
   - Artist profiles: create via POST, GET, update via PUT, list, search
   - Follows: POST follow → GET followers (verify appears) → verify count incremented → DELETE unfollow → verify count decremented
@@ -171,7 +171,7 @@
   - _Requirements: 6.8_
   - _Prompt: Implement the task for spec localstack-test-migration, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Go API Developer | Task: Create `test/api_follows_integration_test.go` and `test/api_artists_integration_test.go`. For artist profiles: create artist user + profile via fixtures, GET /artists/entity/:id, PUT update, GET /artists/entity (list). For follows: subscriber follows artist via POST /artists/entity/:id/follow, GET /artists/entity/:id/followers (verify listed), check follower count incremented, DELETE /artists/entity/:id/follow, verify count decremented. | Restrictions: Create prerequisite data (users, artist profiles) via fixtures, test follow operations via HTTP. | _Leverage: `testutil/server.go`, `testutil/http_helpers.go`, `testutil/fixtures.go` | _Requirements: Req 6 | Success: Follow system verified through HTTP with count updates. Mark task in-progress in tasks.md, log implementation, mark complete._
 
-- [ ] 5.5. API admin routes integration tests
+- [x] 5.5. API admin routes integration tests
   - File: `backend/test/api_admin_integration_test.go`
   - Test admin user search via GET `/api/v1/admin/users?q=...`
   - Test admin role update via PUT `/api/v1/admin/users/:id/role`
