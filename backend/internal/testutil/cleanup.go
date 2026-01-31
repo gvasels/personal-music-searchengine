@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // CleanupUser removes a user and all their data from DynamoDB.
@@ -123,6 +124,35 @@ func (tc *TestContext) CleanupAll(t *testing.T) {
 	}
 
 	t.Logf("CleanupAll: deleted %d items", deletedCount)
+}
+
+// RegisterS3Cleanup registers an S3 object key for cleanup at test end.
+func (tc *TestContext) RegisterS3Cleanup(key string) {
+	tc.cleanupItems = append(tc.cleanupItems, cleanupItem{
+		itemType: "s3",
+		pk:       key,
+		sk:       "",
+	})
+}
+
+// CleanupS3Object removes a specific S3 object.
+func (tc *TestContext) CleanupS3Object(t *testing.T, key string) {
+	t.Helper()
+
+	ctx := context.Background()
+	err := tc.deleteS3Object(ctx, key)
+	if err != nil {
+		t.Logf("Cleanup warning: failed to delete S3 object %s: %v", key, err)
+	}
+}
+
+// deleteS3Object deletes an object from S3.
+func (tc *TestContext) deleteS3Object(ctx context.Context, key string) error {
+	_, err := tc.S3.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(tc.BucketName),
+		Key:    aws.String(key),
+	})
+	return err
 }
 
 // queryUserItems returns all DynamoDB items for a user.
