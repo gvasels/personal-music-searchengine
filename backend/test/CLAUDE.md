@@ -21,7 +21,7 @@ backend/test/
 
 | File | Test Functions | What It Tests |
 |------|---------------|---------------|
-| `integration_test.go` | `TestIntegration_UploadAndProcessFlow` | Original end-to-end upload processing flow |
+| `integration_test.go` | `TestEpic1_*`, `TestEpic2_*`, `TestEpic3_*`, `TestEpic4_*`, `TestAuthenticated_*` | **Deployed-environment tests** — hit real AWS (API Gateway, DynamoDB, Cognito, CloudFront). Skipped when `LOCALSTACK_ENDPOINT` is set. |
 | `api_auth_integration_test.go` | `TestIntegration_API_Health`, `TestIntegration_API_AuthMiddleware` | Health endpoint (200 without auth), 401 without headers, role-based 403, admin route access |
 | `api_tracks_integration_test.go` | `TestIntegration_API_TracksCRUD`, `TestIntegration_API_TrackVisibility`, `TestIntegration_API_AdminTrackDelete` | Full CRUD lifecycle, visibility enforcement (owner/other/admin), admin cross-user delete |
 | `api_playlists_tags_integration_test.go` | `TestIntegration_API_PlaylistCRUD`, `TestIntegration_API_TagsCRUD` | Playlist create/add tracks/visibility/public discovery/delete, tag create/add to track/list/remove/delete |
