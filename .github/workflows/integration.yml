@@ -84,6 +84,7 @@ jobs:
           go test -tags=integration -v -race \
             -coverprofile=integration-coverage.out \
             -covermode=atomic \
+            -coverpkg=./internal/... \
             ./internal/repository/ \
             ./internal/service/ \
             ./test/
