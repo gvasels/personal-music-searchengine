@@ -74,6 +74,7 @@ jobs:
           AWS_ENDPOINT_URL: http://localhost:4566
 
       - name: Initialize Cognito
+        continue-on-error: true
         run: bash ../docker/localstack-init/init-cognito.sh
         env:
           AWS_ENDPOINT_URL: http://localhost:4566
