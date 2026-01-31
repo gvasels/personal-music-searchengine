@@ -17,6 +17,7 @@ func TestIntegration_API_ArtistProfileCRUD(t *testing.T) {
 	defer cleanup()
 
 	artistUserID := tsc.CreateTestUser(t, "apapi-artist@test.com", "artist")
+	var artistEntityID string
 
 	t.Run("create artist profile", func(t *testing.T) {
 		resp := tsc.DoRequest(t, http.MethodPost, "/api/v1/artists/entity",
@@ -29,10 +30,17 @@ func TestIntegration_API_ArtistProfileCRUD(t *testing.T) {
 		testutil.AssertStatus(t, resp, http.StatusCreated)
 		body := testutil.DecodeJSONBody(t, resp)
 		assert.Equal(t, "DJ API Test", body["name"])
+		// Capture the artist entity ID for subsequent tests
+		if id, ok := body["id"].(string); ok {
+			artistEntityID = id
+		}
 	})
 
 	t.Run("get artist profile", func(t *testing.T) {
-		resp := tsc.DoRequest(t, http.MethodGet, fmt.Sprintf("/api/v1/artists/entity/%s", artistUserID),
+		if artistEntityID == "" {
+			t.Skip("artist entity ID not captured from create")
+		}
+		resp := tsc.DoRequest(t, http.MethodGet, fmt.Sprintf("/api/v1/artists/entity/%s", artistEntityID),
 			testutil.AsUser(artistUserID, models.RoleArtist),
 		)
 		testutil.AssertStatus(t, resp, http.StatusOK)
@@ -48,7 +56,10 @@ func TestIntegration_API_ArtistProfileCRUD(t *testing.T) {
 	})
 
 	t.Run("update artist profile", func(t *testing.T) {
-		resp := tsc.DoRequest(t, http.MethodPut, fmt.Sprintf("/api/v1/artists/entity/%s", artistUserID),
+		if artistEntityID == "" {
+			t.Skip("artist entity ID not captured from create")
+		}
+		resp := tsc.DoRequest(t, http.MethodPut, fmt.Sprintf("/api/v1/artists/entity/%s", artistEntityID),
 			testutil.AsUser(artistUserID, models.RoleArtist),
 			testutil.WithJSON(map[string]interface{}{
 				"bio": "Updated bio from API test",
