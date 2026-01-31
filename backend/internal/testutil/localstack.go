@@ -198,15 +198,22 @@ func (tc *TestContext) RegisterCleanup(itemType, pk, sk string) {
 	})
 }
 
-// runCleanup removes all registered items.
+// runCleanup removes all registered items (DynamoDB and S3).
 func (tc *TestContext) runCleanup(t *testing.T) {
 	t.Helper()
 
 	ctx := context.Background()
 	for _, item := range tc.cleanupItems {
-		err := tc.deleteItem(ctx, item.pk, item.sk)
-		if err != nil {
-			t.Logf("Cleanup warning: failed to delete %s/%s: %v", item.pk, item.sk, err)
+		if item.itemType == "s3" {
+			err := tc.deleteS3Object(ctx, item.pk)
+			if err != nil {
+				t.Logf("Cleanup warning: failed to delete S3 object %s: %v", item.pk, err)
+			}
+		} else {
+			err := tc.deleteItem(ctx, item.pk, item.sk)
+			if err != nil {
+				t.Logf("Cleanup warning: failed to delete %s/%s: %v", item.pk, item.sk, err)
+			}
 		}
 	}
 }

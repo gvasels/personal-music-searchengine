@@ -75,6 +75,6 @@ describe('Layout Component', () => {
   it('REQ-5.2: should be responsive', async () => {
     const { Layout } = await import('@/components/layout/Layout');
     const { container } = render(<Layout><div>Content</div></Layout>);
-    expect(container.querySelector('.min-h-screen')).toBeInTheDocument();
+    expect(container.querySelector('.h-screen')).toBeInTheDocument();
   });
 });

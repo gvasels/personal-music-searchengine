@@ -8,6 +8,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Epic 9: LocalStack Integration Test Migration
+- **Repository Integration Tests** (`backend/internal/repository/`)
+  - DynamoDB CRUD tests: Track, User, Playlist, Tag create/read/update/delete with pagination
+  - Artist profile and follow GSI query tests: GSI1 lookups, atomic counter increments
+  - S3 repository tests: PutObject/GetObject roundtrip, presigned URLs, DeleteByPrefix (HLS cleanup)
+- **Service Integration Tests** (`backend/internal/service/`)
+  - Track service: visibility enforcement (owner/other/admin), `hasGlobal` admin access, admin delete with S3 cleanup
+  - Playlist service: CRUD lifecycle, visibility toggle, public playlist discovery via GSI
+  - Tag service: case-insensitive normalization, track associations
+  - User service: `CreateUserIfNotExists` idempotency, profile CRUD, role defaults
+  - Follow service: follow/unfollow, self-follow prevention, duplicate handling, artist profile requirement
+  - Artist profile service: role enforcement (subscriber can't create), ownership checks
+  - Role service: get/set role, `HasPermission` checks
+- **Cognito Integration Tests** (`backend/internal/service/cognito_integration_test.go`)
+  - Authentication against pre-created LocalStack test users
+  - Group operations: add/remove from groups, list groups
+  - User management: search by email, disable/enable user
+  - Graceful skip when Cognito not available
+- **Full API Integration Tests** (`backend/test/`)
+  - Auth/health: 401 without auth, role-based 403, admin route protection
+  - Tracks: full CRUD lifecycle, visibility enforcement via HTTP, admin cross-user delete
+  - Playlists: create, add tracks, visibility toggle, public discovery endpoint
+  - Tags: CRUD, add/remove from tracks, case-insensitive behavior
+  - Artist profiles: create/get/list/update via HTTP endpoints
+  - Follow system: follow/unfollow, is-following check, followers list
+  - Admin routes: user search, role update, DB role check overrides header role
+- **Test Infrastructure** (`backend/internal/testutil/`)
+  - `server.go`: `SetupTestServer(t)` — full Echo HTTP server backed by LocalStack
+  - `http_helpers.go`: `AsUser()`, `WithJSON()`, `DoRequest()`, `AssertStatus()`, `DecodeJSON[T]()` helpers
+  - `fixtures.go`: `CreateTestArtistProfile`, `CreateTestFollow`, `CreateTestTag`, `CreateTestAlbum`, `CreateTestS3Object`
+  - `cleanup.go`: S3 object cleanup support alongside existing DynamoDB cleanup
+- **CI Integration** (`.github/workflows/integration.yml`)
+  - GitHub Actions workflow with LocalStack 3.4 service container
+  - Runs init scripts (DynamoDB, S3, Cognito) then `go test -tags=integration`
+  - Coverage collection and artifact upload
+  - Triggers on PRs to main/dev when backend or docker files change
+- **Total**: 44 integration test functions across repository, service, and API layers
+
 #### Access Control & Admin Features
 - **Real-Time Role Checking**
   - `getAuthContextWithDBRole` handler method for DB role lookup

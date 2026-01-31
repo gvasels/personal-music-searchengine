@@ -300,7 +300,7 @@ Located in `.claude/docs/`:
 - `epic-completion-checklist.md` - Epic completion
 - `task-granularity.md` - Task breakdown rules
 
-Current specs: `.spec-workflow/specs/global-user-type/`
+Current specs: `.spec-workflow/specs/localstack-test-migration/`, `.spec-workflow/specs/global-user-type/`
 
 **Important**: When adding new features, ALWAYS follow the wiring checklist to ensure:
 - Services are added to Services struct
@@ -311,6 +311,16 @@ Current specs: `.spec-workflow/specs/global-user-type/`
 ---
 
 ## Recent Updates
+
+### 2026-01-31: LocalStack Integration Test Migration (Epic 9)
+
+**44 integration tests** covering the full backend stack against real AWS services via LocalStack:
+- Repository tests: DynamoDB CRUD + GSI queries, S3 operations + presigned URLs
+- Service tests: Track visibility, playlist discovery, tag normalization, follow system, Cognito auth
+- API tests: Full HTTP endpoint testing with auth middleware, role-based access, admin routes
+- CI: GitHub Actions workflow (`.github/workflows/integration.yml`) with LocalStack service container
+- Test infrastructure: `testutil/server.go` (full Echo server), `testutil/http_helpers.go` (request helpers)
+- Run with: `cd backend && go test -tags=integration ./internal/repository/ ./internal/service/ ./test/`
 
 ### 2025-01-27: Admin Access Control Bug Fixes
 

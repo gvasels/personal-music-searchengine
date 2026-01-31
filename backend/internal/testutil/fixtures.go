@@ -3,6 +3,7 @@
 package testutil
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	s3svc "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 )
 
@@ -210,6 +212,228 @@ func (tc *TestContext) CreateTestUser(t *testing.T, email, role string) string {
 	tc.RegisterCleanup("user", pk, sk)
 
 	return userID
+}
+
+// ArtistProfileOption allows customizing a test artist profile.
+type ArtistProfileOption func(map[string]dynamodbtypes.AttributeValue)
+
+// WithArtistName sets the artist display name.
+func WithArtistName(name string) ArtistProfileOption {
+	return func(item map[string]dynamodbtypes.AttributeValue) {
+		item["displayName"] = &dynamodbtypes.AttributeValueMemberS{Value: name}
+	}
+}
+
+// WithArtistBio sets the artist bio.
+func WithArtistBio(bio string) ArtistProfileOption {
+	return func(item map[string]dynamodbtypes.AttributeValue) {
+		item["bio"] = &dynamodbtypes.AttributeValueMemberS{Value: bio}
+	}
+}
+
+// CreateTestArtistProfile creates an artist profile in DynamoDB and registers it for cleanup.
+// PK=USER#{userID}, SK=ARTIST_PROFILE, GSI1PK=ARTIST_PROFILE, GSI1SK=USER#{userID}
+// Returns the userID (which is also the profile identifier).
+func (tc *TestContext) CreateTestArtistProfile(t *testing.T, userID string, opts ...ArtistProfileOption) string {
+	t.Helper()
+
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	pk := "USER#" + userID
+	sk := "ARTIST_PROFILE"
+
+	item := map[string]dynamodbtypes.AttributeValue{
+		"PK":            &dynamodbtypes.AttributeValueMemberS{Value: pk},
+		"SK":            &dynamodbtypes.AttributeValueMemberS{Value: sk},
+		"GSI1PK":        &dynamodbtypes.AttributeValueMemberS{Value: "ARTIST_PROFILE"},
+		"GSI1SK":        &dynamodbtypes.AttributeValueMemberS{Value: "USER#" + userID},
+		"Type":          &dynamodbtypes.AttributeValueMemberS{Value: "ARTIST_PROFILE"},
+		"userId":        &dynamodbtypes.AttributeValueMemberS{Value: userID},
+		"displayName":   &dynamodbtypes.AttributeValueMemberS{Value: "Test Artist"},
+		"bio":           &dynamodbtypes.AttributeValueMemberS{Value: "Test bio"},
+		"followerCount": &dynamodbtypes.AttributeValueMemberN{Value: "0"},
+		"trackCount":    &dynamodbtypes.AttributeValueMemberN{Value: "0"},
+		"albumCount":    &dynamodbtypes.AttributeValueMemberN{Value: "0"},
+		"totalPlays":    &dynamodbtypes.AttributeValueMemberN{Value: "0"},
+		"isVerified":    &dynamodbtypes.AttributeValueMemberBOOL{Value: false},
+		"createdAt":     &dynamodbtypes.AttributeValueMemberS{Value: now},
+		"updatedAt":     &dynamodbtypes.AttributeValueMemberS{Value: now},
+	}
+
+	for _, opt := range opts {
+		opt(item)
+	}
+
+	ctx := context.Background()
+	_, err := tc.DynamoDB.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String(tc.TableName),
+		Item:      item,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create test artist profile: %v", err)
+	}
+
+	tc.RegisterCleanup("artist_profile", pk, sk)
+	return userID
+}
+
+// CreateTestFollow creates a follow relationship in DynamoDB and registers it for cleanup.
+// PK=USER#{followerID}, SK=FOLLOWING#{followedID}, GSI1PK=FOLLOWERS#{followedID}, GSI1SK=USER#{followerID}
+func (tc *TestContext) CreateTestFollow(t *testing.T, followerID, followedID string) {
+	t.Helper()
+
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	pk := "USER#" + followerID
+	sk := "FOLLOWING#" + followedID
+
+	item := map[string]dynamodbtypes.AttributeValue{
+		"PK":         &dynamodbtypes.AttributeValueMemberS{Value: pk},
+		"SK":         &dynamodbtypes.AttributeValueMemberS{Value: sk},
+		"GSI1PK":     &dynamodbtypes.AttributeValueMemberS{Value: "FOLLOWERS#" + followedID},
+		"GSI1SK":     &dynamodbtypes.AttributeValueMemberS{Value: "USER#" + followerID},
+		"Type":       &dynamodbtypes.AttributeValueMemberS{Value: "FOLLOW"},
+		"followerId": &dynamodbtypes.AttributeValueMemberS{Value: followerID},
+		"followedId": &dynamodbtypes.AttributeValueMemberS{Value: followedID},
+		"createdAt":  &dynamodbtypes.AttributeValueMemberS{Value: now},
+	}
+
+	ctx := context.Background()
+	_, err := tc.DynamoDB.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String(tc.TableName),
+		Item:      item,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create test follow: %v", err)
+	}
+
+	tc.RegisterCleanup("follow", pk, sk)
+}
+
+// TagOption allows customizing a test tag.
+type TagOption func(map[string]dynamodbtypes.AttributeValue)
+
+// WithTagColor sets the tag color.
+func WithTagColor(color string) TagOption {
+	return func(item map[string]dynamodbtypes.AttributeValue) {
+		item["color"] = &dynamodbtypes.AttributeValueMemberS{Value: color}
+	}
+}
+
+// CreateTestTag creates a tag in DynamoDB and registers it for cleanup.
+// PK=USER#{userID}, SK=TAG#{tagName}
+// Returns the tag name.
+func (tc *TestContext) CreateTestTag(t *testing.T, userID, tagName string, opts ...TagOption) string {
+	t.Helper()
+
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	pk := "USER#" + userID
+	sk := "TAG#" + tagName
+
+	item := map[string]dynamodbtypes.AttributeValue{
+		"PK":         &dynamodbtypes.AttributeValueMemberS{Value: pk},
+		"SK":         &dynamodbtypes.AttributeValueMemberS{Value: sk},
+		"userId":     &dynamodbtypes.AttributeValueMemberS{Value: userID},
+		"name":       &dynamodbtypes.AttributeValueMemberS{Value: tagName},
+		"trackCount": &dynamodbtypes.AttributeValueMemberN{Value: "0"},
+		"CreatedAt":  &dynamodbtypes.AttributeValueMemberS{Value: now},
+		"UpdatedAt":  &dynamodbtypes.AttributeValueMemberS{Value: now},
+	}
+
+	for _, opt := range opts {
+		opt(item)
+	}
+
+	ctx := context.Background()
+	_, err := tc.DynamoDB.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String(tc.TableName),
+		Item:      item,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create test tag: %v", err)
+	}
+
+	tc.RegisterCleanup("tag", pk, sk)
+	return tagName
+}
+
+// AlbumOption allows customizing a test album.
+type AlbumOption func(map[string]dynamodbtypes.AttributeValue)
+
+// WithAlbumTitle sets the album title.
+func WithAlbumTitle(title string) AlbumOption {
+	return func(item map[string]dynamodbtypes.AttributeValue) {
+		item["title"] = &dynamodbtypes.AttributeValueMemberS{Value: title}
+	}
+}
+
+// WithAlbumArtist sets the album artist.
+func WithAlbumArtist(artist string) AlbumOption {
+	return func(item map[string]dynamodbtypes.AttributeValue) {
+		item["artist"] = &dynamodbtypes.AttributeValueMemberS{Value: artist}
+	}
+}
+
+// CreateTestAlbum creates an album in DynamoDB and registers it for cleanup.
+// PK=USER#{userID}, SK=ALBUM#{albumId}
+// Returns the album ID.
+func (tc *TestContext) CreateTestAlbum(t *testing.T, userID string, opts ...AlbumOption) string {
+	t.Helper()
+
+	albumID := uuid.New().String()
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	pk := "USER#" + userID
+	sk := "ALBUM#" + albumID
+
+	item := map[string]dynamodbtypes.AttributeValue{
+		"PK":            &dynamodbtypes.AttributeValueMemberS{Value: pk},
+		"SK":            &dynamodbtypes.AttributeValueMemberS{Value: sk},
+		"ID":            &dynamodbtypes.AttributeValueMemberS{Value: albumID},
+		"userId":        &dynamodbtypes.AttributeValueMemberS{Value: userID},
+		"title":         &dynamodbtypes.AttributeValueMemberS{Value: "Test Album"},
+		"artist":        &dynamodbtypes.AttributeValueMemberS{Value: "Test Artist"},
+		"trackCount":    &dynamodbtypes.AttributeValueMemberN{Value: "0"},
+		"totalDuration": &dynamodbtypes.AttributeValueMemberN{Value: "0"},
+		"CreatedAt":     &dynamodbtypes.AttributeValueMemberS{Value: now},
+		"UpdatedAt":     &dynamodbtypes.AttributeValueMemberS{Value: now},
+	}
+
+	for _, opt := range opts {
+		opt(item)
+	}
+
+	ctx := context.Background()
+	_, err := tc.DynamoDB.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String(tc.TableName),
+		Item:      item,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create test album: %v", err)
+	}
+
+	tc.RegisterCleanup("album", pk, sk)
+	return albumID
+}
+
+// CreateTestS3Object puts an object in the S3 bucket and registers it for cleanup.
+// Returns the key.
+func (tc *TestContext) CreateTestS3Object(t *testing.T, key string, content []byte) string {
+	t.Helper()
+
+	ctx := context.Background()
+	_, err := tc.S3.PutObject(ctx, &s3svc.PutObjectInput{
+		Bucket: aws.String(tc.BucketName),
+		Key:    aws.String(key),
+		Body:   bytes.NewReader(content),
+	})
+	if err != nil {
+		t.Fatalf("Failed to create test S3 object %s: %v", key, err)
+	}
+
+	tc.RegisterS3Cleanup(key)
+	return key
 }
 
 // CreateTestPlaylist creates a playlist in DynamoDB and registers it for cleanup.

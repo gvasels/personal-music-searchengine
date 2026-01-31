@@ -20,7 +20,7 @@ func (h *Handlers) GetLibraryStats(c echo.Context) error {
 
 	// Get scope from query parameter
 	scopeParam := c.QueryParam("scope")
-	scope := service.StatsScopeOwn // default
+	var scope service.StatsScope
 
 	switch scopeParam {
 	case "all":

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan maps out the epics and user stories for building a personal music library web application. The platform enables users to upload, organize, search, and stream their legally-owned music files.
+This plan maps out the epics and user stories for building a multi-user music library platform with role-based access control, artist profiles, public playlists, and a follow system. Users can upload, organize, search, and stream music files with visibility controls (private, unlisted, public).
 
 **Frontend Technology Stack**: React 18 + TanStack Router + TanStack Query + Vite + TypeScript
 
@@ -22,10 +22,12 @@ This plan maps out the epics and user stories for building a personal music libr
 
 ## Personas
 
-| Persona | Description |
-|---------|-------------|
-| **Music Enthusiast** | Primary user who uploads and manages their music library |
-| **Casual Listener** | User who primarily browses and plays music |
+| Persona | Role | Description |
+|---------|------|-------------|
+| **Platform Administrator** | `admin` | Full system access — manages users, roles, and all content |
+| **Artist** | `artist` | Creates artist profile, uploads tracks, manages catalog |
+| **Subscriber** | `subscriber` | Default authenticated user — browses, listens, creates playlists, follows artists |
+| **Guest** | `guest` | Unauthenticated — browse-only access to public content |
 
 ---
 
@@ -212,7 +214,7 @@ This plan maps out the epics and user stories for building a personal music libr
 
 **Status**: Complete
 
-**Implementation Summary**: 351 unit tests passing, full TDD implementation across 5 waves.
+**Implementation Summary**: 437 tests passing (351 original + 39 from E7 + 47 from E8/E9), full TDD implementation across 5 waves.
 
 ### User Stories
 
@@ -335,15 +337,30 @@ This plan maps out the epics and user stories for building a personal music libr
 | 3 | 7, 8, 9, 10 | Features: search, streaming, tags, playlists | ✅ Complete |
 | 4 | 11-15 | Frontend: full React application | ✅ Complete |
 | 5 | 16, 17, 18 | Polish: hosting, tests, documentation | ✅ Complete |
+| 6 | E7 | Global user type: roles, artist profiles, follows, admin panel | ✅ Complete |
+| 7 | E8 | Access control enforcement, bug fixes | 🔄 In Progress |
+| 8 | E9 | LocalStack dev environment, integration test framework | ✅ Complete |
+
+---
+
+## Completion Metrics
+
+| Metric | Value |
+|--------|-------|
+| **Completed Epics** | 8/9 (89%) |
+| **In-Progress Epics** | 1/9 — E8 (10/12 tasks done) |
+| **Frontend Tests** | 437 passing |
+| **Backend Coverage Target** | 80%+ |
+| **Spec Directories** | 22 in `.spec-workflow/specs/` |
 
 ---
 
 ## Dependencies
 
 ```
-Wave 0 ──► Wave 1 ──► Wave 2 ──► Wave 3 ──► Wave 4 ──► Wave 5
-  │         │         │         │         │
-  └─ Models └─ Infra  └─ API    └─ Features└─ Frontend
+Wave 0 ──► Wave 1 ──► Wave 2 ──► Wave 3 ──► Wave 4 ──► Wave 5 ──► Wave 6 ──► Wave 7/8
+  │         │         │         │         │         │         │         │
+  └─ Models └─ Infra  └─ API    └─ Features└─ Frontend└─ Deploy └─ Roles  └─ ACL/Local
 ```
 
 ## Critical Path
@@ -353,14 +370,15 @@ Wave 0 ──► Wave 1 ──► Wave 2 ──► Wave 3 ──► Wave 4 ─�
 3. **CloudFront Signed URLs** (US-3.2) - Required for streaming
 4. **Frontend Hosting** (US-6.1) - Required for deployment
 
-## Design Questions to Resolve
+## Design Decisions (Resolved)
 
-Before implementation, clarify:
-1. S3 storage class configuration (Intelligent-Tiering lifecycle rules)
-2. Caching strategy (CloudFront TTLs, DynamoDB DAX, in-memory?)
-3. Search indexing approach (real-time via DynamoDB Streams vs batch?)
-4. Error handling and retry patterns
-5. Pagination cursor format (opaque vs structured?)
+| Question | Decision |
+|----------|----------|
+| S3 storage class | Intelligent-Tiering with lifecycle rules |
+| Caching strategy | CloudFront TTLs (no-cache index.html, 1yr assets), no DAX |
+| Search indexing | Batch via Step Functions (search-indexer Lambda) |
+| Error handling | Step Functions retry with exponential backoff |
+| Pagination | Cursor-based with DynamoDB LastEvaluatedKey |
 
 ## Risks & Mitigations
 

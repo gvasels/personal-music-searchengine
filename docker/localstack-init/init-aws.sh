@@ -29,6 +29,10 @@ aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 dynamodb create-table \
         AttributeName=SK,AttributeType=S \
         AttributeName=GSI1PK,AttributeType=S \
         AttributeName=GSI1SK,AttributeType=S \
+        AttributeName=GSI2PK,AttributeType=S \
+        AttributeName=GSI2SK,AttributeType=S \
+        AttributeName=GSI3PK,AttributeType=S \
+        AttributeName=GSI3SK,AttributeType=S \
     --key-schema \
         AttributeName=PK,KeyType=HASH \
         AttributeName=SK,KeyType=RANGE \
@@ -38,6 +42,22 @@ aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 dynamodb create-table \
             \"KeySchema\": [
                 {\"AttributeName\": \"GSI1PK\", \"KeyType\": \"HASH\"},
                 {\"AttributeName\": \"GSI1SK\", \"KeyType\": \"RANGE\"}
+            ],
+            \"Projection\": {\"ProjectionType\": \"ALL\"}
+        },
+        {
+            \"IndexName\": \"GSI2\",
+            \"KeySchema\": [
+                {\"AttributeName\": \"GSI2PK\", \"KeyType\": \"HASH\"},
+                {\"AttributeName\": \"GSI2SK\", \"KeyType\": \"RANGE\"}
+            ],
+            \"Projection\": {\"ProjectionType\": \"ALL\"}
+        },
+        {
+            \"IndexName\": \"GSI3\",
+            \"KeySchema\": [
+                {\"AttributeName\": \"GSI3PK\", \"KeyType\": \"HASH\"},
+                {\"AttributeName\": \"GSI3SK\", \"KeyType\": \"RANGE\"}
             ],
             \"Projection\": {\"ProjectionType\": \"ALL\"}
         }]" \
@@ -69,13 +89,17 @@ aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3api put-bucket-cors \
     --region ${AWS_REGION}
 
 # Create bucket folders
+# AWS CLI v2 sends checksum trailers that LocalStack doesn't support.
+# Disable with AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED.
 echo "Creating bucket folders..."
-echo "" | aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3 cp - s3://${MEDIA_BUCKET}/uploads/.keep \
-    --region ${AWS_REGION}
-echo "" | aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3 cp - s3://${MEDIA_BUCKET}/media/.keep \
-    --region ${AWS_REGION}
-echo "" | aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3 cp - s3://${MEDIA_BUCKET}/covers/.keep \
-    --region ${AWS_REGION}
+EMPTY_FILE=$(mktemp)
+for folder in uploads media covers; do
+    AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED \
+    aws --endpoint-url=http://${LOCALSTACK_HOST}:4566 s3api put-object \
+        --bucket ${MEDIA_BUCKET} --key "${folder}/.keep" --body "${EMPTY_FILE}" \
+        --region ${AWS_REGION} > /dev/null
+done
+rm -f "${EMPTY_FILE}"
 
 echo ""
 echo "============================================"
