@@ -184,7 +184,7 @@
 
 ## Phase 6: CI Integration
 
-- [ ] 6.1. GitHub Actions integration test workflow
+- [x] 6.1. GitHub Actions integration test workflow
   - File: `.github/workflows/integration.yml` (new) or extend `.github/workflows/ci.yml`
   - Add job that starts LocalStack via Docker Compose (or `services:` block)
   - Run `scripts/wait-for-localstack.sh`, then init scripts, then `go test -tags=integration ./...`
