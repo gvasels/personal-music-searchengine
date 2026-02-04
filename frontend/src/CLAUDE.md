@@ -15,6 +15,7 @@ src/
 │   ├── playlist/     # Playlists: PlaylistCard, CreatePlaylistModal
 │   ├── search/       # Search: SearchBar
 │   ├── tag/          # Tags: TagInput
+│   ├── hello/        # Hello: SearchInput, TrackCard, TrackCardSkeleton, HelloNav
 │   └── upload/       # Upload: UploadDropzone
 ├── hooks/
 │   └── useAuth.ts    # Authentication hook
@@ -34,6 +35,7 @@ src/
 │   ├── index.tsx     # Home page
 │   ├── login.tsx     # Login page
 │   ├── hello.tsx     # Hello World validation page
+│   ├── hello-search.tsx  # Hello search page (hero, featured tracks, search)
 │   ├── search.tsx    # Search results
 │   ├── upload.tsx    # File upload
 │   ├── tracks/       # /tracks routes
@@ -42,7 +44,8 @@ src/
 │   ├── playlists/    # /playlists routes
 │   ├── tags/         # /tags routes
 │   └── __tests__/    # Route unit tests
-│       └── hello.test.tsx  # HelloPage tests
+│       ├── hello.test.tsx  # HelloPage tests
+│       └── hello-search.test.tsx  # HelloSearchPage tests
 ├── main.tsx          # Application entry point
 ├── index.css         # Global styles (Tailwind + DaisyUI)
 ├── vite-env.d.ts     # Vite type declarations

@@ -125,6 +125,7 @@ type Services struct {
 	Stream   StreamService
 	Search   SearchService
 	Admin    AdminService
+	Hello    *HelloService
 }
 
 // NewServices creates a new Services instance with all dependencies
@@ -144,6 +145,7 @@ func NewServices(
 		Tag:      NewTagService(repo),
 		Upload:   NewUploadService(repo, s3Repo, mediaBucket, stepFunctionsARN),
 		Stream:   NewStreamService(repo, cloudfront, s3Repo),
+		Hello:    NewHelloService(NewHelloRepoAdapter(repo)),
 		// Search service requires Nixiesearch client - initialized separately
 	}
 }

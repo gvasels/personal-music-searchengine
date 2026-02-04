@@ -6,11 +6,11 @@
 
 ## Steering Document Alignment
 
-### Technical Standards (tech.md)
-[How the design follows documented technical patterns and standards]
+### Technical Standards
+[How the design follows documented technical patterns and standards. Reference `.spec-workflow/steering/tech.md` if it exists, otherwise reference the root `CLAUDE.md` Technology Stack section.]
 
-### Project Structure (structure.md)
-[How the implementation will follow project organization conventions]
+### Project Structure
+[How the implementation will follow project organization conventions. Reference `.spec-workflow/steering/structure.md` if it exists, otherwise reference the root `CLAUDE.md` Repository Structure section.]
 
 ## Code Reuse Analysis
 [What existing code will be leveraged, extended, or integrated with this feature]

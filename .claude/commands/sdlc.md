@@ -96,6 +96,17 @@ main (prod) ←── staging ←── dev ←── group-N/{name}
 
 **MCP Servers**: `spec-workflow`, `github`, `awslabs.dynamodb-mcp-server`
 
+### Prerequisites
+
+1. **Approval tool setup** (REQUIRED before submitting specs):
+   - **VS Code Extension** (preferred): Install the spec-workflow extension. Approvals appear in the VS Code sidebar.
+   - **Dashboard** (alternative): Run `spec-workflow-mcp --dashboard` in a separate terminal.
+   - **Verbal approval is NOT accepted.** All approvals MUST go through the extension or dashboard.
+
+2. **Check for steering documents** (optional but recommended):
+   - If `.spec-workflow/steering/product.md`, `tech.md`, `structure.md` exist, reference them in requirements and design.
+   - If they don't exist, skip "Alignment with Product Vision" and "Steering Document Alignment" sections in the templates. Use the root `CLAUDE.md` project overview as the source of truth instead.
+
 **Tools**:
 - `spec-workflow` MCP: `spec-workflow-guide`, `spec-status`, `approvals`
 - `github` MCP: Search existing issues, reference prior work, check for duplicates
@@ -104,12 +115,19 @@ main (prod) ←── staging ←── dev ←── group-N/{name}
 **Workflow**:
 1. Load spec-workflow guide
 2. Search GitHub issues for related work or prior specs
-3. Create `requirements.md` with user stories
-4. Create `design.md` with data models and API contracts
+3. **Code Reuse Analysis**: Before designing, identify existing code that can be leveraged (handlers, services, components, hooks, API patterns). Document in `design.md` under "Code Reuse Analysis".
+4. Create `requirements.md` with user stories
+5. Create `design.md` with data models, API contracts, and code reuse analysis
    - Use `dynamodb_data_modeling` for DynamoDB access pattern design
-5. Create `tasks.md` with implementation breakdown
+   - **MUST include** "Code Reuse Analysis" section identifying existing code to leverage
+6. Create `tasks.md` with implementation breakdown
+   - **MUST** follow TDD task structure: test tasks BEFORE implementation tasks
    - **MUST** separate unit test tasks, E2E test tasks, and implementation tasks
-6. Request approval for each document
+   - See `tasks-template.md` for correct TDD-structured template
+7. Submit all 3 documents for approval
+   - Create all 3 docs first, then submit all for review
+   - Reviewer can batch-approve in a single session
+   - **DO NOT** wait for each approval before creating the next document
 
 **Artifacts**: `requirements.md`, `design.md`, `tasks.md`
 
@@ -312,6 +330,26 @@ tofu validate
 # Clean up
 rm -rf .terraform .terraform.lock.hcl
 ```
+
+### Local Stack Validation (if applicable)
+
+**REQUIRED for features with UI or API changes**: Verify the feature works end-to-end locally before committing.
+
+```bash
+# Start full local stack (if not already running)
+make local
+
+# Verify backend is healthy
+curl -s http://localhost:8080/api/v1/health
+
+# Verify feature endpoint works (replace with actual endpoint)
+curl -s http://localhost:8080/api/v1/{your-endpoint}
+
+# Verify frontend loads at http://localhost:5173
+# Manually verify the feature works in the browser
+```
+
+**Skip this step** only for: infrastructure-only changes, test-only changes, or documentation-only changes.
 
 ### Task Completion Checklist
 
@@ -768,6 +806,7 @@ Use TodoWrite throughout:
     [ ] ALL tests now PASS (Green)
 [ ] Phase 4: Verify
     [ ] Tests passing with coverage threshold met
+    [ ] `make local` validation (if UI/API changes): feature works end-to-end locally
     [ ] **CLAUDE.md created/updated** for ALL changed directories
     [ ] ⚠️ STOP: If any changed directory missing CLAUDE.md
     [ ] **tasks.md updated** (mark task [x] complete)

@@ -16,6 +16,7 @@ frontend/
 │   │   ├── playlist/       # Playlist management (PlaylistCard, CreatePlaylistModal)
 │   │   ├── search/         # Search functionality (SearchBar)
 │   │   ├── tag/            # Tag management (TagInput)
+│   │   ├── hello/          # Hello-world local dev (SearchInput, TrackCard, TrackCardSkeleton, HelloNav)
 │   │   └── upload/         # File upload (UploadDropzone)
 │   ├── hooks/              # Custom React hooks (useAuth, useTracks, useAlbums, etc.)
 │   ├── lib/                # Utilities and configurations
@@ -76,6 +77,14 @@ frontend/
 |-----------|------|-------------|
 | `TagInput` | `TagInput.tsx` | Tag add/remove component with badges |
 
+### Hello (`src/components/hello/`)
+| Component | File | Description |
+|-----------|------|-------------|
+| `SearchInput` | `SearchInput.tsx` | Search input with Enter/Escape key handling |
+| `TrackCard` | `TrackCard.tsx` | Track card with cover art, title, artist, album, genre badge, duration |
+| `TrackCardSkeleton` | `TrackCardSkeleton.tsx` | Loading skeleton matching TrackCard layout (6 skeleton elements) |
+| `HelloNav` | `HelloNav.tsx` | Navbar with search, theme toggle (swap), mobile dock |
+
 ### Upload (`src/components/upload/`)
 | Component | File | Description |
 |-----------|------|-------------|
@@ -95,6 +104,7 @@ frontend/
 | `useTags` | `useTags.ts` | Tag queries and tracks-by-tag with `tagKeys` factory |
 | `useFeatureFlags` | `useFeatureFlags.ts` | Feature flags with role-based access, respects simulation |
 | `useRoleSimulation` | `useRoleSimulation.ts` | Admin role simulation for testing UI as different roles |
+| `useHelloSearch` | `useHelloSearch.ts` | Hello search + featured tracks hooks with `helloSearchKeys` factory |
 
 ## Utilities (`src/lib/`)
 
@@ -110,6 +120,7 @@ frontend/
 | `search.ts` | `searchTracks`, `searchAutocomplete` |
 | `playlists.ts` | `getPlaylists`, `getPlaylist`, `createPlaylist`, `updatePlaylist`, `deletePlaylist`, `addTrackToPlaylist`, `removeTrackFromPlaylist` |
 | `tags.ts` | `getTags`, `getTracksByTag`, `addTagToTrack`, `removeTagFromTrack` |
+| `helloSearch.ts` | `searchHello`, `getFeaturedTracks` (hello-world API client) |
 
 ### Types (`api/types.ts`)
 ```typescript
@@ -171,6 +182,7 @@ TanStack Router file-based routing:
 | `/tags/$tagName` | `tags/$tagName.tsx` | Tracks by tag |
 | `/upload` | `upload.tsx` | File upload page |
 | `/search` | `search.tsx` | Search results page |
+| `/hello-search` | `hello-search.tsx` | Hello-world search page with hero, featured tracks, search |
 
 ### Route Protection
 
@@ -238,14 +250,17 @@ function isPublicRoute(pathname: string): boolean {
 - **jsdom** environment for DOM simulation
 - **@testing-library/user-event** for user interaction simulation
 
-### Test Coverage (351 tests)
+### Test Coverage (605 tests)
 | Area | Tests |
 |------|-------|
 | API tests (client, tracks, albums, artists, upload, search, playlists, tags) | 50 |
 | Hook tests (useAuth, useTracks, useAlbums, useArtists, useUpload, useSearch, usePlaylists, useTags) | 92 |
 | Store tests (playerStore, themeStore) | 18 |
 | Component tests (Layout, TrackList, PlayerBar, UploadDropzone, CreatePlaylistModal, TagInput) | 34 |
-| Route tests (index, login, tracks, trackDetail, albums, artists, upload, search, playlists, playlistDetail, tags, tagDetail) | 157 |
+| Route tests (index, login, tracks, trackDetail, albums, artists, upload, search, playlists, playlistDetail, tags, tagDetail, hello-search) | 162 |
+| Hello component tests (SearchInput, TrackCard, TrackCardSkeleton, HelloNav) | 17 |
+| Hello hook tests (useHelloSearch, useFeaturedTracks) | 5 |
+| Hello API tests (helloSearch) | 3 |
 
 ### Running Tests
 ```bash

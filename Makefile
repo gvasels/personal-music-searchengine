@@ -50,6 +50,7 @@ local-services:
 	@echo "Running initialization scripts..."
 	./docker/localstack-init/init-aws.sh
 	./docker/localstack-init/init-cognito.sh
+	./docker/localstack-init/init-seed-music.sh
 	@echo ""
 	@echo "LocalStack is ready!"
 

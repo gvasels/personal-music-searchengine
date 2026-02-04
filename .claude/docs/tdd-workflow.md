@@ -2,6 +2,15 @@
 
 This document provides detailed guidance on TDD practices for the Personal Music Search Engine.
 
+## Tasks Template
+
+**All `tasks.md` files MUST follow the TDD-structured template** at `.spec-workflow/templates/tasks-template.md`. Key rules:
+- Test tasks (N.1, N.2) MUST come BEFORE implementation tasks (N.3)
+- Each test task MUST include **MUST RUN AND FAIL** requirement
+- Each implementation task MUST include **ALL TESTS MUST PASS** requirement
+- Unit tests and E2E tests are SEPARATE tasks from implementation
+- Last task group MUST include CLAUDE.md verification and `make local` validation
+
 ## CRITICAL TDD RULES
 
 **You MUST write ALL tests BEFORE ANY implementation code.**
