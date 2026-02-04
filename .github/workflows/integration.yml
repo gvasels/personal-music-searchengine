@@ -1,0 +1,107 @@
+name: Integration Tests
+
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'backend/**'
+      - 'docker/**'
+      - '.github/workflows/integration.yml'
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration-tests:
+    name: Integration Tests (LocalStack)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      localstack:
+        image: localstack/localstack:3.4
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: dynamodb,s3,sts,iam,cognito-idp
+          DEBUG: "0"
+          AWS_DEFAULT_REGION: us-east-1
+        options: >-
+          --health-cmd "curl -f http://localhost:4566/_localstack/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      AWS_ENDPOINT: http://localhost:4566
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      DYNAMODB_TABLE_NAME: MusicLibrary
+      MEDIA_BUCKET: music-library-local-media
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: backend/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Wait for LocalStack
+        run: |
+          echo "Waiting for LocalStack to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4566/_localstack/health | grep -q '"dynamodb": "available"'; then
+              echo "LocalStack is ready!"
+              break
+            fi
+            echo "Attempt $i/30 - waiting..."
+            sleep 2
+          done
+
+      - name: Initialize DynamoDB and S3
+        run: bash ../docker/localstack-init/init-aws.sh
+        env:
+          AWS_ENDPOINT_URL: http://localhost:4566
+
+      - name: Initialize Cognito
+        continue-on-error: true
+        run: bash ../docker/localstack-init/init-cognito.sh
+        env:
+          AWS_ENDPOINT_URL: http://localhost:4566
+
+      - name: Run integration tests
+        run: |
+          go test -tags=integration -v -race \
+            -coverprofile=integration-coverage.out \
+            -covermode=atomic \
+            -coverpkg=./internal/... \
+            ./internal/repository/ \
+            ./internal/service/ \
+            ./test/
+        env:
+          LOCALSTACK_ENDPOINT: http://localhost:4566
+
+      - name: Display coverage summary
+        if: always()
+        run: |
+          if [ -f integration-coverage.out ]; then
+            go tool cover -func=integration-coverage.out | tail -1
+          fi
+
+      - name: Upload integration coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-coverage
+          path: backend/integration-coverage.out
+          if-no-files-found: ignore

@@ -1,0 +1,234 @@
+name: Wave Coordinator
+
+# This workflow monitors wave completion and creates integration notices.
+# When all tasks in a wave are closed, it notifies that the wave is ready for integration.
+
+on:
+  issues:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      feature:
+        description: 'Feature label (e.g., upload-processing, library-management)'
+        required: true
+        type: string
+      wave:
+        description: 'Wave number to check (1-5)'
+        required: true
+        type: string
+
+jobs:
+  check-wave-completion:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Determine feature and wave from context
+        id: context
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let featureLabel, waveLabel;
+
+            if (context.payload.inputs) {
+              // Manual trigger via workflow_dispatch
+              featureLabel = context.payload.inputs.feature;
+              waveLabel = `wave-${context.payload.inputs.wave}`;
+            } else {
+              // Triggered by issue close
+              const labels = context.payload.issue.labels.map(l => l.name);
+
+              // Find feature label
+              featureLabel = labels.find(l =>
+                l === 'upload-processing' ||
+                l === 'library-management' ||
+                l === 'search' ||
+                l === 'streaming' ||
+                l.startsWith('feature-')
+              );
+
+              // Find wave label
+              waveLabel = labels.find(l => l.match(/^wave-[1-5]$/));
+            }
+
+            if (!featureLabel || !waveLabel) {
+              console.log('No feature or wave label found, skipping wave check');
+              return { skip: true };
+            }
+
+            console.log(`Checking wave completion for ${featureLabel} / ${waveLabel}`);
+            return { skip: false, featureLabel, waveLabel };
+
+      - name: Check if wave is complete
+        if: fromJson(steps.context.outputs.result).skip != true
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { featureLabel, waveLabel } = ${{ steps.context.outputs.result }};
+
+            // Get all issues with this feature and wave label
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: `${featureLabel},${waveLabel}`,
+              state: 'all',
+              per_page: 100
+            });
+
+            const openIssues = issues.data.filter(i => i.state === 'open');
+            const closedIssues = issues.data.filter(i => i.state === 'closed');
+
+            console.log(`${waveLabel} status:`);
+            console.log(`  - Open: ${openIssues.length}`);
+            console.log(`  - Closed: ${closedIssues.length}`);
+
+            if (openIssues.length > 0) {
+              console.log('Open issues:');
+              openIssues.forEach(i => console.log(`  - #${i.number}: ${i.title}`));
+            }
+
+            const isComplete = openIssues.length === 0 && closedIssues.length > 0;
+
+            return {
+              complete: isComplete,
+              wave: waveLabel,
+              feature: featureLabel,
+              openCount: openIssues.length,
+              closedCount: closedIssues.length,
+              closedIssues: closedIssues.map(i => ({ number: i.number, title: i.title }))
+            };
+
+      - name: Create wave completion notice
+        if: fromJson(steps.check.outputs.result).complete == true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = ${{ steps.check.outputs.result }};
+            const waveNumber = result.wave.replace('wave-', '');
+
+            // Check if we already have a wave completion notice
+            const existingNotices = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: `wave-integration,${result.feature}`,
+              state: 'open'
+            });
+
+            const existingNotice = existingNotices.data.find(i =>
+              i.title.includes(result.wave) && i.title.includes('Complete')
+            );
+
+            if (existingNotice) {
+              console.log(`Wave completion notice already exists: #${existingNotice.number}`);
+              return;
+            }
+
+            // Create task list from closed issues
+            const taskList = result.closedIssues
+              .map(i => `- [x] #${i.number}: ${i.title}`)
+              .join('\n');
+
+            // Create the completion notice
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `${result.wave} Complete - Ready for Integration`,
+              body: `## Wave Completion Notice
+
+            **Feature**: \`${result.feature}\`
+            **Wave**: \`${result.wave}\`
+            **Tasks Completed**: ${result.closedCount}
+
+            ### Completed Tasks
+
+            ${taskList}
+
+            ### Next Steps
+
+            1. **Merge wave branches to group branch**
+               \`\`\`bash
+               git checkout group-N/feature-name
+               git pull origin group-N/feature-name
+               ${result.closedIssues.map(i => `git merge origin/task-${i.number} --no-edit`).join('\n               ')}
+               \`\`\`
+
+            2. **Resolve any merge conflicts**
+               - Check for import path conflicts
+               - Check for type definition conflicts
+               - Use Wave 0 contracts as source of truth
+
+            3. **Run validation**
+               \`\`\`bash
+               cd backend && go build ./... && go test ./...
+               cd frontend && npm run lint && npm test -- --run
+               cd infrastructure && tofu validate
+               \`\`\`
+
+            4. **Push updated group branch**
+               \`\`\`bash
+               git push origin group-N/feature-name
+               \`\`\`
+
+            5. **Start next wave** (if applicable)
+               - Create issues for wave-${parseInt(waveNumber) + 1} tasks
+               - Ensure base branch is set to the group branch
+
+            ---
+            Close this issue after integration is complete.`,
+              labels: ['wave-integration', result.feature, result.wave]
+            });
+
+            console.log(`Created wave completion notice: #${issue.data.number}`);
+
+            // Also post to each closed issue
+            for (const task of result.closedIssues) {
+              try {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: task.number,
+                  body: `${result.wave} is now complete! See #${issue.data.number} for integration instructions.`
+                });
+              } catch (e) {
+                console.log(`Could not comment on #${task.number}: ${e.message}`);
+              }
+            }
+
+      - name: Check next wave readiness
+        if: fromJson(steps.check.outputs.result).complete == true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = ${{ steps.check.outputs.result }};
+            const currentWave = parseInt(result.wave.replace('wave-', ''));
+            const nextWave = currentWave + 1;
+
+            if (nextWave > 5) {
+              console.log('No more waves to check');
+              return;
+            }
+
+            const nextWaveLabel = `wave-${nextWave}`;
+
+            // Find issues in the next wave that are blocked
+            const blockedIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: `${result.feature},${nextWaveLabel},blocked`,
+              state: 'open'
+            });
+
+            console.log(`Found ${blockedIssues.data.length} blocked issues in ${nextWaveLabel}`);
+
+            // Trigger dependency re-check for each blocked issue
+            for (const issue of blockedIssues.data) {
+              console.log(`Triggering re-check for #${issue.number}: ${issue.title}`);
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `Previous wave (${result.wave}) is complete. Re-checking dependencies...`
+              });
+            }

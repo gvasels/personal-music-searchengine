@@ -1,0 +1,14 @@
+# Gitleaks configuration for Personal Music Search Engine
+# See https://github.com/gitleaks/gitleaks#configuration
+
+[allowlist]
+  description = "Global allowlist for false positives"
+
+  # Camelot key notation in spec files (e.g., keyCamelot=7A,8A,9A)
+  # These are music key identifiers, not API keys
+  paths = [
+    '''\.spec-workflow/.*\.md$''',
+  ]
+
+  # Additional specific commit fingerprints if needed
+  commits = []

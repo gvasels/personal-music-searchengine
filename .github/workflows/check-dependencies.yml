@@ -1,0 +1,206 @@
+name: Check Task Dependencies
+
+# This workflow checks if an issue's dependencies (other issues) are closed.
+# When dependencies are met, it adds the "ready" label which triggers @claude.
+# When dependencies are not met, it adds the "blocked" label.
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  check-deps:
+    # Only run for issues with claude-task label or when issues are closed
+    if: |
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'claude-task')) ||
+      (github.event_name == 'issue_comment' && github.event.issue.state == 'closed')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Parse dependencies and check status
+        id: deps
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+
+            // Extract dependencies from issue body
+            // Format: "## Dependencies\n- #XX (description)\n- #YY"
+            const depSection = body.match(/## Dependencies\n([\s\S]*?)(?=\n##|$)/);
+            if (!depSection) {
+              console.log('No dependencies section found - task is ready');
+              return { ready: true, blockers: [], hasDepSection: false };
+            }
+
+            const depText = depSection[1];
+            const deps = depText.match(/#(\d+)/g) || [];
+
+            if (deps.length === 0) {
+              console.log('Dependencies section is empty - task is ready');
+              return { ready: true, blockers: [], hasDepSection: true };
+            }
+
+            console.log(`Found ${deps.length} dependencies: ${deps.join(', ')}`);
+
+            const blockers = [];
+            for (const dep of deps) {
+              const issueNum = parseInt(dep.replace('#', ''));
+              try {
+                const depIssue = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNum
+                });
+
+                if (depIssue.data.state !== 'closed') {
+                  blockers.push({
+                    number: issueNum,
+                    title: depIssue.data.title,
+                    state: depIssue.data.state
+                  });
+                  console.log(`Blocker: #${issueNum} - ${depIssue.data.title} (${depIssue.data.state})`);
+                } else {
+                  console.log(`Dependency met: #${issueNum} is closed`);
+                }
+              } catch (e) {
+                console.log(`Warning: Could not fetch issue #${issueNum}: ${e.message}`);
+              }
+            }
+
+            return {
+              ready: blockers.length === 0,
+              blockers: blockers,
+              hasDepSection: true
+            };
+
+      - name: Update labels based on dependency status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = ${{ steps.deps.outputs.result }};
+            const issueNumber = context.payload.issue.number;
+
+            console.log(`Dependencies ready: ${result.ready}`);
+
+            // Get current labels
+            const currentLabels = context.payload.issue.labels.map(l => l.name);
+            const hasBlocked = currentLabels.includes('blocked');
+            const hasReady = currentLabels.includes('ready');
+
+            if (result.ready) {
+              // Remove 'blocked' if present
+              if (hasBlocked) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    name: 'blocked'
+                  });
+                  console.log('Removed "blocked" label');
+                } catch (e) {
+                  console.log(`Could not remove "blocked" label: ${e.message}`);
+                }
+              }
+
+              // Add 'ready' if not present
+              if (!hasReady) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  labels: ['ready']
+                });
+                console.log('Added "ready" label');
+
+                // Post a comment that dependencies are met
+                if (result.hasDepSection) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    body: `All dependencies are closed. This task is now ready to start.\n\n@claude can begin implementation when triggered.`
+                  });
+                }
+              }
+            } else {
+              // Remove 'ready' if present
+              if (hasReady) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    name: 'ready'
+                  });
+                  console.log('Removed "ready" label');
+                } catch (e) {
+                  console.log(`Could not remove "ready" label: ${e.message}`);
+                }
+              }
+
+              // Add 'blocked' if not present
+              if (!hasBlocked) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  labels: ['blocked']
+                });
+                console.log('Added "blocked" label');
+
+                // Post a comment about blockers
+                const blockerList = result.blockers.map(b => `- #${b.number}: ${b.title}`).join('\n');
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: `**Blocked by dependencies:**\n${blockerList}\n\nThis task will automatically become "ready" when all dependencies are closed.`
+                });
+              }
+            }
+
+  # Re-check dependent issues when an issue is closed
+  recheck-dependents:
+    if: github.event_name == 'issues' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Find and re-check dependent issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const closedIssueNumber = context.payload.issue.number;
+            console.log(`Issue #${closedIssueNumber} was closed, checking for dependent issues...`);
+
+            // Search for issues that mention this issue in their dependencies
+            const searchQuery = `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open "#${closedIssueNumber}" in:body label:blocked`;
+
+            try {
+              const searchResult = await github.rest.search.issuesAndPullRequests({
+                q: searchQuery
+              });
+
+              console.log(`Found ${searchResult.data.total_count} potentially dependent issues`);
+
+              for (const issue of searchResult.data.items) {
+                console.log(`Triggering re-check for issue #${issue.number}: ${issue.title}`);
+
+                // Add a comment to trigger re-check via the issue event
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `Dependency #${closedIssueNumber} was closed. Re-checking dependencies...`
+                });
+              }
+            } catch (e) {
+              console.log(`Error searching for dependent issues: ${e.message}`);
+            }

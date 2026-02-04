@@ -1,0 +1,2174 @@
+package repository
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/gvasels/personal-music-searchengine/internal/models"
+)
+
+// DynamoDBClient interface for testability
+type DynamoDBClient interface {
+	PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error)
+	GetItem(ctx context.Context, params *dynamodb.GetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
+	UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error)
+	DeleteItem(ctx context.Context, params *dynamodb.DeleteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)
+	Query(ctx context.Context, params *dynamodb.QueryInput, optFns ...func(*dynamodb.Options)) (*dynamodb.QueryOutput, error)
+	Scan(ctx context.Context, params *dynamodb.ScanInput, optFns ...func(*dynamodb.Options)) (*dynamodb.ScanOutput, error)
+	BatchWriteItem(ctx context.Context, params *dynamodb.BatchWriteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.BatchWriteItemOutput, error)
+	BatchGetItem(ctx context.Context, params *dynamodb.BatchGetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.BatchGetItemOutput, error)
+	TransactWriteItems(ctx context.Context, params *dynamodb.TransactWriteItemsInput, optFns ...func(*dynamodb.Options)) (*dynamodb.TransactWriteItemsOutput, error)
+}
+
+// DynamoDBRepository implements Repository using DynamoDB
+type DynamoDBRepository struct {
+	client    DynamoDBClient
+	tableName string
+}
+
+// NewDynamoDBRepository creates a new DynamoDB repository
+func NewDynamoDBRepository(client DynamoDBClient, tableName string) *DynamoDBRepository {
+	return &DynamoDBRepository{
+		client:    client,
+		tableName: tableName,
+	}
+}
+
+// ============================================================================
+// Track Operations
+// ============================================================================
+
+func (r *DynamoDBRepository) CreateTrack(ctx context.Context, track models.Track) error {
+	track.CreatedAt = time.Now()
+	track.UpdatedAt = track.CreatedAt
+
+	item := models.NewTrackItem(track)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal track: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName:           aws.String(r.tableName),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_not_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create track: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) GetTrack(ctx context.Context, userID, trackID string) (*models.Track, error) {
+	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("TRACK#%s", trackID)},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get track: %w", err)
+	}
+
+	if result.Item == nil {
+		return nil, ErrNotFound
+	}
+
+	var item models.TrackItem
+	if err := attributevalue.UnmarshalMap(result.Item, &item); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal track: %w", err)
+	}
+
+	return &item.Track, nil
+}
+
+// GetTrackByID retrieves a track by ID without requiring the owner's userID.
+// This is used for visibility checks and admin access.
+// Uses a table scan filtered by SK, so less efficient than GetTrack.
+func (r *DynamoDBRepository) GetTrackByID(ctx context.Context, trackID string) (*models.Track, error) {
+	// Use scan with filter on SK to find the track
+	// This is less efficient but necessary for cross-user track access
+	filterExpr := expression.Name("SK").Equal(expression.Value(fmt.Sprintf("TRACK#%s", trackID)))
+
+	builder := expression.NewBuilder().WithFilter(filterExpr)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	// Note: We don't use Limit here because DynamoDB applies the limit BEFORE filtering,
+	// which means Limit: 1 would only scan 1 item, not return 1 matching item.
+	// The scan will stop as soon as we find a matching item (handled via pagination).
+	var lastEvaluatedKey map[string]types.AttributeValue
+
+	for {
+		input := &dynamodb.ScanInput{
+			TableName:                 aws.String(r.tableName),
+			FilterExpression:          expr.Filter(),
+			ExpressionAttributeNames:  expr.Names(),
+			ExpressionAttributeValues: expr.Values(),
+		}
+
+		if lastEvaluatedKey != nil {
+			input.ExclusiveStartKey = lastEvaluatedKey
+		}
+
+		result, err := r.client.Scan(ctx, input)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan for track: %w", err)
+		}
+
+		// If we found the track, return it
+		if len(result.Items) > 0 {
+			var item models.TrackItem
+			if err := attributevalue.UnmarshalMap(result.Items[0], &item); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal track: %w", err)
+			}
+			return &item.Track, nil
+		}
+
+		// If no more items to scan, the track doesn't exist
+		if result.LastEvaluatedKey == nil {
+			return nil, ErrNotFound
+		}
+
+		lastEvaluatedKey = result.LastEvaluatedKey
+	}
+}
+
+func (r *DynamoDBRepository) UpdateTrack(ctx context.Context, track models.Track) error {
+	track.UpdatedAt = time.Now()
+
+	item := models.NewTrackItem(track)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal track: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName:           aws.String(r.tableName),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update track: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) DeleteTrack(ctx context.Context, userID, trackID string) error {
+	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("TRACK#%s", trackID)},
+		},
+		ConditionExpression: aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete track: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) ListTracks(ctx context.Context, userID string, filter models.TrackFilter) (*PaginatedResult[models.Track], error) {
+	limit := filter.Limit
+	if limit == 0 {
+		limit = 20
+	}
+
+	// Global scope: scan all tracks across all users
+	if filter.GlobalScope {
+		return r.listAllTracks(ctx, limit, filter)
+	}
+
+	// User-scoped query (default behavior)
+	keyCondition := expression.Key("PK").Equal(expression.Value(fmt.Sprintf("USER#%s", userID))).
+		And(expression.Key("SK").BeginsWith("TRACK#"))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	input := &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit + 1)), // Get one extra to check hasMore
+	}
+
+	// Handle pagination cursor
+	if filter.LastKey != "" {
+		cursor, err := models.DecodeCursor(filter.LastKey)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		input.ExclusiveStartKey = cursorToAttributeValue(cursor)
+	}
+
+	// Handle sort order
+	if filter.SortOrder == "desc" {
+		input.ScanIndexForward = aws.Bool(false)
+	}
+
+	result, err := r.client.Query(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tracks: %w", err)
+	}
+
+	var items []models.TrackItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal tracks: %w", err)
+	}
+
+	tracks := make([]models.Track, 0, len(items))
+	for _, item := range items {
+		tracks = append(tracks, item.Track)
+	}
+
+	// Determine if there are more results
+	hasMore := len(tracks) > limit
+	if hasMore {
+		tracks = tracks[:limit]
+	}
+
+	// Build next cursor
+	var nextCursor string
+	if hasMore && len(tracks) > 0 {
+		lastTrack := tracks[len(tracks)-1]
+		cursor := models.NewPaginationCursor(
+			fmt.Sprintf("USER#%s", userID),
+			fmt.Sprintf("TRACK#%s", lastTrack.ID),
+		)
+		nextCursor = models.EncodeCursor(cursor)
+	}
+
+	return &PaginatedResult[models.Track]{
+		Items:      tracks,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+	}, nil
+}
+
+// listAllTracks returns tracks from all users (requires GLOBAL permission)
+func (r *DynamoDBRepository) listAllTracks(ctx context.Context, limit int, filter models.TrackFilter) (*PaginatedResult[models.Track], error) {
+	// Filter for TRACK# SK prefix
+	filterExpr := expression.Name("SK").BeginsWith("TRACK#")
+	builder := expression.NewBuilder().WithFilter(filterExpr)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	var tracks []models.Track
+	var lastEvaluatedKey map[string]types.AttributeValue
+	var scanLastEvaluatedKey map[string]types.AttributeValue
+
+	// Handle pagination cursor for scan
+	if filter.LastKey != "" {
+		cursor, err := models.DecodeCursor(filter.LastKey)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		lastEvaluatedKey = cursorToAttributeValue(cursor)
+	}
+
+	// Scan in batches until we have enough tracks
+	// DynamoDB Limit applies BEFORE filter, so we need to keep scanning
+	for len(tracks) < limit+1 {
+		input := &dynamodb.ScanInput{
+			TableName:                 aws.String(r.tableName),
+			FilterExpression:          expr.Filter(),
+			ExpressionAttributeNames:  expr.Names(),
+			ExpressionAttributeValues: expr.Values(),
+			// Scan more items per batch since many will be filtered out
+			Limit: aws.Int32(100),
+		}
+
+		if lastEvaluatedKey != nil {
+			input.ExclusiveStartKey = lastEvaluatedKey
+		}
+
+		result, err := r.client.Scan(ctx, input)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan tracks: %w", err)
+		}
+
+		var items []models.TrackItem
+		if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal tracks: %w", err)
+		}
+
+		for _, item := range items {
+			tracks = append(tracks, item.Track)
+		}
+
+		// Track where we left off for pagination
+		scanLastEvaluatedKey = result.LastEvaluatedKey
+
+		// If no more items to scan, break
+		if result.LastEvaluatedKey == nil {
+			break
+		}
+		lastEvaluatedKey = result.LastEvaluatedKey
+	}
+
+	// Determine if there are more results
+	hasMore := len(tracks) > limit || scanLastEvaluatedKey != nil
+	if len(tracks) > limit {
+		tracks = tracks[:limit]
+		hasMore = true
+	}
+
+	// Build next cursor from the last track for pagination
+	var nextCursor string
+	if hasMore && len(tracks) > 0 {
+		lastTrack := tracks[len(tracks)-1]
+		cursor := models.NewPaginationCursor(
+			fmt.Sprintf("USER#%s", lastTrack.UserID),
+			fmt.Sprintf("TRACK#%s", lastTrack.ID),
+		)
+		nextCursor = models.EncodeCursor(cursor)
+	}
+
+	return &PaginatedResult[models.Track]{
+		Items:      tracks,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+	}, nil
+}
+
+func (r *DynamoDBRepository) ListTracksByArtist(ctx context.Context, userID, artist string) ([]models.Track, error) {
+	keyCondition := expression.Key("GSI1PK").Equal(expression.Value(fmt.Sprintf("USER#%s#ARTIST#%s", userID, artist)))
+	// Filter to only return tracks (not albums which share the same GSI1PK)
+	filter := expression.Name("Type").Equal(expression.Value("TRACK"))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition).WithFilter(filter)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		IndexName:                 aws.String("GSI1"),
+		KeyConditionExpression:    expr.KeyCondition(),
+		FilterExpression:          expr.Filter(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tracks by artist: %w", err)
+	}
+
+	var items []models.TrackItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal tracks: %w", err)
+	}
+
+	tracks := make([]models.Track, 0, len(items))
+	for _, item := range items {
+		tracks = append(tracks, item.Track)
+	}
+
+	return tracks, nil
+}
+
+// ListPublicTracks queries GSI3 for all public tracks
+func (r *DynamoDBRepository) ListPublicTracks(ctx context.Context, limit int, cursor string) (*PaginatedResult[models.Track], error) {
+	if limit <= 0 {
+		limit = 20
+	}
+
+	keyCondition := expression.Key("GSI3PK").Equal(expression.Value("PUBLIC_TRACK"))
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	input := &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		IndexName:                 aws.String("GSI3"),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit)),
+		ScanIndexForward:          aws.Bool(false), // Most recent first
+	}
+
+	if cursor != "" {
+		startKey, err := models.DecodeCursor(cursor)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		input.ExclusiveStartKey = map[string]types.AttributeValue{
+			"PK":     &types.AttributeValueMemberS{Value: startKey.PK},
+			"SK":     &types.AttributeValueMemberS{Value: startKey.SK},
+			"GSI3PK": &types.AttributeValueMemberS{Value: "PUBLIC_TRACK"},
+			"GSI3SK": &types.AttributeValueMemberS{Value: startKey.GSI1SK}, // Reuse GSI1SK field for GSI3SK
+		}
+	}
+
+	result, err := r.client.Query(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query public tracks: %w", err)
+	}
+
+	var items []models.TrackItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal tracks: %w", err)
+	}
+
+	tracks := make([]models.Track, 0, len(items))
+	for _, item := range items {
+		tracks = append(tracks, item.Track)
+	}
+
+	var nextCursor string
+	hasMore := result.LastEvaluatedKey != nil
+	if hasMore {
+		pk := result.LastEvaluatedKey["PK"].(*types.AttributeValueMemberS).Value
+		sk := result.LastEvaluatedKey["SK"].(*types.AttributeValueMemberS).Value
+		gsi3sk := ""
+		if v, ok := result.LastEvaluatedKey["GSI3SK"].(*types.AttributeValueMemberS); ok {
+			gsi3sk = v.Value
+		}
+		nextCursor = models.EncodeCursor(models.PaginationCursor{
+			PK:     pk,
+			SK:     sk,
+			GSI1SK: gsi3sk, // Store GSI3SK in GSI1SK field
+		})
+	}
+
+	return &PaginatedResult[models.Track]{
+		Items:      tracks,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+	}, nil
+}
+
+// UpdateTrackVisibility updates a track's visibility and manages GSI3 keys
+func (r *DynamoDBRepository) UpdateTrackVisibility(ctx context.Context, userID, trackID string, visibility models.TrackVisibility) error {
+	pk := fmt.Sprintf("USER#%s", userID)
+	sk := fmt.Sprintf("TRACK#%s", trackID)
+	now := time.Now()
+
+	// Build update expression
+	updateExpr := "SET #vis = :vis, #upd = :upd"
+	exprNames := map[string]string{
+		"#vis": "Visibility",
+		"#upd": "updatedAt",
+	}
+	exprValues := map[string]types.AttributeValue{
+		":vis": &types.AttributeValueMemberS{Value: string(visibility)},
+		":upd": &types.AttributeValueMemberS{Value: now.Format(time.RFC3339)},
+	}
+
+	// If making public, set GSI3 keys and PublishedAt
+	if visibility == models.VisibilityPublic {
+		updateExpr += ", #gsi3pk = :gsi3pk, #gsi3sk = :gsi3sk, #pub = :pub"
+		exprNames["#gsi3pk"] = "GSI3PK"
+		exprNames["#gsi3sk"] = "GSI3SK"
+		exprNames["#pub"] = "PublishedAt"
+		exprValues[":gsi3pk"] = &types.AttributeValueMemberS{Value: "PUBLIC_TRACK"}
+		exprValues[":gsi3sk"] = &types.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", now.Format("2006-01-02T15:04:05Z"), trackID)}
+		exprValues[":pub"] = &types.AttributeValueMemberS{Value: now.Format(time.RFC3339)}
+	} else {
+		// If making private/unlisted, remove GSI3 keys
+		updateExpr += " REMOVE #gsi3pk, #gsi3sk"
+		exprNames["#gsi3pk"] = "GSI3PK"
+		exprNames["#gsi3sk"] = "GSI3SK"
+	}
+
+	_, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+		UpdateExpression:          aws.String(updateExpr),
+		ExpressionAttributeNames:  exprNames,
+		ExpressionAttributeValues: exprValues,
+		ConditionExpression:       aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		var condErr *types.ConditionalCheckFailedException
+		if errors.As(err, &condErr) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to update track visibility: %w", err)
+	}
+
+	return nil
+}
+
+// ============================================================================
+// Album Operations
+// ============================================================================
+
+func (r *DynamoDBRepository) GetOrCreateAlbum(ctx context.Context, userID, albumName, artist string) (*models.Album, error) {
+	// Generate consistent album ID from name and artist
+	albumID := generateAlbumID(albumName, artist)
+
+	// Try to get existing album
+	album, err := r.GetAlbum(ctx, userID, albumID)
+	if err == nil {
+		return album, nil
+	}
+	if err != ErrNotFound {
+		return nil, err
+	}
+
+	// Create new album
+	now := time.Now()
+	album = &models.Album{
+		ID:            albumID,
+		UserID:        userID,
+		Title:         albumName,
+		Artist:        artist,
+		Year:          0, // Will be updated when tracks are added
+		TrackCount:    0,
+		TotalDuration: 0,
+	}
+	album.CreatedAt = now
+	album.UpdatedAt = now
+
+	item := models.NewAlbumItem(*album)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal album: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName:           aws.String(r.tableName),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_not_exists(PK)"),
+	})
+	if err != nil {
+		// If album was created by another request, get it
+		existingAlbum, getErr := r.GetAlbum(ctx, userID, albumID)
+		if getErr == nil {
+			return existingAlbum, nil
+		}
+		return nil, fmt.Errorf("failed to create album: %w", err)
+	}
+
+	return album, nil
+}
+
+func (r *DynamoDBRepository) GetAlbum(ctx context.Context, userID, albumID string) (*models.Album, error) {
+	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("ALBUM#%s", albumID)},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get album: %w", err)
+	}
+
+	if result.Item == nil {
+		return nil, ErrNotFound
+	}
+
+	var item models.AlbumItem
+	if err := attributevalue.UnmarshalMap(result.Item, &item); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal album: %w", err)
+	}
+
+	return &item.Album, nil
+}
+
+func (r *DynamoDBRepository) ListAlbums(ctx context.Context, userID string, filter models.AlbumFilter) (*PaginatedResult[models.Album], error) {
+	limit := filter.Limit
+	if limit == 0 {
+		limit = 20
+	}
+
+	keyCondition := expression.Key("PK").Equal(expression.Value(fmt.Sprintf("USER#%s", userID))).
+		And(expression.Key("SK").BeginsWith("ALBUM#"))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	input := &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit + 1)),
+	}
+
+	if filter.LastKey != "" {
+		cursor, err := models.DecodeCursor(filter.LastKey)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		input.ExclusiveStartKey = cursorToAttributeValue(cursor)
+	}
+
+	result, err := r.client.Query(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query albums: %w", err)
+	}
+
+	var items []models.AlbumItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal albums: %w", err)
+	}
+
+	albums := make([]models.Album, 0, len(items))
+	for _, item := range items {
+		albums = append(albums, item.Album)
+	}
+
+	hasMore := len(albums) > limit
+	if hasMore {
+		albums = albums[:limit]
+	}
+
+	var nextCursor string
+	if hasMore && len(albums) > 0 {
+		lastAlbum := albums[len(albums)-1]
+		cursor := models.NewPaginationCursor(
+			fmt.Sprintf("USER#%s", userID),
+			fmt.Sprintf("ALBUM#%s", lastAlbum.ID),
+		)
+		nextCursor = models.EncodeCursor(cursor)
+	}
+
+	return &PaginatedResult[models.Album]{
+		Items:      albums,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+	}, nil
+}
+
+func (r *DynamoDBRepository) ListAlbumsByArtist(ctx context.Context, userID, artist string) ([]models.Album, error) {
+	keyCondition := expression.Key("GSI1PK").Equal(expression.Value(fmt.Sprintf("USER#%s#ARTIST#%s", userID, artist)))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		IndexName:                 aws.String("GSI1"),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query albums by artist: %w", err)
+	}
+
+	var items []models.AlbumItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal albums: %w", err)
+	}
+
+	albums := make([]models.Album, 0, len(items))
+	for _, item := range items {
+		albums = append(albums, item.Album)
+	}
+
+	return albums, nil
+}
+
+func (r *DynamoDBRepository) UpdateAlbumStats(ctx context.Context, userID, albumID string, trackCount, totalDuration int) error {
+	update := expression.Set(
+		expression.Name("trackCount"), expression.Value(trackCount),
+	).Set(
+		expression.Name("totalDuration"), expression.Value(totalDuration),
+	).Set(
+		expression.Name("updatedAt"), expression.Value(time.Now().Format(time.RFC3339)),
+	)
+
+	expr, err := expression.NewBuilder().WithUpdate(update).Build()
+	if err != nil {
+		return fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	_, err = r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("ALBUM#%s", albumID)},
+		},
+		UpdateExpression:          expr.Update(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ConditionExpression:       aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update album stats: %w", err)
+	}
+
+	return nil
+}
+
+// ============================================================================
+// User Operations
+// ============================================================================
+
+func (r *DynamoDBRepository) CreateUser(ctx context.Context, user models.User) error {
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = user.CreatedAt
+
+	item := models.NewUserItem(user)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName:           aws.String(r.tableName),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_not_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) GetUser(ctx context.Context, userID string) (*models.User, error) {
+	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: "PROFILE"},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if result.Item == nil {
+		return nil, ErrNotFound
+	}
+
+	var item models.UserItem
+	if err := attributevalue.UnmarshalMap(result.Item, &item); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal user: %w", err)
+	}
+
+	return &item.User, nil
+}
+
+func (r *DynamoDBRepository) UpdateUser(ctx context.Context, user models.User) error {
+	user.UpdatedAt = time.Now()
+
+	item := models.NewUserItem(user)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName:           aws.String(r.tableName),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) UpdateUserStats(ctx context.Context, userID string, storageUsed int64, trackCount, albumCount, playlistCount int) error {
+	update := expression.Set(
+		expression.Name("storageUsed"), expression.Value(storageUsed),
+	).Set(
+		expression.Name("trackCount"), expression.Value(trackCount),
+	).Set(
+		expression.Name("albumCount"), expression.Value(albumCount),
+	).Set(
+		expression.Name("playlistCount"), expression.Value(playlistCount),
+	).Set(
+		expression.Name("updatedAt"), expression.Value(time.Now().Format(time.RFC3339)),
+	)
+
+	expr, err := expression.NewBuilder().WithUpdate(update).Build()
+	if err != nil {
+		return fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	_, err = r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: "PROFILE"},
+		},
+		UpdateExpression:          expr.Update(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ConditionExpression:       aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update user stats: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateUserRole updates a user's role
+func (r *DynamoDBRepository) UpdateUserRole(ctx context.Context, userID string, role models.UserRole) error {
+	update := expression.Set(
+		expression.Name("role"), expression.Value(role),
+	).Set(
+		expression.Name("updatedAt"), expression.Value(time.Now().Format(time.RFC3339)),
+	)
+
+	expr, err := expression.NewBuilder().WithUpdate(update).Build()
+	if err != nil {
+		return fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	_, err = r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: "PROFILE"},
+		},
+		UpdateExpression:          expr.Update(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ConditionExpression:       aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update user role: %w", err)
+	}
+
+	return nil
+}
+
+// ListUsersByRole lists users with a specific role (requires GSI on role field)
+func (r *DynamoDBRepository) ListUsersByRole(ctx context.Context, role models.UserRole, limit int, cursor string) (*PaginatedResult[models.User], error) {
+	// Note: This requires a GSI on the role field to be efficient
+	// For now, we'll do a scan with filter (not ideal for production)
+	filter := expression.Name("role").Equal(expression.Value(role)).
+		And(expression.Name("Type").Equal(expression.Value("USER")))
+
+	builder := expression.NewBuilder().WithFilter(filter)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	input := &dynamodb.ScanInput{
+		TableName:                 aws.String(r.tableName),
+		FilterExpression:          expr.Filter(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit)),
+	}
+
+	if cursor != "" {
+		startKey, err := decodeCursor(cursor)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		input.ExclusiveStartKey = startKey
+	}
+
+	result, err := r.client.Scan(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list users by role: %w", err)
+	}
+
+	users := make([]models.User, 0, len(result.Items))
+	for _, item := range result.Items {
+		var userItem models.UserItem
+		if err := attributevalue.UnmarshalMap(item, &userItem); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal user: %w", err)
+		}
+		users = append(users, userItem.User)
+	}
+
+	var nextCursor string
+	if result.LastEvaluatedKey != nil {
+		nextCursor, err = encodeCursor(result.LastEvaluatedKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode cursor: %w", err)
+		}
+	}
+
+	return &PaginatedResult[models.User]{
+		Items:      users,
+		NextCursor: nextCursor,
+		HasMore:    result.LastEvaluatedKey != nil,
+	}, nil
+}
+
+// SearchUsers searches for users by email or display name (partial match)
+func (r *DynamoDBRepository) SearchUsers(ctx context.Context, query string, limit int) ([]models.User, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+
+	// Search by scanning with filter (not ideal for production, but works for admin use)
+	// Handle both old schema (Type=USER, email, displayName) and new schema (EntityType=User, Email)
+	filter := expression.And(
+		expression.Name("SK").Equal(expression.Value("PROFILE")),
+		expression.Or(
+			// Old schema: lowercase email/displayName
+			expression.Contains(expression.Name("email"), query),
+			expression.Contains(expression.Name("displayName"), query),
+			// New schema: capitalized Email
+			expression.Contains(expression.Name("Email"), query),
+		),
+	)
+
+	builder := expression.NewBuilder().WithFilter(filter)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	result, err := r.client.Scan(ctx, &dynamodb.ScanInput{
+		TableName:                 aws.String(r.tableName),
+		FilterExpression:          expr.Filter(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit * 5)), // Over-scan to account for filter
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to search users: %w", err)
+	}
+
+	users := make([]models.User, 0, len(result.Items))
+	for _, item := range result.Items {
+		var userItem models.UserItem
+		if err := attributevalue.UnmarshalMap(item, &userItem); err != nil {
+			continue // Skip invalid items
+		}
+		users = append(users, userItem.User)
+		if len(users) >= limit {
+			break
+		}
+	}
+
+	return users, nil
+}
+
+// SetUserDisabled sets the disabled status of a user
+func (r *DynamoDBRepository) SetUserDisabled(ctx context.Context, userID string, disabled bool) error {
+	pk := fmt.Sprintf("USER#%s", userID)
+	sk := "PROFILE"
+	now := time.Now()
+
+	_, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+		UpdateExpression: aws.String("SET #disabled = :disabled, #upd = :upd"),
+		ExpressionAttributeNames: map[string]string{
+			"#disabled": "disabled",
+			"#upd":      "updatedAt",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":disabled": &types.AttributeValueMemberBOOL{Value: disabled},
+			":upd":      &types.AttributeValueMemberS{Value: now.Format(time.RFC3339)},
+		},
+		ConditionExpression: aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		var condErr *types.ConditionalCheckFailedException
+		if errors.As(err, &condErr) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to set user disabled status: %w", err)
+	}
+
+	return nil
+}
+
+// GetUserDisplayName returns a user's display name, falling back to email if not set
+func (r *DynamoDBRepository) GetUserDisplayName(ctx context.Context, userID string) (string, error) {
+	user, err := r.GetUser(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if user.DisplayName != "" {
+		return user.DisplayName, nil
+	}
+	if user.Email != "" {
+		return user.Email, nil
+	}
+	return "Unknown", nil
+}
+
+// GetFollowerCount returns the number of followers for a user's artist profile
+func (r *DynamoDBRepository) GetFollowerCount(ctx context.Context, userID string) (int, error) {
+	// Check if user has an artist profile
+	pk := fmt.Sprintf("USER#%s", userID)
+	sk := "ARTIST_PROFILE"
+
+	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+		ProjectionExpression: aws.String("followerCount"),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to get follower count: %w", err)
+	}
+
+	if result.Item == nil {
+		return 0, nil // No artist profile means no followers
+	}
+
+	var profile struct {
+		FollowerCount int `dynamodbav:"followerCount"`
+	}
+	if err := attributevalue.UnmarshalMap(result.Item, &profile); err != nil {
+		return 0, nil
+	}
+
+	return profile.FollowerCount, nil
+}
+
+// ============================================================================
+// Playlist Operations
+// ============================================================================
+
+func (r *DynamoDBRepository) CreatePlaylist(ctx context.Context, playlist models.Playlist) error {
+	playlist.CreatedAt = time.Now()
+	playlist.UpdatedAt = playlist.CreatedAt
+
+	item := models.NewPlaylistItem(playlist)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal playlist: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName:           aws.String(r.tableName),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_not_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create playlist: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) GetPlaylist(ctx context.Context, userID, playlistID string) (*models.Playlist, error) {
+	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("PLAYLIST#%s", playlistID)},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get playlist: %w", err)
+	}
+
+	if result.Item == nil {
+		return nil, ErrNotFound
+	}
+
+	var item models.PlaylistItem
+	if err := attributevalue.UnmarshalMap(result.Item, &item); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal playlist: %w", err)
+	}
+
+	return &item.Playlist, nil
+}
+
+func (r *DynamoDBRepository) UpdatePlaylist(ctx context.Context, playlist models.Playlist) error {
+	playlist.UpdatedAt = time.Now()
+
+	item := models.NewPlaylistItem(playlist)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal playlist: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName:           aws.String(r.tableName),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update playlist: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) DeletePlaylist(ctx context.Context, userID, playlistID string) error {
+	// Delete playlist tracks first
+	tracks, err := r.GetPlaylistTracks(ctx, playlistID)
+	if err != nil && err != ErrNotFound {
+		return fmt.Errorf("failed to get playlist tracks: %w", err)
+	}
+
+	// Delete in batches of 25
+	for i := 0; i < len(tracks); i += 25 {
+		end := i + 25
+		if end > len(tracks) {
+			end = len(tracks)
+		}
+
+		writeRequests := make([]types.WriteRequest, 0, end-i)
+		for _, track := range tracks[i:end] {
+			writeRequests = append(writeRequests, types.WriteRequest{
+				DeleteRequest: &types.DeleteRequest{
+					Key: map[string]types.AttributeValue{
+						"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("PLAYLIST#%s", playlistID)},
+						"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("POSITION#%08d", track.Position)},
+					},
+				},
+			})
+		}
+
+		_, err := r.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
+			RequestItems: map[string][]types.WriteRequest{
+				r.tableName: writeRequests,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to delete playlist tracks: %w", err)
+		}
+	}
+
+	// Delete the playlist itself
+	_, err = r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("PLAYLIST#%s", playlistID)},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete playlist: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) ListPlaylists(ctx context.Context, userID string, filter models.PlaylistFilter) (*PaginatedResult[models.Playlist], error) {
+	limit := filter.Limit
+	if limit == 0 {
+		limit = 20
+	}
+
+	keyCondition := expression.Key("PK").Equal(expression.Value(fmt.Sprintf("USER#%s", userID))).
+		And(expression.Key("SK").BeginsWith("PLAYLIST#"))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	input := &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit + 1)),
+	}
+
+	if filter.LastKey != "" {
+		cursor, err := models.DecodeCursor(filter.LastKey)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		input.ExclusiveStartKey = cursorToAttributeValue(cursor)
+	}
+
+	result, err := r.client.Query(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query playlists: %w", err)
+	}
+
+	var items []models.PlaylistItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal playlists: %w", err)
+	}
+
+	playlists := make([]models.Playlist, 0, len(items))
+	for _, item := range items {
+		playlists = append(playlists, item.Playlist)
+	}
+
+	hasMore := len(playlists) > limit
+	if hasMore {
+		playlists = playlists[:limit]
+	}
+
+	var nextCursor string
+	if hasMore && len(playlists) > 0 {
+		lastPlaylist := playlists[len(playlists)-1]
+		cursor := models.NewPaginationCursor(
+			fmt.Sprintf("USER#%s", userID),
+			fmt.Sprintf("PLAYLIST#%s", lastPlaylist.ID),
+		)
+		nextCursor = models.EncodeCursor(cursor)
+	}
+
+	return &PaginatedResult[models.Playlist]{
+		Items:      playlists,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+	}, nil
+}
+
+func (r *DynamoDBRepository) SearchPlaylists(ctx context.Context, userID, query string, limit int) ([]models.Playlist, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	// Query all playlists for the user
+	keyCondition := expression.Key("PK").Equal(expression.Value(fmt.Sprintf("USER#%s", userID))).
+		And(expression.Key("SK").BeginsWith("PLAYLIST#"))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query playlists: %w", err)
+	}
+
+	var items []models.PlaylistItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal playlists: %w", err)
+	}
+
+	// Filter by name (case-insensitive contains)
+	queryLower := strings.ToLower(query)
+	playlists := make([]models.Playlist, 0)
+	for _, item := range items {
+		if strings.Contains(strings.ToLower(item.Name), queryLower) {
+			playlists = append(playlists, item.Playlist)
+			if len(playlists) >= limit {
+				break
+			}
+		}
+	}
+
+	return playlists, nil
+}
+
+func (r *DynamoDBRepository) AddTracksToPlaylist(ctx context.Context, playlistID string, trackIDs []string, position int) error {
+	writeRequests := make([]types.WriteRequest, 0, len(trackIDs))
+	now := time.Now()
+
+	for i, trackID := range trackIDs {
+		track := models.PlaylistTrack{
+			PlaylistID: playlistID,
+			TrackID:    trackID,
+			Position:   position + i,
+			AddedAt:    now,
+		}
+
+		item := models.NewPlaylistTrackItem(track)
+		av, err := attributevalue.MarshalMap(item)
+		if err != nil {
+			return fmt.Errorf("failed to marshal playlist track: %w", err)
+		}
+
+		writeRequests = append(writeRequests, types.WriteRequest{
+			PutRequest: &types.PutRequest{
+				Item: av,
+			},
+		})
+	}
+
+	// Write in batches of 25
+	for i := 0; i < len(writeRequests); i += 25 {
+		end := i + 25
+		if end > len(writeRequests) {
+			end = len(writeRequests)
+		}
+
+		_, err := r.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
+			RequestItems: map[string][]types.WriteRequest{
+				r.tableName: writeRequests[i:end],
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to add tracks to playlist: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) RemoveTracksFromPlaylist(ctx context.Context, playlistID string, trackIDs []string) error {
+	// Get all playlist tracks to find positions
+	tracks, err := r.GetPlaylistTracks(ctx, playlistID)
+	if err != nil {
+		return err
+	}
+
+	// Find positions for tracks to remove
+	trackIDSet := make(map[string]bool)
+	for _, id := range trackIDs {
+		trackIDSet[id] = true
+	}
+
+	writeRequests := make([]types.WriteRequest, 0)
+	for _, track := range tracks {
+		if trackIDSet[track.TrackID] {
+			writeRequests = append(writeRequests, types.WriteRequest{
+				DeleteRequest: &types.DeleteRequest{
+					Key: map[string]types.AttributeValue{
+						"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("PLAYLIST#%s", playlistID)},
+						"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("POSITION#%08d", track.Position)},
+					},
+				},
+			})
+		}
+	}
+
+	// Delete in batches of 25
+	for i := 0; i < len(writeRequests); i += 25 {
+		end := i + 25
+		if end > len(writeRequests) {
+			end = len(writeRequests)
+		}
+
+		_, err := r.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
+			RequestItems: map[string][]types.WriteRequest{
+				r.tableName: writeRequests[i:end],
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to remove tracks from playlist: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) GetPlaylistTracks(ctx context.Context, playlistID string) ([]models.PlaylistTrack, error) {
+	keyCondition := expression.Key("PK").Equal(expression.Value(fmt.Sprintf("PLAYLIST#%s", playlistID)))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query playlist tracks: %w", err)
+	}
+
+	var items []models.PlaylistTrackItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal playlist tracks: %w", err)
+	}
+
+	tracks := make([]models.PlaylistTrack, 0, len(items))
+	for _, item := range items {
+		tracks = append(tracks, item.PlaylistTrack)
+	}
+
+	return tracks, nil
+}
+
+func (r *DynamoDBRepository) ReorderPlaylistTracks(ctx context.Context, playlistID string, tracks []models.PlaylistTrack) error {
+	// First, delete all existing tracks for this playlist
+	existingTracks, err := r.GetPlaylistTracks(ctx, playlistID)
+	if err != nil {
+		return fmt.Errorf("failed to get existing playlist tracks: %w", err)
+	}
+
+	// Delete existing tracks
+	if len(existingTracks) > 0 {
+		deleteRequests := make([]types.WriteRequest, 0, len(existingTracks))
+		for _, track := range existingTracks {
+			deleteRequests = append(deleteRequests, types.WriteRequest{
+				DeleteRequest: &types.DeleteRequest{
+					Key: map[string]types.AttributeValue{
+						"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("PLAYLIST#%s", playlistID)},
+						"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("POSITION#%08d", track.Position)},
+					},
+				},
+			})
+		}
+
+		// Delete in batches of 25
+		for i := 0; i < len(deleteRequests); i += 25 {
+			end := i + 25
+			if end > len(deleteRequests) {
+				end = len(deleteRequests)
+			}
+
+			_, err := r.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
+				RequestItems: map[string][]types.WriteRequest{
+					r.tableName: deleteRequests[i:end],
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("failed to delete playlist tracks: %w", err)
+			}
+		}
+	}
+
+	// Insert tracks with new positions
+	if len(tracks) == 0 {
+		return nil
+	}
+
+	writeRequests := make([]types.WriteRequest, 0, len(tracks))
+	for i, track := range tracks {
+		// Update position to match array index
+		track.Position = i
+		track.PlaylistID = playlistID
+
+		item := models.NewPlaylistTrackItem(track)
+		av, err := attributevalue.MarshalMap(item)
+		if err != nil {
+			return fmt.Errorf("failed to marshal playlist track: %w", err)
+		}
+
+		writeRequests = append(writeRequests, types.WriteRequest{
+			PutRequest: &types.PutRequest{
+				Item: av,
+			},
+		})
+	}
+
+	// Write in batches of 25
+	for i := 0; i < len(writeRequests); i += 25 {
+		end := i + 25
+		if end > len(writeRequests) {
+			end = len(writeRequests)
+		}
+
+		_, err := r.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
+			RequestItems: map[string][]types.WriteRequest{
+				r.tableName: writeRequests[i:end],
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to write reordered playlist tracks: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// UpdatePlaylistVisibility updates a playlist's visibility
+func (r *DynamoDBRepository) UpdatePlaylistVisibility(ctx context.Context, userID, playlistID string, visibility models.PlaylistVisibility) error {
+	// Get the existing playlist
+	playlist, err := r.GetPlaylist(ctx, userID, playlistID)
+	if err != nil {
+		return err
+	}
+
+	playlist.Visibility = visibility
+	playlist.UpdatedAt = time.Now()
+
+	// Update the item with new visibility and potentially new GSI2 keys
+	item := models.NewPlaylistItem(*playlist)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal playlist: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String(r.tableName),
+		Item:      av,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update playlist visibility: %w", err)
+	}
+
+	return nil
+}
+
+// ListPublicPlaylists lists all public playlists via GSI2
+func (r *DynamoDBRepository) ListPublicPlaylists(ctx context.Context, limit int, cursor string) (*PaginatedResult[models.Playlist], error) {
+	keyCondition := expression.Key("GSI2PK").Equal(expression.Value("PUBLIC_PLAYLIST"))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	input := &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		IndexName:                 aws.String("GSI2"),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit)),
+	}
+
+	if cursor != "" {
+		startKey, err := decodeCursor(cursor)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		input.ExclusiveStartKey = startKey
+	}
+
+	result, err := r.client.Query(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list public playlists: %w", err)
+	}
+
+	playlists := make([]models.Playlist, 0, len(result.Items))
+	for _, item := range result.Items {
+		var playlistItem models.PlaylistItem
+		if err := attributevalue.UnmarshalMap(item, &playlistItem); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal playlist: %w", err)
+		}
+		playlists = append(playlists, playlistItem.Playlist)
+	}
+
+	var nextCursor string
+	if result.LastEvaluatedKey != nil {
+		nextCursor, err = encodeCursor(result.LastEvaluatedKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode cursor: %w", err)
+		}
+	}
+
+	return &PaginatedResult[models.Playlist]{
+		Items:      playlists,
+		NextCursor: nextCursor,
+		HasMore:    result.LastEvaluatedKey != nil,
+	}, nil
+}
+
+// ============================================================================
+// Tag Operations
+// ============================================================================
+
+func (r *DynamoDBRepository) CreateTag(ctx context.Context, tag models.Tag) error {
+	tag.CreatedAt = time.Now()
+	tag.UpdatedAt = tag.CreatedAt
+
+	item := models.NewTagItem(tag)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal tag: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName:           aws.String(r.tableName),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_not_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create tag: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) GetTag(ctx context.Context, userID, tagName string) (*models.Tag, error) {
+	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("TAG#%s", tagName)},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tag: %w", err)
+	}
+
+	if result.Item == nil {
+		return nil, ErrNotFound
+	}
+
+	var item models.TagItem
+	if err := attributevalue.UnmarshalMap(result.Item, &item); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal tag: %w", err)
+	}
+
+	return &item.Tag, nil
+}
+
+func (r *DynamoDBRepository) UpdateTag(ctx context.Context, tag models.Tag) error {
+	tag.UpdatedAt = time.Now()
+
+	item := models.NewTagItem(tag)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal tag: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName:           aws.String(r.tableName),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update tag: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) DeleteTag(ctx context.Context, userID, tagName string) error {
+	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("TAG#%s", tagName)},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete tag: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) ListTags(ctx context.Context, userID string) ([]models.Tag, error) {
+	keyCondition := expression.Key("PK").Equal(expression.Value(fmt.Sprintf("USER#%s", userID))).
+		And(expression.Key("SK").BeginsWith("TAG#"))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tags: %w", err)
+	}
+
+	var items []models.TagItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal tags: %w", err)
+	}
+
+	tags := make([]models.Tag, 0, len(items))
+	for _, item := range items {
+		tags = append(tags, item.Tag)
+	}
+
+	return tags, nil
+}
+
+func (r *DynamoDBRepository) AddTagsToTrack(ctx context.Context, userID, trackID string, tagNames []string) error {
+	now := time.Now()
+	writeRequests := make([]types.WriteRequest, 0, len(tagNames))
+
+	for _, tagName := range tagNames {
+		trackTag := models.TrackTag{
+			UserID:  userID,
+			TrackID: trackID,
+			TagName: tagName,
+			AddedAt: now,
+		}
+
+		item := models.NewTrackTagItem(trackTag)
+		av, err := attributevalue.MarshalMap(item)
+		if err != nil {
+			return fmt.Errorf("failed to marshal track tag: %w", err)
+		}
+
+		writeRequests = append(writeRequests, types.WriteRequest{
+			PutRequest: &types.PutRequest{
+				Item: av,
+			},
+		})
+	}
+
+	// Write in batches of 25
+	for i := 0; i < len(writeRequests); i += 25 {
+		end := i + 25
+		if end > len(writeRequests) {
+			end = len(writeRequests)
+		}
+
+		_, err := r.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
+			RequestItems: map[string][]types.WriteRequest{
+				r.tableName: writeRequests[i:end],
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to add tags to track: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) RemoveTagFromTrack(ctx context.Context, userID, trackID, tagName string) error {
+	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s#TRACK#%s", userID, trackID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("TAG#%s", tagName)},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to remove tag from track: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) GetTrackTags(ctx context.Context, userID, trackID string) ([]string, error) {
+	keyCondition := expression.Key("PK").Equal(expression.Value(fmt.Sprintf("USER#%s#TRACK#%s", userID, trackID)))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query track tags: %w", err)
+	}
+
+	var items []models.TrackTagItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal track tags: %w", err)
+	}
+
+	tags := make([]string, 0, len(items))
+	for _, item := range items {
+		tags = append(tags, item.TrackTag.TagName)
+	}
+
+	return tags, nil
+}
+
+func (r *DynamoDBRepository) GetTracksByTag(ctx context.Context, userID, tagName string) ([]models.Track, error) {
+	keyCondition := expression.Key("GSI1PK").Equal(expression.Value(fmt.Sprintf("USER#%s#TAG#%s", userID, tagName)))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	// First, get the track IDs from the tag associations
+	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		IndexName:                 aws.String("GSI1"),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tracks by tag: %w", err)
+	}
+
+	var items []models.TrackTagItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal track tags: %w", err)
+	}
+
+	// Get each track
+	tracks := make([]models.Track, 0, len(items))
+	for _, item := range items {
+		track, err := r.GetTrack(ctx, userID, item.TrackTag.TrackID)
+		if err != nil {
+			if err == ErrNotFound {
+				continue // Track was deleted
+			}
+			return nil, err
+		}
+		tracks = append(tracks, *track)
+	}
+
+	return tracks, nil
+}
+
+// ============================================================================
+// Upload Operations
+// ============================================================================
+
+func (r *DynamoDBRepository) CreateUpload(ctx context.Context, upload models.Upload) error {
+	upload.CreatedAt = time.Now()
+	upload.UpdatedAt = upload.CreatedAt
+
+	item := models.NewUploadItem(upload)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal upload: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName:           aws.String(r.tableName),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_not_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create upload: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) GetUpload(ctx context.Context, userID, uploadID string) (*models.Upload, error) {
+	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("UPLOAD#%s", uploadID)},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get upload: %w", err)
+	}
+
+	if result.Item == nil {
+		return nil, ErrNotFound
+	}
+
+	var item models.UploadItem
+	if err := attributevalue.UnmarshalMap(result.Item, &item); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal upload: %w", err)
+	}
+
+	return &item.Upload, nil
+}
+
+func (r *DynamoDBRepository) UpdateUpload(ctx context.Context, upload models.Upload) error {
+	upload.UpdatedAt = time.Now()
+
+	item := models.NewUploadItem(upload)
+	av, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("failed to marshal upload: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName:           aws.String(r.tableName),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update upload: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) UpdateUploadStatus(ctx context.Context, userID, uploadID string, status models.UploadStatus, errorMsg string, trackID string) error {
+	now := time.Now()
+	update := expression.Set(
+		expression.Name("status"), expression.Value(string(status)),
+	).Set(
+		expression.Name("updatedAt"), expression.Value(now.Format(time.RFC3339)),
+	).Set(
+		expression.Name("GSI1PK"), expression.Value(fmt.Sprintf("UPLOAD#STATUS#%s", status)),
+	).Set(
+		expression.Name("GSI1SK"), expression.Value(now.Format(time.RFC3339)),
+	)
+
+	if errorMsg != "" {
+		update = update.Set(expression.Name("errorMsg"), expression.Value(errorMsg))
+	}
+	if trackID != "" {
+		update = update.Set(expression.Name("trackId"), expression.Value(trackID))
+	}
+	if status == models.UploadStatusCompleted {
+		update = update.Set(expression.Name("completedAt"), expression.Value(now.Format(time.RFC3339)))
+	}
+
+	expr, err := expression.NewBuilder().WithUpdate(update).Build()
+	if err != nil {
+		return fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	_, err = r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("UPLOAD#%s", uploadID)},
+		},
+		UpdateExpression:          expr.Update(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ConditionExpression:       aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update upload status: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) UpdateUploadStep(ctx context.Context, userID, uploadID string, step models.ProcessingStep, success bool) error {
+	var fieldName string
+	switch step {
+	case models.StepExtractMetadata:
+		fieldName = "metadataExtracted"
+	case models.StepExtractCover:
+		fieldName = "coverArtExtracted"
+	case models.StepCreateTrack:
+		fieldName = "trackCreated"
+	case models.StepIndex:
+		fieldName = "indexed"
+	case models.StepMoveFile:
+		fieldName = "fileMoved"
+	default:
+		return fmt.Errorf("unknown processing step: %s", step)
+	}
+
+	update := expression.Set(
+		expression.Name(fieldName), expression.Value(success),
+	).Set(
+		expression.Name("updatedAt"), expression.Value(time.Now().Format(time.RFC3339)),
+	)
+
+	expr, err := expression.NewBuilder().WithUpdate(update).Build()
+	if err != nil {
+		return fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	_, err = r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("UPLOAD#%s", uploadID)},
+		},
+		UpdateExpression:          expr.Update(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ConditionExpression:       aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update upload step: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DynamoDBRepository) ListUploads(ctx context.Context, userID string, filter models.UploadFilter) (*PaginatedResult[models.Upload], error) {
+	limit := filter.Limit
+	if limit == 0 {
+		limit = 20
+	}
+
+	keyCondition := expression.Key("PK").Equal(expression.Value(fmt.Sprintf("USER#%s", userID))).
+		And(expression.Key("SK").BeginsWith("UPLOAD#"))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	input := &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		Limit:                     aws.Int32(int32(limit + 1)),
+		ScanIndexForward:          aws.Bool(false), // Most recent first
+	}
+
+	if filter.LastKey != "" {
+		cursor, err := models.DecodeCursor(filter.LastKey)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		input.ExclusiveStartKey = cursorToAttributeValue(cursor)
+	}
+
+	result, err := r.client.Query(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query uploads: %w", err)
+	}
+
+	var items []models.UploadItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal uploads: %w", err)
+	}
+
+	uploads := make([]models.Upload, 0, len(items))
+	for _, item := range items {
+		// Filter by status if specified
+		if filter.Status != "" && item.Upload.Status != filter.Status {
+			continue
+		}
+		uploads = append(uploads, item.Upload)
+	}
+
+	hasMore := len(uploads) > limit
+	if hasMore {
+		uploads = uploads[:limit]
+	}
+
+	var nextCursor string
+	if hasMore && len(uploads) > 0 {
+		lastUpload := uploads[len(uploads)-1]
+		cursor := models.NewPaginationCursor(
+			fmt.Sprintf("USER#%s", userID),
+			fmt.Sprintf("UPLOAD#%s", lastUpload.ID),
+		)
+		nextCursor = models.EncodeCursor(cursor)
+	}
+
+	return &PaginatedResult[models.Upload]{
+		Items:      uploads,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+	}, nil
+}
+
+func (r *DynamoDBRepository) ListUploadsByStatus(ctx context.Context, status models.UploadStatus) ([]models.Upload, error) {
+	keyCondition := expression.Key("GSI1PK").Equal(expression.Value(fmt.Sprintf("UPLOAD#STATUS#%s", status)))
+
+	builder := expression.NewBuilder().WithKeyCondition(keyCondition)
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build expression: %w", err)
+	}
+
+	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:                 aws.String(r.tableName),
+		IndexName:                 aws.String("GSI1"),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query uploads by status: %w", err)
+	}
+
+	var items []models.UploadItem
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &items); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal uploads: %w", err)
+	}
+
+	uploads := make([]models.Upload, 0, len(items))
+	for _, item := range items {
+		uploads = append(uploads, item.Upload)
+	}
+
+	return uploads, nil
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+// cursorToAttributeValue converts a PaginationCursor to DynamoDB ExclusiveStartKey
+func cursorToAttributeValue(cursor models.PaginationCursor) map[string]types.AttributeValue {
+	av := map[string]types.AttributeValue{
+		"PK": &types.AttributeValueMemberS{Value: cursor.PK},
+		"SK": &types.AttributeValueMemberS{Value: cursor.SK},
+	}
+
+	if cursor.GSI1PK != "" {
+		av["GSI1PK"] = &types.AttributeValueMemberS{Value: cursor.GSI1PK}
+	}
+	if cursor.GSI1SK != "" {
+		av["GSI1SK"] = &types.AttributeValueMemberS{Value: cursor.GSI1SK}
+	}
+
+	return av
+}
+
+// encodeCursor encodes a DynamoDB LastEvaluatedKey to a cursor string
+func encodeCursor(key map[string]types.AttributeValue) (string, error) {
+	if key == nil {
+		return "", nil
+	}
+
+	cursor := models.PaginationCursor{}
+
+	if pk, ok := key["PK"].(*types.AttributeValueMemberS); ok {
+		cursor.PK = pk.Value
+	}
+	if sk, ok := key["SK"].(*types.AttributeValueMemberS); ok {
+		cursor.SK = sk.Value
+	}
+	if gsi1pk, ok := key["GSI1PK"].(*types.AttributeValueMemberS); ok {
+		cursor.GSI1PK = gsi1pk.Value
+	}
+	if gsi1sk, ok := key["GSI1SK"].(*types.AttributeValueMemberS); ok {
+		cursor.GSI1SK = gsi1sk.Value
+	}
+
+	return models.EncodeCursor(cursor), nil
+}
+
+// decodeCursor decodes a cursor string to DynamoDB ExclusiveStartKey
+func decodeCursor(cursor string) (map[string]types.AttributeValue, error) {
+	if cursor == "" {
+		return nil, nil
+	}
+
+	paginationCursor, err := models.DecodeCursor(cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	return cursorToAttributeValue(paginationCursor), nil
+}
+
+// generateAlbumID creates a consistent album ID from name and artist
+func generateAlbumID(albumName, artist string) string {
+	// Use a simple hash for consistent ID generation
+	combined := fmt.Sprintf("%s-%s", albumName, artist)
+	// For now, just use the combined string as ID
+	// In production, you might want to use a proper hash function
+	return combined
+}
