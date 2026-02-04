@@ -91,13 +91,13 @@
       "args": ["-y", "@opentofu/opentofu-mcp-server"]
     },
     "daisyui-blueprint": {
-        "type": "stdio",
-        "command": "npx",
-        "args": ["-y", "daisyui-blueprint@latest"],
-        "env": {
-          "LICENSE": "${DAISY_UI_MCP_LICENSE}",
-          "EMAIL": "gvasels90@gmail.com"
-        }
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "daisyui-blueprint@latest"],
+      "env": {
+        "LICENSE": "${DAISY_UI_MCP_LICENSE}",
+        "EMAIL": "${DAISY_UI_EMAIL}"
       }
+    }
   }
 }
