@@ -1,6 +1,65 @@
 # Test-Driven Development (TDD) Workflow
 
-This document provides detailed guidance on TDD practices for the oopo platform.
+This document provides detailed guidance on TDD practices for the Personal Music Search Engine.
+
+## CRITICAL TDD RULES
+
+**You MUST write ALL tests BEFORE ANY implementation code.**
+
+### Phase 2: TEST (TDD Red) - MANDATORY STEPS
+
+#### Step 2.1: Write Unit Tests FIRST
+
+```
+# For frontend components - MUST create:
+frontend/src/routes/__tests__/{component}.test.tsx
+
+# For backend - MUST create:
+backend/internal/{package}/{file}_test.go
+```
+
+#### Step 2.2: Write E2E Tests (if UI component)
+
+```
+# MUST create:
+frontend/e2e/{feature}.spec.ts
+```
+
+#### Step 2.3: VERIFY TESTS FAIL (RED)
+
+**You MUST run tests and VERIFY they FAIL before writing any implementation.**
+
+**⚠️ STOP IF TESTS PASS. Tests are not testing the right thing.**
+
+### Phase 3: CODE (TDD Green) - MANDATORY STEPS
+
+**You MUST write ONLY the minimal code to make tests pass.**
+
+#### Step 3.1: Implement Feature
+- Read test file to understand exact requirements
+- Write ONLY code needed to pass tests
+- NO extra features, NO premature optimization
+
+#### Step 3.2: VERIFY TESTS PASS (GREEN)
+- Run ALL tests (unit + E2E)
+- ALL tests MUST pass before marking phase complete
+
+---
+
+## ENFORCEMENT CHECKLIST
+
+Before marking ANY task complete, MUST verify:
+- [ ] Unit test file exists
+- [ ] Unit test was run and FAILED before implementation
+- [ ] Unit test now PASSES
+- [ ] E2E test file exists (if UI)
+- [ ] E2E test was run and FAILED before implementation
+- [ ] E2E test now PASSES
+- [ ] TypeScript check passes (frontend) / go vet passes (backend)
+- [ ] CLAUDE.md updated
+- [ ] Git commit created
+
+---
 
 ## TDD Cycle
 
@@ -16,9 +75,9 @@ Requirements → Data Models → API Contracts → Tests → Implementation → 
 
 ## The Three Laws of TDD
 
-1. **Write a failing test** before writing any production code
-2. **Write only enough test** to demonstrate a failure
-3. **Write only enough production code** to make the test pass
+1. **You MUST write a failing test** before writing any production code
+2. **You MUST write only enough test** to demonstrate a failure
+3. **You MUST write only enough production code** to make the test pass
 
 ## Phase 1 (Spec) Deliverables
 
@@ -100,6 +159,16 @@ POST /api/services:
 ## Phase 2 (Test) Requirements
 
 Write tests **before** implementation based on specifications.
+
+### MCP Servers for Test Phase
+
+**The orchestrator MUST use these before spawning test-engineer:**
+
+| MCP Server | Frontend Tests | Backend Tests | E2E Tests |
+|------------|---------------|---------------|-----------|
+| `context7` | Vitest, React Testing Library APIs | Testify, httptest APIs | Playwright APIs |
+| `docs-mcp-server` | Advanced framework patterns | Advanced framework patterns | - |
+| `playwright` | - | - | Browser automation, selectors |
 
 ### Test Types
 
@@ -213,9 +282,24 @@ func TestCreateService_InvalidName(t *testing.T) {
 
 ## Phase 3 (Code) Implementation
 
-Only after tests are written:
+Only after tests are written and verified FAILING:
 
-1. **Run tests** - they should fail ("Red")
+### MCP Servers for Code Phase
+
+**The orchestrator MUST use these before spawning implementation-agent:**
+
+| MCP Server | Frontend | Backend | Infrastructure |
+|------------|----------|---------|----------------|
+| `context7` | React, TanStack, Zustand | Echo, Go AWS SDK | - |
+| `daisyui-blueprint` | DaisyUI component snippets | - | - |
+| `awslabs.dynamodb-mcp-server` | - | DynamoDB access patterns | - |
+| `awslabs.aws-documentation-mcp-server` | - | AWS service docs | AWS service docs |
+| `opentofu` | - | - | Module registry |
+| `aws-knowledge-mcp-server` | - | - | AWS recommendations |
+
+### Steps
+
+1. **Run tests** - they MUST fail ("Red")
 2. **Write minimal code** to pass tests ("Green")
 3. **Refactor** while keeping tests passing
 4. **Repeat** for next feature/behavior
@@ -223,9 +307,10 @@ Only after tests are written:
 ### Implementation Guidelines
 
 - Write the **simplest code** that passes the test
-- Don't add features not covered by tests
+- NEVER add features not covered by tests
 - Refactor after each passing test
 - Keep functions small and focused
+- MUST read test files first to understand exact requirements
 
 ---
 
@@ -398,12 +483,12 @@ func (m *MockServiceRepository) Create(ctx context.Context, svc *Service) error 
 
 ## Quick Reference
 
-| Step | Action | Tool |
-|------|--------|------|
-| 1 | Define requirements | spec-workflow MCP |
-| 2 | Define data models | design.md |
-| 3 | Define API contracts | design.md / OpenAPI |
-| 4 | Write failing tests | test-engineer agent |
-| 5 | Implement code | implementation-agent |
-| 6 | Verify tests pass | `go test ./...` |
-| 7 | Refactor | Keep tests green |
+| Step | Action | Tool | MCP Servers |
+|------|--------|------|-------------|
+| 1 | Define requirements | spec-workflow MCP | `spec-workflow`, `github` |
+| 2 | Define data models | design.md | `awslabs.dynamodb-mcp-server` |
+| 3 | Define API contracts | design.md / OpenAPI | `awslabs.aws-documentation-mcp-server` |
+| 4 | Write failing tests | test-engineer agent | `context7`, `docs-mcp-server`, `playwright` |
+| 5 | Implement code | implementation-agent | `context7`, `daisyui-blueprint`, `opentofu` |
+| 6 | Verify tests pass | `go test ./...` / `npm test` | `playwright` (E2E) |
+| 7 | Refactor | Keep tests green | - |

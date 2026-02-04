@@ -33,13 +33,16 @@ src/
 │   ├── __root.tsx    # Root layout with auth guard
 │   ├── index.tsx     # Home page
 │   ├── login.tsx     # Login page
+│   ├── hello.tsx     # Hello World validation page
 │   ├── search.tsx    # Search results
 │   ├── upload.tsx    # File upload
 │   ├── tracks/       # /tracks routes
 │   ├── albums/       # /albums routes
 │   ├── artists/      # /artists routes
 │   ├── playlists/    # /playlists routes
-│   └── tags/         # /tags routes
+│   ├── tags/         # /tags routes
+│   └── __tests__/    # Route unit tests
+│       └── hello.test.tsx  # HelloPage tests
 ├── main.tsx          # Application entry point
 ├── index.css         # Global styles (Tailwind + DaisyUI)
 ├── vite-env.d.ts     # Vite type declarations

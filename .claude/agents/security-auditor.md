@@ -147,6 +147,29 @@ const client = new S3Client({}); // Uses IAM role or environment credentials
   - https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/
   - https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html
 
+## MCP Servers (Orchestrator Pre-Context)
+
+The SDLC orchestrator MUST use these MCP servers to gather context BEFORE spawning this agent.
+
+| MCP Server | When | What to Gather |
+|------------|------|----------------|
+| `awslabs.aws-documentation-mcp-server` | AWS security | IAM best practices, service-specific security docs, encryption guidance |
+| `aws-knowledge-mcp-server` | Compliance | AWS security recommendations, Well-Architected security pillar |
+| `context7` | Library CVEs | Known vulnerability patterns in project dependencies |
+
+### Example AWS Doc Lookups
+
+```
+# IAM security
+aws-documentation: search_documentation "IAM best practices least privilege"
+aws-documentation: search_documentation "S3 bucket policy security"
+aws-documentation: search_documentation "Lambda security best practices"
+
+# Cognito security
+aws-documentation: search_documentation "Cognito user pool security configuration"
+aws-documentation: search_documentation "Cognito JWT token validation"
+```
+
 ## Tools Usage
 
 - Use `grep` to search for secrets patterns, SQL queries, eval statements

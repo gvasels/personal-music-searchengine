@@ -31,6 +31,15 @@ For each issue:
 - **Suggested Fix**: Code example
 - **Impact**: How this affects the system
 
+## MCP Servers (Orchestrator Pre-Context)
+
+The SDLC orchestrator MUST use these MCP servers to gather context BEFORE spawning this agent.
+
+| MCP Server | When | What to Gather |
+|------------|------|----------------|
+| `github` | PR review | PR diff, file changes, commit messages, existing review comments |
+| `context7` | API correctness | Library API docs to verify correct usage in reviewed code |
+
 ## Example Review
 
 ### Issue: N+1 Query Problem

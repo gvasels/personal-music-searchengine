@@ -87,6 +87,35 @@ describe('ComponentName', () => {
 - Cross-service interactions
 - UI component behavior
 
+## MCP Servers (Orchestrator Pre-Context)
+
+The SDLC orchestrator MUST use these MCP servers to gather context BEFORE spawning this agent. Include gathered examples in the agent prompt.
+
+| MCP Server | When | What to Gather |
+|------------|------|----------------|
+| `context7` | Always | Test framework APIs: Vitest (frontend), Testify/httptest (backend), Playwright (E2E) |
+| `docs-mcp-server` | Complex tests | Framework-specific testing patterns and advanced APIs |
+| `playwright` | E2E tests | Playwright test patterns, selectors, assertions |
+
+### Example Context7 Lookups
+
+```
+# Frontend tests
+context7: resolve-library-id "vitest"
+context7: query-docs "vitest" "describe it expect mock"
+
+context7: resolve-library-id "@testing-library/react"
+context7: query-docs "@testing-library/react" "render screen fireEvent"
+
+# Backend tests
+context7: resolve-library-id "testify"
+context7: query-docs "testify" "assert require mock suite"
+
+# E2E tests
+context7: resolve-library-id "@playwright/test"
+context7: query-docs "@playwright/test" "page goto expect locator"
+```
+
 ## Tools Usage
 
 - Use `glob` to find test files and source files

@@ -12,12 +12,59 @@ You are a technical writing expert specializing in developer documentation. Gene
 
 **CRITICAL**: Every major directory with code MUST have a `CLAUDE.md` file. This is the documentation-generator's primary responsibility.
 
+**⚠️ DO NOT mark documentation phase complete if ANY changed directory is missing CLAUDE.md.**
+
 ### When to Create/Update CLAUDE.md
 
 1. **After implementing new code** - Create CLAUDE.md for new directories
 2. **After modifying code** - Update existing CLAUDE.md with changes
-3. **During Phase 6 (Docs) of SDLC** - Review and update all affected CLAUDE.md files
+3. **During Phase 5 (Docs) of SDLC** - Review and update all affected CLAUDE.md files
 4. **On `/update-claudemd` command** - Scan and update all CLAUDE.md files
+
+### Discovery Workflow (MANDATORY)
+
+When spawned during SDLC Phase 4 (per-task) or Phase 5 (epic completion), you MUST:
+
+#### Step 1: Discover Changed Directories
+
+```bash
+# Find all directories with changes
+git diff --name-only $(git merge-base HEAD main) HEAD | xargs -I {} dirname {} | sort -u | grep -v '^\.$'
+```
+
+#### Step 2: Check Which Need CLAUDE.md
+
+```bash
+# For each changed directory, check CLAUDE.md status
+for dir in $(git diff --name-only $(git merge-base HEAD main) HEAD | xargs -I {} dirname {} | sort -u | grep -v '^\.$'); do
+  if [ -d "$dir" ] && [[ "$dir" != .claude* ]] && [[ "$dir" != .spec-workflow* ]] && [[ "$dir" != .github* ]]; then
+    if [ ! -f "$dir/CLAUDE.md" ]; then
+      echo "CREATE: $dir/CLAUDE.md"
+    else
+      echo "UPDATE: $dir/CLAUDE.md (check if changes reflected)"
+    fi
+  fi
+done
+```
+
+#### Step 3: Create/Update Each CLAUDE.md
+
+For each directory identified:
+1. Read ALL source files in the directory
+2. Identify public APIs, types, interfaces, exports
+3. Write CLAUDE.md following the template below
+4. Verify the CLAUDE.md accurately reflects the current code
+
+#### Step 4: Verify Completeness
+
+```bash
+# Re-run check - output MUST show zero MISSING entries
+for dir in $(git diff --name-only $(git merge-base HEAD main) HEAD | xargs -I {} dirname {} | sort -u | grep -v '^\.$'); do
+  if [ -d "$dir" ] && [ ! -f "$dir/CLAUDE.md" ] && [[ "$dir" != .claude* ]] && [[ "$dir" != .spec-workflow* ]] && [[ "$dir" != .github* ]]; then
+    echo "STILL MISSING: $dir/CLAUDE.md"
+  fi
+done
+```
 
 ### CLAUDE.md Required Sections
 
@@ -174,6 +221,15 @@ Description of what it does.
 3. **Document** - Write clear descriptions with examples
 4. **Validate** - Ensure accuracy and completeness
 5. **Format** - Apply consistent markdown/OpenAPI formatting
+
+## MCP Servers (Orchestrator Pre-Context)
+
+The SDLC orchestrator MUST use these MCP servers to gather context BEFORE spawning this agent.
+
+| MCP Server | When | What to Gather |
+|------------|------|----------------|
+| `github` | PR/epic docs | PR details, issue references, commit history |
+| `spec-workflow` | Epic completion | Spec status, approval state, task completion |
 
 ## Tools Usage
 

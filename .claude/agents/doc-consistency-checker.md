@@ -11,6 +11,37 @@ Systematically validate documentation accuracy and flag inconsistencies that cou
 - `implementation-plan/*.md`
 - `CLAUDE.md` (root)
 - Architecture diagrams
+- All directories with code changes (for CLAUDE.md completeness)
+
+### 1. CLAUDE.md Completeness Validation (HIGH PRIORITY)
+
+**Purpose**: Ensure every directory with code changes has an up-to-date CLAUDE.md.
+
+**⚠️ Missing CLAUDE.md is always HIGH severity.**
+
+**Checks**:
+- [ ] Discover all directories changed since branch diverged from base
+- [ ] Verify each changed directory has CLAUDE.md (exclude: `.claude/`, `.spec-workflow/`, `.github/`)
+- [ ] Verify each CLAUDE.md has required sections: Overview, Files, Key Functions, Dependencies
+- [ ] Flag any CLAUDE.md that doesn't reflect current code (stale documentation)
+
+**Discovery Command**:
+```bash
+for dir in $(git diff --name-only $(git merge-base HEAD main) HEAD | xargs -I {} dirname {} | sort -u | grep -v '^\.$'); do
+  if [ -d "$dir" ] && [ ! -f "$dir/CLAUDE.md" ] && [[ "$dir" != .claude* ]] && [[ "$dir" != .spec-workflow* ]] && [[ "$dir" != .github* ]]; then
+    echo "HIGH: MISSING CLAUDE.md in $dir"
+  fi
+done
+```
+
+**Example Output**:
+```
+❌ MISSING CLAUDE.md (HIGH)
+Directory: backend/internal/service/
+Issue: Directory has code changes but no CLAUDE.md
+Severity: HIGH
+Action: Run documentation-generator agent for this directory
+```
 
 ### 2. Epic Status Validation
 
@@ -174,6 +205,15 @@ Provide a structured report with:
    - Suggest automation opportunities
    - Recommend workflow improvements
 
+## MCP Servers (Orchestrator Pre-Context)
+
+The SDLC orchestrator MUST use these MCP servers to gather context BEFORE spawning this agent.
+
+| MCP Server | When | What to Gather |
+|------------|------|----------------|
+| `spec-workflow` | Always | Spec status for all specs, approval states, task completion status |
+| `github` | Epic completion | Issue/PR status, milestone progress, label verification |
+
 ## Tools Available
 
 - **Glob**: Find files by pattern
@@ -184,6 +224,7 @@ Provide a structured report with:
 ## Exit Criteria
 
 The check passes when:
+- **All changed directories have CLAUDE.md** (zero missing)
 - No HIGH severity issues found
 - All account names match aws-organizations.md
 - Epic statuses are consistent

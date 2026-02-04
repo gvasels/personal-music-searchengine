@@ -66,16 +66,39 @@ Use this checklist when:
   - Ensure diagrams reflect current state, not just vision
   - Add deployment status indicators (✅ Deployed, 🔮 Planned)
 
-#### 2.3 Code Documentation
+#### 2.3 Code Documentation (MANDATORY - DO NOT SKIP)
 
-- [ ] **Generate/update CLAUDE.md files**
-  - Run `documentation-generator` agent for modified directories
-  - Ensure all new modules have CLAUDE.md with:
-    - Overview
-    - File descriptions
-    - Key functions/exports
-    - Dependencies
-    - Usage examples
+**⚠️ DO NOT PROCEED to Section 3 until all CLAUDE.md files are verified.**
+
+- [ ] **Discover ALL changed directories**:
+  ```bash
+  git diff --name-only $(git merge-base HEAD main) HEAD | xargs -I {} dirname {} | sort -u | grep -v '^\.$'
+  ```
+
+- [ ] **Verify each changed directory has CLAUDE.md**:
+  ```bash
+  MISSING=""
+  for dir in $(git diff --name-only $(git merge-base HEAD main) HEAD | xargs -I {} dirname {} | sort -u | grep -v '^\.$'); do
+    if [ -d "$dir" ] && [ ! -f "$dir/CLAUDE.md" ] && [[ "$dir" != .claude* ]] && [[ "$dir" != .spec-workflow* ]] && [[ "$dir" != .github* ]]; then
+      MISSING="$MISSING\n  MISSING: $dir/CLAUDE.md"
+    fi
+  done
+  if [ -n "$MISSING" ]; then
+    echo "⚠️ STOP - Missing CLAUDE.md files:$MISSING"
+  else
+    echo "✅ All changed directories have CLAUDE.md"
+  fi
+  ```
+
+- [ ] **⚠️ STOP if any CLAUDE.md missing** - Create them before proceeding
+
+- [ ] **Spawn documentation-generator for missing/outdated CLAUDE.md**:
+  - Run `documentation-generator` agent with list of directories needing docs
+  - Each CLAUDE.md MUST include: Overview, Files, Key Functions/Exports, Dependencies, Usage Examples
+
+- [ ] **Re-verify - zero missing CLAUDE.md files**:
+  - Re-run the verification check above
+  - Output MUST be empty
 
 - [ ] **Update API documentation**
   - Generate/update OpenAPI specs for new APIs
@@ -106,10 +129,16 @@ Use this checklist when:
 
 ### 4. Validation & Testing ✅
 
+- [ ] **Verify CLAUDE.md completeness (MANDATORY)**
+  - ALL changed directories have CLAUDE.md (verified in 2.3)
+  - ALL CLAUDE.md files reflect current code (not stale)
+  - **⚠️ DO NOT PROCEED if any changed directory is missing CLAUDE.md**
+
 - [ ] **Run automated consistency checks**
   - Execute `doc-consistency-checker` agent
   - Fix any flagged inconsistencies
   - Verify account names, epic statuses, architecture references
+  - Verify CLAUDE.md coverage (should flag missing files as HIGH severity)
 
 - [ ] **Integration testing** (if applicable)
   - Run integration tests with `INTEGRATION_TEST=true`
@@ -158,18 +187,22 @@ Additional files (if applicable):
 ## Common Mistakes to Avoid
 
 ❌ **Don't:**
+- Skip CLAUDE.md for changed directories (most common violation)
 - Skip CHANGELOG.md updates (critical for tracking architectural changes)
 - Leave fictional account names in planning docs after accounts are created
 - Forget to update root CLAUDE.md project status
 - Mark epic complete without checking all acceptance criteria
 - Leave "future:" markers on accounts that are now deployed
+- Create PR before verifying all CLAUDE.md files exist
 
 ✅ **Do:**
+- Run CLAUDE.md discovery check FIRST before any other doc step
 - Use this checklist every time you complete an epic
 - Run the doc-consistency-checker agent before marking complete
 - Update planning docs to reflect actual implementation vs. original vision
 - Document breaking changes and migration paths
 - Cross-reference account names with aws-organizations.md
+- Verify zero missing CLAUDE.md files before creating PR
 
 ## Automation Support
 
