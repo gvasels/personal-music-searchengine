@@ -163,6 +163,10 @@ func setupEcho() (*echo.Echo, error) {
 	// Register routes
 	h.RegisterRoutes(e)
 
+	// Register hello routes (public, no auth)
+	helloHandler := handlers.NewHelloHandler(services.Hello)
+	handlers.RegisterHelloRoutes(e, helloHandler)
+
 	// Register admin routes if admin service is configured
 	if services.Admin != nil {
 		adminHandler := handlers.NewAdminHandler(services.Admin)
