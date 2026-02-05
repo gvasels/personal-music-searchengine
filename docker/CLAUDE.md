@@ -11,7 +11,10 @@ docker/
 ├── docker-compose.yml       # LocalStack service definition
 ├── localstack-init/         # Initialization scripts
 │   ├── init-aws.sh          # Creates DynamoDB table and S3 bucket
-│   └── init-cognito.sh      # Creates Cognito user pool and test users
+│   ├── init-cognito.sh      # Creates Cognito user pool and test users
+│   ├── init-seed-music.sh   # Seeds 20 hello-world tracks into DynamoDB
+│   ├── test-seed-music.sh   # Bash test for seed script validation
+│   └── CLAUDE.md            # Detailed docs for init scripts
 └── CLAUDE.md                # This file
 ```
 
@@ -22,6 +25,8 @@ docker/
 | `docker-compose.yml` | Defines LocalStack container with DynamoDB, S3, and Cognito services |
 | `localstack-init/init-aws.sh` | Initialization script that creates DynamoDB table and S3 bucket |
 | `localstack-init/init-cognito.sh` | Creates Cognito user pool, app client, groups, and test users |
+| `localstack-init/init-seed-music.sh` | Seeds 20 mock tracks (5 artists, 4 tracks each) for hello-world validation |
+| `localstack-init/test-seed-music.sh` | Validates seed data: count, idempotency, and field presence |
 
 ## Quick Start
 

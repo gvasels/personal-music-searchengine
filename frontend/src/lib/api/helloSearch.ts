@@ -11,13 +11,13 @@ export interface HelloTrack {
 }
 
 export interface HelloSearchResponse {
-  tracks: HelloTrack[];
+  items: HelloTrack[];
   total: number;
 }
 
 export async function searchHelloTracks(query: string): Promise<HelloSearchResponse> {
   const response = await apiClient.get<HelloSearchResponse>('/v1/hello/search', {
-    params: { query },
+    params: { q: query },
   });
   return response.data;
 }

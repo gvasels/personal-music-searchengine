@@ -29,6 +29,8 @@ Business logic layer implementing domain operations for the Personal Music Searc
 | `camelot.go` | Camelot key compatibility utilities for DJ mixing |
 | `camelot_test.go` | Unit tests for Camelot utilities |
 | `similarity.go` | SimilarityService - similar/mixable tracks for DJs |
+| `hello.go` | HelloService, HelloTrack, HelloRepository, HelloRepoAdapter for hello-world search |
+| `hello_test.go` | Unit tests for HelloService (10 tests) |
 
 ## Service Interfaces
 
@@ -137,6 +139,19 @@ Business logic layer implementing domain operations for the Personal Music Searc
 - `FindSimilarTracks` - Find tracks similar by semantic/features
 - `FindMixableTracks` - Find DJ-compatible tracks (BPM + key)
 - `CosineSimilarity` - Calculate vector similarity
+
+### HelloService
+- `SearchTracks(ctx, query)` - Case-insensitive search across title/artist/album/genre
+  - Returns empty slice for empty query (never nil)
+  - Matches against seed-user tracks only (`helloSeedUserID = "seed-user"`)
+- `GetFeaturedTracks(ctx, limit)` - Return all seed tracks up to limit
+  - When limit <= 0, uses default limit of 20
+  - Returns tracks from the seed-user
+
+#### HelloRepoAdapter
+Bridges `repository.Repository` to `HelloRepository` interface:
+- `GetTracksByUser(ctx, userID)` - Calls `repo.ListTracks` and converts `models.Track` to `HelloTrack`
+- Allows HelloService to work with the existing repository without direct dependency
 
 ### Camelot Key Utilities
 - `IsKeyCompatible` - Check if two keys can be mixed harmonically

@@ -60,7 +60,7 @@ describe('useHelloSearch Hooks', () => {
 
     it('should fetch when query is non-empty', async () => {
       vi.mocked(helloApi.searchHelloTracks).mockResolvedValue({
-        tracks: [
+        items: [
           {
             id: 'track-1',
             title: 'Test Song',
@@ -79,7 +79,7 @@ describe('useHelloSearch Hooks', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.data?.tracks).toHaveLength(1);
+        expect(result.current.data?.items).toHaveLength(1);
       });
 
       expect(helloApi.searchHelloTracks).toHaveBeenCalledWith('test');
@@ -89,7 +89,7 @@ describe('useHelloSearch Hooks', () => {
   describe('useFeaturedTracks', () => {
     it('should fetch featured tracks on mount', async () => {
       vi.mocked(helloApi.getFeaturedTracks).mockResolvedValue({
-        tracks: [
+        items: [
           {
             id: 'featured-1',
             title: 'Featured Track',
@@ -108,7 +108,7 @@ describe('useHelloSearch Hooks', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.data?.tracks).toHaveLength(1);
+        expect(result.current.data?.items).toHaveLength(1);
       });
 
       expect(helloApi.getFeaturedTracks).toHaveBeenCalled();

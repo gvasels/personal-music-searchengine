@@ -23,7 +23,7 @@ describe('Hello Search API', () => {
   describe('searchHelloTracks', () => {
     it('should call GET /v1/hello/search with query param', async () => {
       const mockResponse = {
-        tracks: [
+        items: [
           { id: 'track-1', title: 'Test Song', artist: 'Test Artist', album: 'Test Album', genre: 'Rock', year: 2024, duration: 234 },
         ],
         total: 1,
@@ -33,17 +33,17 @@ describe('Hello Search API', () => {
       const result = await searchHelloTracks('test query');
 
       expect(apiClient.get).toHaveBeenCalledWith('/v1/hello/search', {
-        params: { query: 'test query' },
+        params: { q: 'test query' },
       });
-      expect(result.tracks).toHaveLength(1);
-      expect(result.tracks[0].title).toBe('Test Song');
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].title).toBe('Test Song');
     });
   });
 
   describe('getFeaturedTracks', () => {
     it('should call GET /v1/hello/featured', async () => {
       const mockResponse = {
-        tracks: [
+        items: [
           { id: 'track-1', title: 'Featured Song', artist: 'Featured Artist', album: 'Featured Album', genre: 'Pop', year: 2024, duration: 180 },
         ],
         total: 1,
@@ -55,11 +55,11 @@ describe('Hello Search API', () => {
       expect(apiClient.get).toHaveBeenCalledWith('/v1/hello/featured', {
         params: {},
       });
-      expect(result.tracks).toHaveLength(1);
+      expect(result.items).toHaveLength(1);
     });
 
     it('should pass limit parameter when provided', async () => {
-      const mockResponse = { tracks: [], total: 0 };
+      const mockResponse = { items: [], total: 0 };
       vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       await getFeaturedTracks(5);

@@ -7,7 +7,7 @@
 
 ## Task 1: Seed Data
 
-### 1.1 Write seed script validation test (TDD Red)
+### 1.1 Write seed script validation test (TDD Red) ✅
 
 - **Test File:** `docker/localstack-init/test-seed-music.sh` (create)
 - **Acceptance Criteria:**
@@ -18,7 +18,7 @@
 - **_Leverage:_** Existing `init-aws.sh` and `init-cognito.sh` patterns for AWS CLI usage
 - **_Requirements:_** R1 (Seed Data)
 
-### 1.2 Implement seed script (TDD Green)
+### 1.2 Implement seed script (TDD Green) ✅
 
 - **Implementation:** `docker/localstack-init/init-seed-music.sh` (create)
 - **Acceptance Criteria:**
@@ -30,7 +30,7 @@
 - **_Leverage:_** `docker/localstack-init/init-aws.sh` script pattern
 - **_Requirements:_** R1 (Seed Data)
 
-### 1.3 Wire seed script into Makefile
+### 1.3 Wire seed script into Makefile ✅
 
 - **Implementation:** `Makefile` (modify)
 - **Acceptance Criteria:**
@@ -44,7 +44,7 @@
 
 ## Task 2: Backend Service
 
-### 2.1 Write HelloService unit tests (TDD Red)
+### 2.1 Write HelloService unit tests (TDD Red) ✅
 
 - **Test File:** `backend/internal/service/hello_test.go` (create)
 - **Acceptance Criteria:**
@@ -64,7 +64,7 @@
 - **_Leverage:_** Mock pattern from `backend/internal/service/search_test.go`, `testify/assert`
 - **_Requirements:_** R2 (Backend Search API), R3 (Backend Featured API)
 
-### 2.2 Implement HelloService (TDD Green)
+### 2.2 Implement HelloService (TDD Green) ✅
 
 - **Implementation:** `backend/internal/service/hello.go` (create)
 - **Acceptance Criteria:**
@@ -86,7 +86,7 @@
 
 ## Task 3: Backend Handler
 
-### 3.1 Write HelloHandler unit tests (TDD Red)
+### 3.1 Write HelloHandler unit tests (TDD Red) ✅
 
 - **Test File:** `backend/internal/handlers/hello_test.go` (create)
 - **Acceptance Criteria:**
@@ -103,7 +103,7 @@
 - **_Leverage:_** Handler test patterns from existing `handlers/*_test.go` files, `echo` test utilities
 - **_Requirements:_** R2 (Backend Search API), R3 (Backend Featured API), R4 (Backend Health)
 
-### 3.2 Implement HelloHandler + WIRE into application (TDD Green)
+### 3.2 Implement HelloHandler + WIRE into application (TDD Green) ✅
 
 - **Implementation Files:**
   - `backend/internal/handlers/hello.go` (create)
@@ -132,7 +132,7 @@
 
 ## Task 4: Frontend API Client + Hooks
 
-### 4.1 Write API client and hooks tests (TDD Red)
+### 4.1 Write API client and hooks tests (TDD Red) ✅
 
 - **Test Files:**
   - `frontend/src/lib/api/__tests__/helloSearch.test.ts` (create)
@@ -154,7 +154,7 @@
 - **_Leverage:_** `frontend/src/lib/api/__tests__/` existing test patterns, `vi.mock` for axios, `@testing-library/react` renderHook
 - **_Requirements:_** R2, R3, R5 (Frontend Search Page)
 
-### 4.2 Implement API client and hooks (TDD Green)
+### 4.2 Implement API client and hooks (TDD Green) ✅
 
 - **Implementation Files:**
   - `frontend/src/lib/api/helloSearch.ts` (create)
@@ -180,7 +180,7 @@
 
 ## Task 5: Frontend Components
 
-### 5.1 Write component tests (TDD Red)
+### 5.1 Write component tests (TDD Red) ✅
 
 - **Test Files:**
   - `frontend/src/components/hello/__tests__/SearchInput.test.tsx` (create)
@@ -206,7 +206,7 @@
 - **_Leverage:_** `@testing-library/react`, existing component test patterns in `frontend/src/components/`
 - **_Requirements:_** R5 (Frontend Search Page)
 
-### 5.2 Implement components (TDD Green)
+### 5.2 Implement components (TDD Green) ✅
 
 - **Implementation Files:**
   - `frontend/src/components/hello/SearchInput.tsx` (create)
@@ -228,7 +228,7 @@
 
 ## Task 6: Frontend Route
 
-### 6.1 Write route page tests (TDD Red)
+### 6.1 Write route page tests (TDD Red) ✅
 
 - **Test File:** `frontend/src/routes/__tests__/hello-search.test.tsx` (create)
 - **Acceptance Criteria:**
@@ -244,7 +244,7 @@
 - **_Leverage:_** `frontend/src/routes/__tests__/` existing route test patterns, `@testing-library/react`
 - **_Requirements:_** R5 (Frontend Search Page)
 
-### 6.2 Implement route page + wire into router (TDD Green)
+### 6.2 Implement route page + wire into router (TDD Green) ✅
 
 - **Implementation Files:**
   - `frontend/src/routes/hello-search.tsx` (create)
@@ -270,7 +270,7 @@
 
 ## Task 7: Integration and Documentation
 
-### 7.1 End-to-end validation with `make local`
+### 7.1 End-to-end validation with `make local` ✅
 
 - **Validation Steps:**
   1. Run `make local` -- confirm LocalStack + backend + frontend start
@@ -285,7 +285,7 @@
   - All 8 validation steps pass without errors
 - **_Requirements:_** All (R1-R6)
 
-### 7.2 Update CLAUDE.md files
+### 7.2 Update CLAUDE.md files ✅
 
 - **Files to Update:**
   - `backend/internal/service/CLAUDE.md` -- add HelloService section
@@ -304,6 +304,7 @@
 
 | # | Phase | Gap Description | Impact | Proposed Fix | Status |
 |---|-------|----------------|--------|--------------|--------|
-| | | | | | |
-
-_No gaps identified yet. Update this table if SDLC process issues are discovered during implementation._
+| 1 | Phase 3 (Code) | **Frontend/Backend contract mismatch**: Frontend tests used `tracks` response key and `query` param; backend uses `items` key and `q` param per design spec. Unit tests with mocks passed on both sides independently. | Integration failure at runtime — frontend would get undefined data from API. Only caught during Phase 4b `make local` validation. | Add contract validation step: after Phase 3, verify request/response shapes match design.md API contract before declaring Green phase complete. Consider shared API types or integration test. | Fixed in code |
+| 2 | Phase 4 (Verify) | **BUILD phase not explicit in sdlc.md**: `go vet`, `tsc --noEmit`, `eslint`, `npm run build` are not mentioned as Phase 4 steps. Only "run tests" is listed. | Type errors, lint issues, and build failures slip through to PR. HelloNav.tsx had a TypeScript error (`Link to` prop type) that unit tests didn't catch. | Add explicit Phase 4a (BUILD) to sdlc.md with: `go vet`, `tsc --noEmit`, `npm run lint`, `npm run build`, `go build ./cmd/api` | Documented |
+| 3 | Phase 3 (Code) | **TanStack Router route tree regeneration**: Adding a new file-based route (`hello-search.tsx`) requires running `npx @tanstack/router-cli generate` to update `routeTree.gen.ts`. Without this, `Link to="/hello-search"` fails TypeScript type checking. | TypeScript errors referencing route types. Build fails. | Add to wiring checklist: "If adding new TanStack Router file-based routes, run `npx @tanstack/router-cli generate` and commit the updated `routeTree.gen.ts`" | Documented |
+| 4 | Phase 2 (Test) | **Test mocks hide contract mismatches**: Frontend tests mock the API layer, so they test the frontend's _expected_ contract, not the _actual_ backend contract. Backend handler tests test the handler's response format but frontend never validates against it. | Tests pass individually but integration fails. This is the fundamental limitation of unit-test-only TDD without integration tests. | Add a "contract alignment check" in Phase 3: after both backend and frontend are implemented, verify that frontend API types match backend response shapes. Or add integration tests in Phase 4. | Documented |

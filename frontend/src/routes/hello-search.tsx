@@ -35,7 +35,7 @@ export default function HelloSearchPage() {
         <div className="alert alert-error mt-4">Error loading tracks</div>
       )}
 
-      {activeQuery.data?.tracks?.map((track) => (
+      {activeQuery.data?.items?.map((track) => (
         <TrackCard key={track.id} track={track} />
       ))}
     </div>

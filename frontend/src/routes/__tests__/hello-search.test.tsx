@@ -50,7 +50,7 @@ describe('HelloSearchPage', () => {
   it('shows featured tracks when loaded', () => {
     mockUseFeaturedTracks.mockReturnValue({
       data: {
-        tracks: [
+        items: [
           {
             id: 'feat-1',
             title: 'Featured Hit',
@@ -113,7 +113,7 @@ describe('HelloSearchPage', () => {
   it('performs search when query is entered', () => {
     mockUseHelloSearch.mockReturnValue({
       data: {
-        tracks: [
+        items: [
           {
             id: 'search-1',
             title: 'Search Result',
@@ -142,7 +142,7 @@ describe('HelloSearchPage', () => {
   it('shows search results instead of featured tracks when searching', () => {
     mockUseFeaturedTracks.mockReturnValue({
       data: {
-        tracks: [
+        items: [
           {
             id: 'feat-1',
             title: 'Featured Track',
@@ -162,7 +162,7 @@ describe('HelloSearchPage', () => {
 
     mockUseHelloSearch.mockReturnValue({
       data: {
-        tracks: [
+        items: [
           {
             id: 'search-1',
             title: 'Search Result Track',
