@@ -67,12 +67,15 @@ When adding new routes:
 When adding new frontend pages:
 
 - [ ] **Create page component** in `routes/path/page.tsx`
-- [ ] **Check routing pattern** - is it file-based or code-based?
-  - Look at `main.tsx` - if routes are imported there, it's code-based
-- [ ] **For code-based routing (this project):**
-  - [ ] Import page component in `main.tsx`
-  - [ ] Create route with `createRoute()`
-  - [ ] Add to `routeTree.addChildren([...])`
+- [ ] **Check routing pattern** - this project uses **TanStack Router file-based routing**
+- [ ] **For file-based routing (this project):**
+  - [ ] Create route file using `createFileRoute('/path')` pattern
+  - [ ] **Regenerate route tree** (CRITICAL — new routes won't work without this):
+    ```bash
+    cd frontend && npx @tanstack/router-cli generate
+    ```
+  - [ ] Verify `src/routeTree.gen.ts` includes the new route
+  - [ ] If route should be public, add to `PUBLIC_ROUTES` array in `__root.tsx`
 - [ ] **Add navigation link** if needed (sidebar, header, etc.)
 
 ## Verification Steps

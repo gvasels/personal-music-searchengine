@@ -65,16 +65,33 @@
 
 ---
 
-## Task N: Integration and Documentation
+## Task N: Integration, Validation, and Documentation
 
-- [ ] N.1 Validate full stack locally
-  - **Validation**: `make local` + manual verification
+- [ ] N.1 Contract alignment check (REQUIRED for specs with both FE and BE)
+  - **Purpose**: Verify frontend and backend use the same API contract
+  - **Acceptance Criteria**:
+    - Frontend API client sends the correct query param names (verify with grep)
+    - Frontend expects the correct response field names (verify with grep)
+    - Backend handler reads the correct query param names (verify with grep)
+    - Backend returns the correct JSON field names (verify with grep)
+  - **Why this exists**: Mocked unit tests on FE and BE pass independently even when they disagree on param/field names. This was discovered in iteration 2 of hello-world validation (FE used `query`/`tracks`, BE used `q`/`items`).
+  - **Skip condition**: Only skip if spec has no frontend OR no backend changes.
+
+- [ ] N.2 Local stack validation (`make local`)
+  - **Validation**: `make local` + curl + browser verification
   - **Acceptance Criteria**:
     - Feature works end-to-end on local stack
-    - API endpoints respond correctly
+    - API endpoints respond correctly (curl verification)
     - UI renders and functions as designed
+  - **Skip condition**: Only skip for infrastructure-only, test-only, or docs-only changes.
 
-- [ ] N.2 Update CLAUDE.md for all changed directories
+- [ ] N.3 BUILD validation
+  - **Validation**: All build commands pass with zero errors
+  - **Acceptance Criteria**:
+    - Backend: `go vet ./...`, `go build ./cmd/api`, `go test ./...`
+    - Frontend: `tsc --noEmit`, `eslint .`, `npm run build`, `npm test -- --run`
+
+- [ ] N.4 Update CLAUDE.md for all changed directories
   - **Documentation**: Create/update CLAUDE.md files
   - **Directories requiring CLAUDE.md**: [list after implementation]
   - **Acceptance Criteria**:

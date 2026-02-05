@@ -383,14 +383,26 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
 ### For Application Code
 
+**REQUIRED: Run ALL build validation steps, not just tests.**
+
 ```bash
-# Run tests
-npm test
-# or: go test ./...
+# Backend BUILD validation (all must pass with zero errors)
+cd backend && go vet ./...                        # Static analysis
+cd backend && go build -o /tmp/test-build ./cmd/api  # Compile check
+cd backend && go test ./...                        # Unit tests
+
+# Frontend BUILD validation (all must pass with zero errors)
+cd frontend && npx --package=typescript tsc --noEmit  # Type check
+cd frontend && npx eslint .                           # Lint
+cd frontend && npm run build                          # Production build
+cd frontend && npm test -- --run                      # Unit tests
 
 # Verify coverage meets threshold (80%+)
-npm test -- --coverage
+cd frontend && npm test -- --coverage
+cd backend && go test -coverprofile=coverage.out ./...
 ```
+
+**⚠️ DO NOT skip non-test steps.** `go vet` catches issues that compile but are bugs. `tsc --noEmit` catches type errors that Vitest misses (Vitest uses esbuild, not tsc). `eslint` catches unused variables and style issues.
 
 ### For Infrastructure (OpenTofu)
 
@@ -406,6 +418,22 @@ tofu validate
 # Clean up
 rm -rf .terraform .terraform.lock.hcl
 ```
+
+### Contract Alignment Check (if FE + BE changes)
+
+**REQUIRED for specs that modify both frontend and backend**: Verify the API contract matches on both sides BEFORE running `make local`.
+
+```bash
+# Verify param names match (example for search endpoint)
+grep -n 'params.*{' frontend/src/lib/api/{feature}.ts    # FE sends what?
+grep -n 'QueryParam(' backend/internal/handlers/{feature}.go  # BE reads what?
+
+# Verify response field names match
+grep -n 'items\|tracks\|results' frontend/src/lib/api/{feature}.ts  # FE expects what?
+grep -n '"items"\|"tracks"\|"results"' backend/internal/handlers/{feature}.go  # BE returns what?
+```
+
+**Why this matters**: Mocked unit tests on FE and BE pass independently even when they disagree on param/field names (e.g., FE sends `query` but BE reads `q`). Only this check or `make local` catches the mismatch.
 
 ### Local Stack Validation (if applicable)
 
@@ -884,7 +912,10 @@ Use TodoWrite throughout:
     [ ] Wiring checklist followed (services initialized, handlers created, routes registered in main.go)
     [ ] ALL tests now PASS (Green)
 [ ] Phase 4: Verify
-    [ ] Tests passing with coverage threshold met
+    [ ] **BUILD validation** (ALL must pass with zero errors):
+        [ ] Backend: `go vet ./...`, `go build ./cmd/api`, `go test ./...`
+        [ ] Frontend: `tsc --noEmit`, `eslint .`, `npm run build`, `npm test -- --run`
+    [ ] **Contract alignment check** (if FE + BE changes): grep param/field names match
     [ ] `make local` validation (if UI/API changes): feature works end-to-end locally
     [ ] **CLAUDE.md created/updated** for ALL changed directories
     [ ] ⚠️ STOP: If any changed directory missing CLAUDE.md

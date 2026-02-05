@@ -397,8 +397,29 @@ Only after tests are written and verified FAILING:
 |------|------------------|-------------|
 | Unit Tests | 80% | Business logic, data transformations |
 | Integration Tests | Key paths | API contracts, database operations |
+| Contract Tests | All FE↔BE boundaries | Param names, response field names |
 | Wiring/Smoke Tests | All routes | Endpoint accessibility verification |
 | E2E Tests | Critical flows | User journeys, cross-service interactions |
+
+## Contract Test Limitations of Mocked Unit Tests
+
+**⚠️ Mocked unit tests CANNOT validate frontend↔backend API contracts.**
+
+When frontend and backend are tested independently with mocks, each side defines its own mock that may not match the other side's actual behavior. This was discovered in iteration 2 of hello-world validation:
+
+| Side | What it mocked | What it expected | Actual |
+|------|---------------|------------------|--------|
+| Frontend | `axios.get('/v1/hello/search', { params: { query: 'jazz' } })` | `response.data.tracks` | Backend reads `q`, returns `items` |
+| Backend | `MockHelloService.Search(ctx, "jazz")` | Returns `HelloTrack[]` | Frontend sends `query` not `q` |
+
+Both sides' tests passed independently. The mismatch was only caught by `make local` curl testing.
+
+### How to Catch Contract Mismatches
+
+1. **Contract alignment check** (REQUIRED in tasks.md template — Task N.1): Grep both codebases for param/field names
+2. **`make local` validation** (REQUIRED in Phase 4): End-to-end curl tests against real local stack
+3. **Shared contract types** (recommended): Define API types in a shared location or OpenAPI spec that both FE and BE reference
+4. **Integration tests** (when available): Tests that hit actual endpoints catch mismatches that mocks hide
 
 ---
 
