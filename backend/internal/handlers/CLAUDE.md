@@ -17,8 +17,6 @@ HTTP handlers using Echo framework for the Personal Music Search Engine API. All
 | `upload.go` | Upload workflow handlers (presigned URLs, confirmation) |
 | `stream.go` | Streaming and download URL handlers |
 | `search.go` | Search handlers (simple and advanced) |
-| `hello.go` | HelloHandler for hello-world public API endpoints |
-| `hello_test.go` | Unit tests for HelloHandler (6 tests) |
 
 ## Route Registration
 
@@ -99,15 +97,6 @@ All routes are registered under `/api/v1`:
 |--------|------|---------|-------------|
 | GET | `/search` | SimpleSearch | Simple text search |
 | POST | `/search` | AdvancedSearch | Advanced search with filters |
-
-### Hello Routes (Public, no auth middleware)
-| Method | Path | Handler | Description |
-|--------|------|---------|-------------|
-| GET | `/api/v1/hello/health` | HelloHealth | Hello service health check |
-| GET | `/api/v1/hello/search` | HelloSearch | Search seed tracks by query param `q` |
-| GET | `/api/v1/hello/featured` | HelloFeatured | List featured tracks with optional `limit` param |
-
-Note: Hello routes are registered via `RegisterHelloRoutes(e, h)` separately from the main handler routes. They are PUBLIC endpoints requiring no authentication.
 
 ### Admin Routes (Admin role required)
 | Method | Path | Handler | Description |
