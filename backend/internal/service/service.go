@@ -113,6 +113,12 @@ type SearchService interface {
 	IndexTrack(ctx context.Context, track models.Track) error
 }
 
+// HelloService defines hello-world seed track operations.
+type HelloService interface {
+	Search(ctx context.Context, query string) ([]HelloTrack, error)
+	Featured(ctx context.Context, limit int) ([]HelloTrack, error)
+}
+
 // Services holds all service implementations
 type Services struct {
 	Track    TrackService
@@ -125,6 +131,7 @@ type Services struct {
 	Stream   StreamService
 	Search   SearchService
 	Admin    AdminService
+	Hello    HelloService
 }
 
 // NewServices creates a new Services instance with all dependencies

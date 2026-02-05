@@ -9,8 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as HelloSearchRouteImport } from './routes/hello-search'
 import { Route as StudioIndexRouteImport } from './routes/studio/index'
 
+const HelloSearchRoute = HelloSearchRouteImport.update({
+  id: '/hello-search',
+  path: '/hello-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StudioIndexRoute = StudioIndexRouteImport.update({
   id: '/studio/',
   path: '/studio/',
@@ -18,29 +24,40 @@ const StudioIndexRoute = StudioIndexRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/hello-search': typeof HelloSearchRoute
   '/studio/': typeof StudioIndexRoute
 }
 export interface FileRoutesByTo {
+  '/hello-search': typeof HelloSearchRoute
   '/studio': typeof StudioIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/hello-search': typeof HelloSearchRoute
   '/studio/': typeof StudioIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/studio/'
+  fullPaths: '/hello-search' | '/studio/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/studio'
-  id: '__root__' | '/studio/'
+  to: '/hello-search' | '/studio'
+  id: '__root__' | '/hello-search' | '/studio/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  HelloSearchRoute: typeof HelloSearchRoute
   StudioIndexRoute: typeof StudioIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/hello-search': {
+      id: '/hello-search'
+      path: '/hello-search'
+      fullPath: '/hello-search'
+      preLoaderRoute: typeof HelloSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/studio/': {
       id: '/studio/'
       path: '/studio'
@@ -52,6 +69,7 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
+  HelloSearchRoute: HelloSearchRoute,
   StudioIndexRoute: StudioIndexRoute,
 }
 export const routeTree = rootRouteImport
