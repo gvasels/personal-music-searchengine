@@ -66,9 +66,14 @@ func (r *HelloDynamoDBRepository) GetSeedTracks(ctx context.Context) ([]HelloTra
 func mapItemToHelloTrack(item map[string]types.AttributeValue) HelloTrack {
 	track := HelloTrack{}
 
-	if v, ok := item["TrackID"]; ok {
+	if v, ok := item["SK"]; ok {
 		if s, ok := v.(*types.AttributeValueMemberS); ok {
-			track.ID = s.Value
+			// SK format is "TRACK#seed-t1" — extract the ID after "TRACK#"
+			if len(s.Value) > 6 && s.Value[:6] == "TRACK#" {
+				track.ID = s.Value[6:]
+			} else {
+				track.ID = s.Value
+			}
 		}
 	}
 	if v, ok := item["Title"]; ok {
