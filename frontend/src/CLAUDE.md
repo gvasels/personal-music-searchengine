@@ -15,13 +15,16 @@ src/
 │   ├── playlist/     # Playlists: PlaylistCard, CreatePlaylistModal
 │   ├── search/       # Search: SearchBar
 │   ├── tag/          # Tags: TagInput
+│   ├── hello/        # Hello: HelloNav, SearchInput, TrackCard, TrackCardSkeleton
 │   └── upload/       # Upload: UploadDropzone
 ├── hooks/
-│   └── useAuth.ts    # Authentication hook
+│   ├── useAuth.ts    # Authentication hook
+│   └── useHelloSearch.ts  # Hello search and featured queries
 ├── lib/
 │   ├── api/          # API client and types
 │   │   ├── client.ts # Axios client with auth interceptor
 │   │   ├── types.ts  # TypeScript interfaces
+│   │   ├── helloSearch.ts # Hello-world API client (search, featured, health)
 │   │   └── index.ts  # Barrel export
 │   ├── store/        # Zustand stores
 │   │   ├── playerStore.ts  # Audio player state
@@ -34,6 +37,7 @@ src/
 │   ├── index.tsx     # Home page
 │   ├── login.tsx     # Login page
 │   ├── hello.tsx     # Hello World validation page
+│   ├── hello-search.tsx  # Hello search page with featured/search tracks
 │   ├── search.tsx    # Search results
 │   ├── upload.tsx    # File upload
 │   ├── tracks/       # /tracks routes
@@ -77,7 +81,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ### API Client (`lib/api/client.ts`)
 - Axios instance with Cognito JWT interceptor
-- All API functions: getTracks, getAlbums, getPlaylists, etc.
+- All API functions: getTracks, getAlbums, getPlaylists, searchHelloTracks, etc.
 - Presigned upload URL handling
 - Stream URL generation
 

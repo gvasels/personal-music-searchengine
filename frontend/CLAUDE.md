@@ -16,6 +16,7 @@ frontend/
 │   │   ├── playlist/       # Playlist management (PlaylistCard, CreatePlaylistModal)
 │   │   ├── search/         # Search functionality (SearchBar)
 │   │   ├── tag/            # Tag management (TagInput)
+│   │   ├── hello/          # Hello search demo (HelloNav, SearchInput, TrackCard, TrackCardSkeleton)
 │   │   └── upload/         # File upload (UploadDropzone)
 │   ├── hooks/              # Custom React hooks (useAuth, useTracks, useAlbums, etc.)
 │   ├── lib/                # Utilities and configurations
@@ -81,6 +82,14 @@ frontend/
 |-----------|------|-------------|
 | `UploadDropzone` | `UploadDropzone.tsx` | Drag-and-drop file upload with progress |
 
+### Hello (`src/components/hello/`)
+| Component | File | Description |
+|-----------|------|-------------|
+| `HelloNav` | `HelloNav.tsx` | Navigation bar for hello search page |
+| `SearchInput` | `SearchInput.tsx` | Controlled text input for search queries |
+| `TrackCard` | `TrackCard.tsx` | Card displaying track title, artist, album, genre, year, duration |
+| `TrackCardSkeleton` | `TrackCardSkeleton.tsx` | Loading skeleton placeholder for TrackCard |
+
 ## Hooks (`src/hooks/`)
 
 | Hook | File | Purpose |
@@ -95,6 +104,7 @@ frontend/
 | `useTags` | `useTags.ts` | Tag queries and tracks-by-tag with `tagKeys` factory |
 | `useFeatureFlags` | `useFeatureFlags.ts` | Feature flags with role-based access, respects simulation |
 | `useRoleSimulation` | `useRoleSimulation.ts` | Admin role simulation for testing UI as different roles |
+| `useHelloSearch` | `useHelloSearch.ts` | Hello search and featured track queries with `helloKeys` factory |
 
 ## Utilities (`src/lib/`)
 
@@ -110,6 +120,7 @@ frontend/
 | `search.ts` | `searchTracks`, `searchAutocomplete` |
 | `playlists.ts` | `getPlaylists`, `getPlaylist`, `createPlaylist`, `updatePlaylist`, `deletePlaylist`, `addTrackToPlaylist`, `removeTrackFromPlaylist` |
 | `tags.ts` | `getTags`, `getTracksByTag`, `addTagToTrack`, `removeTagFromTrack` |
+| `helloSearch.ts` | `searchHelloTracks`, `getFeaturedHelloTracks`, `getHelloHealth` |
 
 ### Types (`api/types.ts`)
 ```typescript
@@ -171,6 +182,7 @@ TanStack Router file-based routing:
 | `/tags/$tagName` | `tags/$tagName.tsx` | Tracks by tag |
 | `/upload` | `upload.tsx` | File upload page |
 | `/search` | `search.tsx` | Search results page |
+| `/hello-search` | `hello-search.tsx` | Hello search demo page (public, no auth) |
 
 ### Route Protection
 
@@ -180,13 +192,14 @@ The `__root.tsx` implements guest user route protection:
 - `/` - Dashboard/home page
 - `/login` - Login page
 - `/permission-denied` - Access denied page
+- `/hello-search` - Hello search demo page
 
 **Protected Routes** (require authentication):
 All other routes redirect unauthenticated users to `/permission-denied`.
 
 ```typescript
 // PUBLIC_ROUTES constant in __root.tsx
-const PUBLIC_ROUTES = ['/', '/login', '/permission-denied'];
+const PUBLIC_ROUTES = ['/', '/login', '/permission-denied', '/hello-search'];
 
 function isPublicRoute(pathname: string): boolean {
   return PUBLIC_ROUTES.includes(pathname);
@@ -238,7 +251,7 @@ function isPublicRoute(pathname: string): boolean {
 - **jsdom** environment for DOM simulation
 - **@testing-library/user-event** for user interaction simulation
 
-### Test Coverage (351 tests)
+### Test Coverage (611 tests)
 | Area | Tests |
 |------|-------|
 | API tests (client, tracks, albums, artists, upload, search, playlists, tags) | 50 |

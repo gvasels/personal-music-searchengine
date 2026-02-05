@@ -72,7 +72,7 @@ const mockFeaturedData = {
   total: 2,
 };
 
-const mockSearchData = {
+const _mockSearchData = {
   items: [
     {
       id: '3',
