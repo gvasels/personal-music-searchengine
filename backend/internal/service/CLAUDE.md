@@ -29,9 +29,6 @@ Business logic layer implementing domain operations for the Personal Music Searc
 | `camelot.go` | Camelot key compatibility utilities for DJ mixing |
 | `camelot_test.go` | Unit tests for Camelot utilities |
 | `similarity.go` | SimilarityService - similar/mixable tracks for DJs |
-| `hello.go` | HelloTrack model, HelloRepository interface, HelloServiceImpl with Search and Featured |
-| `hello_dynamo.go` | HelloDynamoDBRepository - queries seed tracks from DynamoDB (PK=USER#seed-user) |
-| `hello_test.go` | Unit tests for HelloService (10 tests: search by title/artist/album/genre, case-insensitive, empty query, no matches, featured with limit) |
 
 ## Service Interfaces
 
@@ -140,22 +137,6 @@ Business logic layer implementing domain operations for the Personal Music Searc
 - `FindSimilarTracks` - Find tracks similar by semantic/features
 - `FindMixableTracks` - Find DJ-compatible tracks (BPM + key)
 - `CosineSimilarity` - Calculate vector similarity
-
-### HelloService
-- `Search(ctx, query)` - Case-insensitive substring search across Title, Artist, Album, Genre fields; returns empty slice for empty query
-- `Featured(ctx, limit)` - Returns first N seed tracks; limit <= 0 returns all tracks
-
-### HelloTrack
-```go
-type HelloTrack struct {
-    ID, Title, Artist, Album, Genre string
-    Year, Duration                  int
-}
-```
-
-### HelloDynamoDBRepository
-- `GetSeedTracks(ctx)` - Queries DynamoDB for all seed tracks (PK=`USER#seed-user`, SK begins_with `TRACK#`)
-- `NewHelloDynamoDBRepository(client, tableName)` - Constructor taking a `HelloDynamoDBClient` interface and table name
 
 ### Camelot Key Utilities
 - `IsKeyCompatible` - Check if two keys can be mixed harmonically

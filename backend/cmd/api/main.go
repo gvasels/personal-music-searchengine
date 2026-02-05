@@ -171,13 +171,6 @@ func setupEcho() (*echo.Echo, error) {
 		handlers.RegisterAdminRoutes(e, adminHandler, roleResolver)
 	}
 
-	// Initialize hello service with DynamoDB-backed repository
-	helloRepo := service.NewHelloDynamoDBRepository(dynamoClient, appCfg.DynamoDBTableName)
-	helloSvc := service.NewHelloService(helloRepo)
-	services.Hello = helloSvc
-	helloHandler := handlers.NewHelloHandler(helloSvc)
-	handlers.RegisterHelloRoutes(e, helloHandler)
-
 	// Health check endpoint
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(200, map[string]string{"status": "ok"})

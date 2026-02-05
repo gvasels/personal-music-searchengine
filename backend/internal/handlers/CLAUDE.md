@@ -17,7 +17,6 @@ HTTP handlers using Echo framework for the Personal Music Search Engine API. All
 | `upload.go` | Upload workflow handlers (presigned URLs, confirmation) |
 | `stream.go` | Streaming and download URL handlers |
 | `search.go` | Search handlers (simple and advanced) |
-| `hello.go` | Hello-world demo handlers (health, search, featured) |
 
 ## Route Registration
 
@@ -99,13 +98,6 @@ All routes are registered under `/api/v1`:
 | GET | `/search` | SimpleSearch | Simple text search |
 | POST | `/search` | AdvancedSearch | Advanced search with filters |
 
-### Hello Routes (Public, no auth required)
-| Method | Path | Handler | Description |
-|--------|------|---------|-------------|
-| GET | `/hello/health` | Health | Service health check |
-| GET | `/hello/search` | Search | Search seed tracks by query param `q` |
-| GET | `/hello/featured` | Featured | Get featured seed tracks with optional `limit` param |
-
 ### Admin Routes (Admin role required)
 | Method | Path | Handler | Description |
 |--------|------|---------|-------------|
@@ -122,15 +114,6 @@ These routes support admin global access via `hasGlobal` parameter:
 | `GET /tracks` | Returns ALL tracks from all users |
 | `GET /tracks/:id` | Can access any track regardless of visibility |
 | `DELETE /tracks/:id` | Can delete any user's track (cleans up S3 + HLS files) |
-
-## Hello Handler
-
-| Type/Function | Purpose |
-|---------------|---------|
-| `HelloServiceInterface` | Interface defining `Search` and `Featured` methods for dependency injection |
-| `HelloHandler` | Handler struct holding a `HelloServiceInterface` |
-| `NewHelloHandler(svc)` | Constructor for `HelloHandler` |
-| `RegisterHelloRoutes(e, h)` | Registers hello routes on the Echo instance (standalone, not part of `Handlers`) |
 
 ## Helper Functions
 

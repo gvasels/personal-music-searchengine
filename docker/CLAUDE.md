@@ -11,8 +11,7 @@ docker/
 ├── docker-compose.yml       # LocalStack service definition
 ├── localstack-init/         # Initialization scripts
 │   ├── init-aws.sh          # Creates DynamoDB table and S3 bucket
-│   ├── init-cognito.sh      # Creates Cognito user pool and test users
-│   └── init-seed-music.sh   # Seeds DynamoDB with 20 sample music tracks for hello-world demo
+│   └── init-cognito.sh      # Creates Cognito user pool and test users
 └── CLAUDE.md                # This file
 ```
 
@@ -23,7 +22,6 @@ docker/
 | `docker-compose.yml` | Defines LocalStack container with DynamoDB, S3, and Cognito services |
 | `localstack-init/init-aws.sh` | Initialization script that creates DynamoDB table and S3 bucket |
 | `localstack-init/init-cognito.sh` | Creates Cognito user pool, app client, groups, and test users |
-| `localstack-init/init-seed-music.sh` | Seeds DynamoDB with 20 sample music tracks (PK=USER#seed-user) for hello-world search demo |
 
 ## Quick Start
 
@@ -90,14 +88,6 @@ docker-compose down
 | `artist@local.test` | `LocalTest123!` | artist |
 
 **Note**: All test users are pre-confirmed with verified email addresses.
-
-## Resources Created by init-seed-music.sh
-
-### DynamoDB Seed Tracks
-- 20 sample tracks stored under `PK=USER#seed-user`, `SK=TRACK#seed-{id}`
-- Fields: Title, Artist, Album, Genre (S), Year, Duration (N)
-- Genres: Electronic, Jazz, Rock, Synthwave, Folk, Ambient, World, Funk
-- Idempotent: uses `put-item` so re-running overwrites existing items
 
 ## AWS CLI Usage
 
@@ -171,7 +161,6 @@ bash docker/localstack-init/init-aws.sh
 # Fix init script permissions
 chmod +x docker/localstack-init/init-aws.sh
 chmod +x docker/localstack-init/init-cognito.sh
-chmod +x docker/localstack-init/init-seed-music.sh
 ```
 
 **Cognito pool not created:**

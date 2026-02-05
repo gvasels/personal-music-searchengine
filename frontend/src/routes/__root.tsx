@@ -12,7 +12,7 @@ import { useFeatureFlags } from '../hooks/useFeatureFlags';
  * Routes accessible to unauthenticated (guest) users.
  * All other routes require authentication.
  */
-const PUBLIC_ROUTES = ['/', '/login', '/permission-denied', '/hello-search'];
+const PUBLIC_ROUTES = ['/', '/login', '/permission-denied'];
 
 /**
  * Check if a path matches any public route.
