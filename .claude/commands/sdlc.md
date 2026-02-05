@@ -90,6 +90,23 @@ main (prod) ←── staging ←── dev ←── group-N/{name}
 
 ---
 
+## Session Recovery Protocol
+
+**When resuming work after a session interruption or context loss, you MUST follow this protocol before writing any code.**
+
+1. **Read `tasks.md`** for the current spec to determine which sub-tasks are complete
+2. **Check git log** to see what commits exist for the current feature
+3. **Determine current phase**:
+   - If test sub-tasks (N.1, N.2) are NOT marked complete → you are in Phase 2 (Red)
+   - If test sub-tasks ARE complete but implementation (N.3) is not → you are in Phase 3 (Green)
+   - If all sub-tasks complete → you are in Phase 4 (Verify)
+4. **Resume at the correct phase** — do NOT skip ahead
+5. **If no Red phase commit exists** (commit containing ONLY test files with failure evidence), you MUST complete Phase 2 first, even if test files already exist on disk
+
+**CRITICAL**: A continuation prompt like "proceed" or "continue" does NOT authorize skipping phases. The TDD sequence `test-engineer` → verify fail → commit → `implementation-agent` → verify pass → commit is MANDATORY regardless of session state.
+
+---
+
 ## Phase 1: Specification
 
 **Goal**: Define requirements and design before code.
@@ -224,6 +241,32 @@ Task tool parameters:
 
 **IMPORTANT**: If you write production code before writing tests, you have violated TDD principles. Delete the production code and restart from this phase.
 
+### Phase 2 Commit (MANDATORY)
+
+**You MUST create a git commit at the end of Phase 2 containing ONLY test files.** This commit serves as proof that the Red phase occurred.
+
+```bash
+# Commit ONLY test files — no implementation code
+git add *_test.go *.test.tsx *.test.ts *.spec.ts
+git commit -m "test(task-N.X): Red phase - failing tests for [feature]
+
+- Tests written and verified FAILING
+- [paste test failure summary here]
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+```
+
+**Red Phase Evidence**: The commit message MUST include a summary of test failures (e.g., "5 tests failing: TestSearchTracks, TestGetFeaturedTracks..."). This proves tests were run and failed.
+
+### TDD Anti-Patterns (NEVER DO THESE)
+
+| Anti-Pattern | Why It's Wrong | What To Do Instead |
+|---|---|---|
+| Spawning one agent to write tests AND implementation | Skips Red phase verification entirely | Spawn `test-engineer` first, verify fail, THEN spawn `implementation-agent` |
+| Including test files and implementation files in the same commit | No proof Red phase occurred | Separate commits: Red commit (tests only), Green commit (implementation only) |
+| Telling an agent "write tests and make them pass" | Combines Red+Green, no failure verification | Two separate agent prompts with different instructions |
+| Skipping Phase 2 because "it's a simple feature" | Every feature needs TDD regardless of complexity | Follow the full sequence even for one-line changes |
+
 ---
 
 ## Phase 3: Code
@@ -295,6 +338,21 @@ Task tool parameters:
     - Required files: main.tf, variables.tf, outputs.tf, README.md, CLAUDE.md
     - Follow existing module patterns
     - [Include opentofu module examples here]
+```
+
+### Phase 3 Commit (MANDATORY)
+
+**You MUST create a git commit at the end of Phase 3 containing ONLY implementation files.** This commit is separate from the Phase 2 Red commit.
+
+```bash
+# Commit implementation files — tests were already committed in Phase 2
+git add [implementation files only]
+git commit -m "feat(task-N.X): Green phase - implementation for [feature]
+
+- All tests now passing
+- Implements [brief description]
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 **Artifacts**: Source files, module files

@@ -7,7 +7,7 @@
 | # | Rule | Requirement | If Violated |
 |---|------|-------------|-------------|
 | 1 | **SDLC Workflow** | Use `/sdlc` for ALL features: SPEC → TEST → CODE → BUILD → DOCS | Start over with `/sdlc` |
-| 2 | **TDD Enforcement** | Spawn `test-engineer` BEFORE `implementation-agent`. Tests must fail first (Red). | Delete code, restart Phase 2 |
+| 2 | **TDD Enforcement** | Spawn `test-engineer` BEFORE `implementation-agent`. Tests must fail first (Red). **NEVER** combine test+implementation in one agent. Separate commits required for Red and Green phases. | Delete code, restart Phase 2 |
 | 3 | **Spec-First** | All features need specs in `.spec-workflow/specs/` before coding | Create specs first |
 | 4 | **Documentation** | Update CLAUDE.md + CHANGELOG.md in every directory with changes | Update before PR |
 | 5 | **Quality Gates** | 80% test coverage, all tests pass, no critical security vulnerabilities | Fix before merge |
@@ -56,6 +56,19 @@
 | 5. DOCS | API docs, CLAUDE.md | Documentation | Files updated |
 
 **Prerequisites**: Each phase requires previous phase completion.
+
+### TDD Enforcement Details
+
+**These rules apply even when resuming from a previous session or recovering from context loss.**
+
+| # | Prohibition | Why |
+|---|-------------|-----|
+| 1 | **NEVER spawn a single agent that writes both tests and implementation** | Combines Red+Green into one pass, skipping failure verification |
+| 2 | **NEVER commit test files and implementation files in the same commit** | Makes it impossible to verify Red phase occurred |
+| 3 | **NEVER write implementation code before test failure output is captured** | Red phase evidence proves tests are testing the right thing |
+| 4 | **NEVER skip Phase 2 agent spawn, even for "simple" features** | Every feature needs the `test-engineer` → verify fail → `implementation-agent` sequence |
+
+**Session Recovery Protocol**: When resuming work after a session interruption, check `tasks.md` sub-task status. If Red phase (N.1/N.2 test tasks) is not marked complete with failure evidence, you MUST complete it before proceeding to Green phase (N.3 implementation tasks). See `.claude/docs/tdd-workflow.md` for full recovery protocol.
 
 ---
 

@@ -70,6 +70,74 @@ Before marking ANY task complete, MUST verify:
 
 ---
 
+## TDD Anti-Patterns (NEVER DO THESE)
+
+These anti-patterns were identified from actual enforcement failures. Each one bypasses the Red-Green cycle.
+
+| # | Anti-Pattern | What Happens | Detection |
+|---|---|---|---|
+| 1 | **Combined agent prompt** — telling one agent to "write tests and implementation" | Red phase is skipped entirely; agent writes tests that pass immediately | Check: were `test-engineer` and `implementation-agent` spawned as separate Task calls? |
+| 2 | **Single commit with tests + implementation** | No proof that tests ever failed | Check: does git log show a Red commit (tests only) before a Green commit (implementation only)? |
+| 3 | **Skipping Red phase on session resume** | Context loss leads to "just get it done" mentality | Check: did the session follow the Session Recovery Protocol before writing code? |
+| 4 | **Group-level task tracking** | Tracking Tasks 1-7 instead of sub-tasks 1.1, 1.2, 1.3 hides whether Red preceded Green | Check: are TodoWrite tasks at the sub-task level (N.1 test, N.2 e2e, N.3 implementation)? |
+| 5 | **Background agents with combined prompts** | Parallel agents each doing test+code bypass sequential Red→Green requirement | Check: were background agents given test-only or implementation-only prompts? |
+
+## Separate Commits Required
+
+TDD enforcement requires **separate git commits** for the Red and Green phases:
+
+### Red Phase Commit (Phase 2)
+```
+test(task-N.X): Red phase - failing tests for [feature]
+
+- N tests written, all FAILING as expected
+- Test failures: [list failing test names]
+- No implementation code included
+```
+
+### Green Phase Commit (Phase 3)
+```
+feat(task-N.X): Green phase - implementation for [feature]
+
+- All N tests now PASSING
+- Minimal implementation to satisfy tests
+```
+
+**Why separate commits matter**: A single commit containing both tests and implementation provides zero evidence that the Red phase occurred. The git history IS the audit trail.
+
+## Session Recovery Protocol
+
+When resuming after context loss (new session, context window exceeded, etc.):
+
+1. **Read `.spec-workflow/specs/{spec-name}/tasks.md`** — determine current sub-task status
+2. **Run `git log --oneline -10`** — check if Red phase commits exist
+3. **Determine recovery point**:
+
+| If you find... | Then... |
+|---|---|
+| No test files on disk | Start Phase 2 from scratch |
+| Test files exist but no Red commit | Run tests, verify they fail, create Red commit, THEN proceed to Phase 3 |
+| Red commit exists but no Green commit | Start Phase 3 (spawn `implementation-agent`) |
+| Both Red and Green commits exist | Proceed to Phase 4 (Verify) |
+
+4. **NEVER assume previous session completed TDD correctly** — verify via git log
+
+## Verification Evidence
+
+Every Red phase MUST produce verifiable evidence that tests failed. This evidence MUST be included in the Red phase commit message.
+
+**Acceptable evidence formats:**
+- Test runner output showing failure count: `FAIL: 5 tests failed`
+- List of failing test names: `TestSearchTracks, TestGetFeaturedTracks, ...`
+- Exit code from test runner: `exit status 1`
+
+**NOT acceptable:**
+- "Tests were written" (no proof they failed)
+- "Tests should fail" (assumption, not verification)
+- No mention of test results at all
+
+---
+
 ## TDD Cycle
 
 ```
