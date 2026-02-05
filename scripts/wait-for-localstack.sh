@@ -8,7 +8,7 @@ set -e
 TIMEOUT=${1:-60}
 LOCALSTACK_HOST="${LOCALSTACK_HOST:-localhost}"
 HEALTH_URL="http://${LOCALSTACK_HOST}:4566/_localstack/health"
-REQUIRED_SERVICES="dynamodb s3 cognito-idp"
+REQUIRED_SERVICES="dynamodb s3"
 
 echo "Waiting for LocalStack to be healthy (timeout: ${TIMEOUT}s)..."
 echo "Health URL: ${HEALTH_URL}"

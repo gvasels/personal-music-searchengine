@@ -11,6 +11,14 @@
 #   - Node.js 18+
 #   - AWS CLI (for LocalStack init scripts)
 
+# Auto-detect container compose command (supports Docker and Finch)
+COMPOSE := $(shell command -v docker-compose 2>/dev/null || echo "finch compose")
+
+# Dummy AWS credentials for LocalStack (overrides any SSO profile)
+export AWS_ACCESS_KEY_ID := test
+export AWS_SECRET_ACCESS_KEY := test
+export AWS_DEFAULT_REGION := us-east-1
+
 .PHONY: local local-services local-backend local-frontend local-stop test-integration clean help
 
 # Default target
@@ -43,7 +51,7 @@ local: local-services
 # Start LocalStack services
 local-services:
 	@echo "Starting LocalStack..."
-	docker-compose -f docker/docker-compose.yml up -d
+	$(COMPOSE) -f docker/docker-compose.yml up -d
 	@echo "Waiting for LocalStack to be healthy..."
 	./scripts/wait-for-localstack.sh 60
 	@echo ""
@@ -76,13 +84,13 @@ local-stop:
 	@echo "Stopping local services..."
 	-@pkill -f "go run ./cmd/api" 2>/dev/null || true
 	-@pkill -f "vite" 2>/dev/null || true
-	docker-compose -f docker/docker-compose.yml down
+	$(COMPOSE) -f docker/docker-compose.yml down
 	@echo "Local services stopped."
 
 # Run integration tests
 test-integration:
 	@echo "Starting LocalStack for integration tests..."
-	docker-compose -f docker/docker-compose.yml up -d
+	$(COMPOSE) -f docker/docker-compose.yml up -d
 	./scripts/wait-for-localstack.sh 60
 	./docker/localstack-init/init-aws.sh
 	@echo ""
@@ -107,5 +115,5 @@ clean:
 # Reset LocalStack data
 local-reset:
 	@echo "Resetting LocalStack data..."
-	docker-compose -f docker/docker-compose.yml down -v
+	$(COMPOSE) -f docker/docker-compose.yml down -v
 	@echo "LocalStack data cleared. Run 'make local' to restart."
