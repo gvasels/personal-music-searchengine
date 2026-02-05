@@ -16,8 +16,8 @@ This workflow guides development from specification to verified implementation.
 │ 1.SPEC  │ 2.TEST  │ 3.CODE  │ 4.VERIFY│ 5.DOCS (Epic Complete Only)         │
 │─────────│─────────│─────────│─────────│─────────────────────────────────────│
 │ MCP:    │ Agent:  │ Agent:  │ Run     │ Agent: doc-consistency-checker      │
-│ spec-   │ test-   │ implmnt-│ tests   │ Checklist: epic-completion-         │
-│ workflow│ engineer│ agent   │ pass →  │ checklist.md                        │
+│ spec-   │ general-│ general-│ tests   │ Checklist: epic-completion-         │
+│ workflow│ purpose │ purpose │ pass →  │ checklist.md                        │
 │         │         │         │ Close   │ Update: CHANGELOG, CLAUDE.md        │
 │         │         │         │ task    │                                     │
 └─────────┴─────────┴─────────┴─────────┴─────────────────────────────────────┘
@@ -154,7 +154,18 @@ main (prod) ←── staging ←── dev ←── group-N/{name}
 
 **Goal**: Write failing tests BEFORE implementation (TDD Red phase).
 
-**ENFORCEMENT**: This phase is REQUIRED for TDD. If you skip spawning test-engineer agent, you are violating the SDLC workflow.
+**ENFORCEMENT**: This phase is REQUIRED for TDD. If you skip spawning a test-writing agent, you are violating the SDLC workflow.
+
+### CRITICAL: Agent Type for File Persistence
+
+**ONLY use `general-purpose` or `Bash` agent types for tasks that write files.** The `test-engineer` and `implementation-agent` agent types do NOT reliably execute tool calls — they hallucinate tool call syntax as text (`tool_uses: 0`), so files are never written to disk. This was discovered and verified on 2026-02-05.
+
+| Agent Type | Tool Execution | File Persistence |
+|---|---|---|
+| `general-purpose` | Real tool calls | **YES** |
+| `Bash` | Real tool calls | **YES** |
+| `test-engineer` | Hallucinated (tool_uses: 0) | **NO** |
+| `implementation-agent` | Hallucinated (tool_uses: 0) | **NO** |
 
 ### CRITICAL TDD RULES
 
@@ -185,7 +196,7 @@ frontend/e2e/{feature}.spec.ts
 
 ### Pre-Agent MCP Context Gathering
 
-**BEFORE spawning test-engineer**, the orchestrator MUST:
+**BEFORE spawning the test-writing agent**, the orchestrator MUST:
 
 1. **Frontend tests**: Use `context7` to look up Vitest and React Testing Library APIs
 2. **Backend tests**: Use `context7` to look up Go Testify and httptest APIs
@@ -195,12 +206,12 @@ frontend/e2e/{feature}.spec.ts
 
 ### Agent Spawning
 
-**REQUIRED**: Spawn test-engineer agent via Task tool:
+**REQUIRED**: Spawn general-purpose agent via Task tool (NOT test-engineer — see Agent Type warning above):
 
 ```
 Task tool parameters:
 - description: "Write tests for [feature]"
-- subagent_type: "test-engineer"
+- subagent_type: "general-purpose"
 - prompt: |
     Write tests for [feature name].
 
@@ -230,7 +241,7 @@ Task tool parameters:
     - Validation tests will run in Phase 4
 ```
 
-**Verification**: After test-engineer completes:
+**Verification**: After test-writing agent completes:
 - [ ] Unit test file exists
 - [ ] Unit test was run and FAILED before implementation
 - [ ] E2E test file exists (if UI component)
@@ -262,7 +273,8 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
 | Anti-Pattern | Why It's Wrong | What To Do Instead |
 |---|---|---|
-| Spawning one agent to write tests AND implementation | Skips Red phase verification entirely | Spawn `test-engineer` first, verify fail, THEN spawn `implementation-agent` |
+| Spawning one agent to write tests AND implementation | Skips Red phase verification entirely | Spawn test agent first, verify fail, THEN spawn implementation agent |
+| Using `test-engineer` or `implementation-agent` agent types | These types hallucinate tool calls (tool_uses: 0), files never persist | ALWAYS use `general-purpose` agent type for file-writing tasks |
 | Including test files and implementation files in the same commit | No proof Red phase occurred | Separate commits: Red commit (tests only), Green commit (implementation only) |
 | Telling an agent "write tests and make them pass" | Combines Red+Green, no failure verification | Two separate agent prompts with different instructions |
 | Skipping Phase 2 because "it's a simple feature" | Every feature needs TDD regardless of complexity | Follow the full sequence even for one-line changes |
@@ -289,7 +301,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
 ### Pre-Agent MCP Context Gathering
 
-**BEFORE spawning implementation-agent**, the orchestrator MUST:
+**BEFORE spawning the implementation agent**, the orchestrator MUST:
 
 1. **Frontend code**: Use `context7` for React/TanStack Router/TanStack Query/Zustand APIs
 2. **Frontend UI**: Use `daisyui-blueprint` for DaisyUI component snippets and patterns
@@ -302,12 +314,12 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
 ### Agent Spawning
 
-**REQUIRED**: Spawn implementation-agent via Task tool:
+**REQUIRED**: Spawn general-purpose agent via Task tool (NOT implementation-agent — see Agent Type warning in Phase 2):
 
 ```
 Task tool parameters:
 - description: "Implement [feature]"
-- subagent_type: "implementation-agent"
+- subagent_type: "general-purpose"
 - prompt: |
     Implement [feature name] to make tests pass.
 
@@ -821,14 +833,16 @@ MCPs: awslabs.aws-documentation-mcp-server, aws-knowledge-mcp-server
 
 | Phase | Agent | subagent_type | MCP Servers (Pre-Agent Context) |
 |-------|-------|---------------|-------------------------------|
-| 2. Test (FE) | test-engineer | `test-engineer` | `context7`, `docs-mcp-server`, `playwright` |
-| 2. Test (BE) | test-engineer | `test-engineer` | `context7`, `docs-mcp-server` |
-| 3. Code (FE) | implementation-agent | `implementation-agent` | `context7`, `daisyui-blueprint`, `docs-mcp-server` |
-| 3. Code (BE) | implementation-agent | `implementation-agent` | `context7`, `awslabs.dynamodb-mcp-server`, `awslabs.aws-documentation-mcp-server` |
-| 3. Code (Infra) | implementation-agent | `implementation-agent` | `opentofu`, `awslabs.aws-documentation-mcp-server`, `aws-knowledge-mcp-server` |
+| 2. Test (FE) | test-writer | `general-purpose` | `context7`, `docs-mcp-server`, `playwright` |
+| 2. Test (BE) | test-writer | `general-purpose` | `context7`, `docs-mcp-server` |
+| 3. Code (FE) | implementer | `general-purpose` | `context7`, `daisyui-blueprint`, `docs-mcp-server` |
+| 3. Code (BE) | implementer | `general-purpose` | `context7`, `awslabs.dynamodb-mcp-server`, `awslabs.aws-documentation-mcp-server` |
+| 3. Code (Infra) | implementer | `general-purpose` | `opentofu`, `awslabs.aws-documentation-mcp-server`, `aws-knowledge-mcp-server` |
 | 5. Docs | doc-consistency-checker | `general-purpose` | `github`, `spec-workflow` |
 | Code Review | code-reviewer | `code-reviewer` | `github` |
 | Security | security-auditor | `security-auditor` | `awslabs.aws-documentation-mcp-server`, `aws-knowledge-mcp-server` |
+
+**⚠️ NEVER use `test-engineer` or `implementation-agent` subagent_type for file-writing tasks.** These agent types hallucinate tool calls as text and produce `tool_uses: 0`. Only `general-purpose` and `Bash` agent types reliably execute tools and persist files to disk.
 
 **Note**:
 - MCP servers are used by the **orchestrator** (main session) to gather context BEFORE spawning agents
@@ -849,7 +863,7 @@ Use TodoWrite throughout:
     [ ] tasks.md created (with separate unit test / E2E test / implementation tasks)
 [ ] Phase 2: Test (TDD Red) - MANDATORY
     [ ] MCP context gathered (context7, docs-mcp-server, playwright)
-    [ ] Spawn test-engineer agent
+    [ ] Spawn general-purpose agent (NOT test-engineer)
     [ ] Unit test file exists
     [ ] Unit test was run and FAILED before implementation
     [ ] E2E test file exists (if UI component)
@@ -858,7 +872,7 @@ Use TodoWrite throughout:
 [ ] Phase 3: Code (TDD Green) - MANDATORY
     [ ] MCP context gathered (context7, daisyui-blueprint/dynamodb/opentofu)
     [ ] Verified ALL test files exist before coding
-    [ ] Spawn implementation-agent
+    [ ] Spawn general-purpose agent (NOT implementation-agent)
     [ ] Implementation reads test files FIRST
     [ ] ONLY code needed to pass tests written
     [ ] ALL tests now PASS (Green)

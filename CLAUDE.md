@@ -193,12 +193,14 @@ cd infrastructure/{global,shared,backend} && tofu plan
 
 ### Key Agents
 
-| Agent | When to Spawn |
-|-------|---------------|
-| `test-engineer` | Phase 2 - ALWAYS FIRST |
-| `implementation-agent` | Phase 3 - AFTER tests exist |
-| `documentation-generator` | Phase 5 |
-| `code-review` | Before PR |
+| Agent | subagent_type | When to Spawn |
+|-------|---------------|---------------|
+| test-writer | `general-purpose` | Phase 2 - ALWAYS FIRST |
+| implementer | `general-purpose` | Phase 3 - AFTER tests exist |
+| doc-generator | `general-purpose` | Phase 5 |
+| code-review | `code-reviewer` | Before PR |
+
+**⚠️ NEVER use `test-engineer` or `implementation-agent` subagent_type** — they hallucinate tool calls (tool_uses: 0) and files don't persist to disk. Always use `general-purpose`.
 
 ### MCP Servers
 
