@@ -103,11 +103,6 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 	api.GET("/search", h.SimpleSearch)
 	api.POST("/search", h.AdvancedSearch)
 	api.GET("/search/autocomplete", h.Autocomplete)
-
-	// Hello world routes (public, no auth required)
-	api.GET("/health", h.HelloHealth)
-	api.GET("/hello/search", h.HelloSearch)
-	api.GET("/hello/featured", h.HelloFeatured)
 }
 
 // RegisterAdminRoutes registers admin routes with proper middleware protection.

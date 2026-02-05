@@ -11,9 +11,7 @@ docker/
 ├── docker-compose.yml       # LocalStack service definition
 ├── localstack-init/         # Initialization scripts
 │   ├── init-aws.sh          # Creates DynamoDB table and S3 bucket
-│   ├── init-cognito.sh      # Creates Cognito user pool and test users
-│   ├── init-seed-music.sh   # Seeds 20 mock tracks across 5 artists for hello-world
-│   └── test-seed-data.sh    # Validates seed data (20 items, 5 artists, required fields)
+│   └── init-cognito.sh      # Creates Cognito user pool and test users
 └── CLAUDE.md                # This file
 ```
 
@@ -24,8 +22,6 @@ docker/
 | `docker-compose.yml` | Defines LocalStack container with DynamoDB, S3, and Cognito services |
 | `localstack-init/init-aws.sh` | Initialization script that creates DynamoDB table and S3 bucket |
 | `localstack-init/init-cognito.sh` | Creates Cognito user pool, app client, groups, and test users |
-| `localstack-init/init-seed-music.sh` | Seeds 20 mock tracks across 5 artists (Luna Waves, The Ember Collective, DJ Phantom, Aria Chen, Voltage) into DynamoDB under `seed-user` partition. Idempotent. |
-| `localstack-init/test-seed-data.sh` | Validates seed data: checks 20 items exist, verifies required fields (title, artist, album, genre, year, duration), confirms 5 distinct artists, tests idempotency |
 
 ## Quick Start
 
