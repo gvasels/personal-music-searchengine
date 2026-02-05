@@ -334,6 +334,12 @@ Task tool parameters:
     - NEVER add features not covered by tests
     - Follow existing patterns in codebase
     - Run tests and verify ALL PASS before completing
+    - **WIRING CHECKLIST** (CRITICAL - read `.claude/docs/wiring-checklist.md`):
+      - New services MUST be initialized in NewServices() or main.go
+      - New handlers MUST be instantiated in main.go
+      - New route registration functions MUST be called in setupEcho()/main.go
+      - New frontend routes MUST be added to the router
+      - Unit tests with mocks CANNOT catch missing wiring — verify with `go build ./...`
 
     For Frontend (TypeScript):
     - React 18 + TanStack Router/Query + Zustand + DaisyUI 5
@@ -875,6 +881,7 @@ Use TodoWrite throughout:
     [ ] Spawn general-purpose agent (NOT implementation-agent)
     [ ] Implementation reads test files FIRST
     [ ] ONLY code needed to pass tests written
+    [ ] Wiring checklist followed (services initialized, handlers created, routes registered in main.go)
     [ ] ALL tests now PASS (Green)
 [ ] Phase 4: Verify
     [ ] Tests passing with coverage threshold met
