@@ -70,9 +70,10 @@ func (h *HelloHandler[T]) Featured(c echo.Context) error {
 	limit := 10
 
 	// Parse limit parameter if provided
+	// limit=0 means return all tracks, so we accept parsed >= 0
 	if limitStr := c.QueryParam("limit"); limitStr != "" {
 		parsed, err := strconv.Atoi(limitStr)
-		if err == nil && parsed > 0 {
+		if err == nil && parsed >= 0 {
 			limit = parsed
 		}
 		// Invalid or negative limit uses default (10)
