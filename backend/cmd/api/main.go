@@ -171,6 +171,15 @@ func setupEcho() (*echo.Echo, error) {
 		handlers.RegisterAdminRoutes(e, adminHandler, roleResolver)
 	}
 
+	// Initialize and register hello routes (for local dev)
+	helloRepo := service.NewHelloDynamoDBRepository(dynamoClient, appCfg.DynamoDBTableName)
+	helloSvc := service.NewHelloService(helloRepo)
+	services.Hello = helloSvc
+
+	// Create and register hello handler using the generic handler
+	helloHandler := handlers.NewHelloHandler[service.HelloTrack](helloSvc)
+	handlers.RegisterHelloRoutes(e, helloHandler)
+
 	// Health check endpoint
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(200, map[string]string{"status": "ok"})
