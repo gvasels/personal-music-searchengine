@@ -14,7 +14,7 @@
 
 ## Task 1: Seed Data
 
-- [ ] 1.1 Write seed script tests (TDD Red)
+- [x] 1.1 Write seed script tests (TDD Red)
   - **Test File:** `docker/localstack-init/test-seed-music.sh` (create)
   - **Acceptance Criteria:**
     - Test verifies 20 items exist in DynamoDB after running seed script
@@ -24,7 +24,7 @@
     - **MUST RUN AND FAIL** before implementation
   - _Requirements: US-1_
 
-- [ ] 1.2 Implement seed script (TDD Green)
+- [x] 1.2 Implement seed script (TDD Green)
   - **Implementation File:** `docker/localstack-init/init-seed-music.sh` (create)
   - **Acceptance Criteria:**
     - Creates 20 tracks with 5 artists × 4 tracks each
@@ -33,7 +33,7 @@
     - **ALL TESTS from 1.1 MUST PASS**
   - _Requirements: US-1_
 
-- [ ] 1.3 Wire seed script into Makefile
+- [x] 1.3 Wire seed script into Makefile
   - **Modify:** `Makefile` (update `local-services` target)
   - **Acceptance Criteria:**
     - `make local-services` calls `init-seed-music.sh`
@@ -44,7 +44,7 @@
 
 ## Task 2: Backend Service
 
-- [ ] 2.1 Write HelloService tests (TDD Red)
+- [x] 2.1 Write HelloService tests (TDD Red)
   - **Test File:** `backend/internal/service/hello_test.go` (create)
   - **Acceptance Criteria:**
     - Test `Search` matches title, artist, album, genre (case-insensitive)
@@ -55,7 +55,7 @@
     - **MUST RUN AND FAIL** before implementation
   - _Requirements: US-2, US-3_
 
-- [ ] 2.2 Implement HelloService (TDD Green)
+- [x] 2.2 Implement HelloService (TDD Green)
   - **Implementation Files:**
     - `backend/internal/service/hello.go` (create)
     - `backend/internal/service/hello_dynamo.go` (create)
@@ -71,7 +71,7 @@
 
 ## Task 3: Backend Handler + Wiring
 
-- [ ] 3.1 Write HelloHandler tests (TDD Red)
+- [x] 3.1 Write HelloHandler tests (TDD Red)
   - **Test File:** `backend/internal/handlers/hello_test.go` (create)
   - **Acceptance Criteria:**
     - Test Health returns `{"status":"ok","service":"hello"}`
@@ -82,7 +82,7 @@
     - **MUST RUN AND FAIL** before implementation
   - _Requirements: US-2, US-3, US-4_
 
-- [ ] 3.2 Implement HelloHandler + wire service and routes (TDD Green)
+- [x] 3.2 Implement HelloHandler + wire service and routes (TDD Green)
   - **Implementation Files:**
     - `backend/internal/handlers/hello.go` (create)
     - `backend/internal/service/service.go` (modify — add `Hello HelloService`)
@@ -100,7 +100,7 @@
 
 ## Task 4: Frontend API Client + Hooks
 
-- [ ] 4.1 Write frontend API and hook tests (TDD Red)
+- [x] 4.1 Write frontend API and hook tests (TDD Red)
   - **Test Files:**
     - `frontend/src/lib/api/__tests__/helloSearch.test.ts` (create)
     - `frontend/src/hooks/__tests__/useHelloSearch.test.tsx` (create)
@@ -112,7 +112,7 @@
     - **MUST RUN AND FAIL** before implementation
   - _Requirements: US-2, US-3, US-5_
 
-- [ ] 4.2 Implement frontend API client and hooks (TDD Green)
+- [x] 4.2 Implement frontend API client and hooks (TDD Green)
   - **Implementation Files:**
     - `frontend/src/lib/api/helloSearch.ts` (create)
     - `frontend/src/hooks/useHelloSearch.ts` (create)
@@ -127,7 +127,7 @@
 
 ## Task 5: Frontend Components
 
-- [ ] 5.1 Write component tests (TDD Red)
+- [x] 5.1 Write component tests (TDD Red)
   - **Test Files:**
     - `frontend/src/components/hello/__tests__/SearchInput.test.tsx`
     - `frontend/src/components/hello/__tests__/TrackCard.test.tsx`
@@ -141,7 +141,7 @@
     - **MUST RUN AND FAIL** before implementation
   - _Requirements: US-5_
 
-- [ ] 5.2 Implement components (TDD Green)
+- [x] 5.2 Implement components (TDD Green)
   - **Implementation Files:**
     - `frontend/src/components/hello/SearchInput.tsx`
     - `frontend/src/components/hello/TrackCard.tsx`
@@ -157,7 +157,7 @@
 
 ## Task 6: Frontend Route Page
 
-- [ ] 6.1 Write route page tests (TDD Red)
+- [x] 6.1 Write route page tests (TDD Red)
   - **Test File:** `frontend/src/routes/__tests__/hello-search.test.tsx`
   - **Acceptance Criteria:**
     - Test page renders search input and featured tracks
@@ -168,7 +168,7 @@
     - **MUST RUN AND FAIL** before implementation
   - _Requirements: US-5, US-6_
 
-- [ ] 6.2 Implement route page + wire router (TDD Green)
+- [x] 6.2 Implement route page + wire router (TDD Green)
   - **Implementation Files:**
     - `frontend/src/routes/hello-search.tsx` (create)
     - `frontend/src/routes/__root.tsx` (modify — add to PUBLIC_ROUTES)
@@ -188,7 +188,7 @@
 
 ## Task 7: Integration, Validation, and Documentation
 
-- [ ] 7.1 Contract alignment check
+- [x] 7.1 Contract alignment check
   - **Purpose:** Verify frontend and backend use the same API contract
   - **Acceptance Criteria:**
     - Frontend sends `q` param: `grep -n "params.*{.*q:" frontend/src/lib/api/helloSearch.ts`
@@ -198,7 +198,7 @@
   - **If any check fails:** Fix the misaligned component, re-run tests, commit fix
   - _Requirements: R-NF4_
 
-- [ ] 7.2 Local stack validation (`make local`)
+- [x] 7.2 Local stack validation (`make local`)
   - **Purpose:** End-to-end validation with real local stack
   - **Acceptance Criteria:**
     - `make local` starts successfully with seed data
@@ -208,7 +208,7 @@
     - Frontend at `http://localhost:5173/hello-search` loads and shows tracks
   - _Requirements: US-1 through US-6_
 
-- [ ] 7.3 BUILD validation
+- [x] 7.3 BUILD validation
   - **Purpose:** Ensure code passes all quality gates
   - **Acceptance Criteria:**
     - All commands pass with zero errors:
@@ -226,7 +226,7 @@
     ```
   - _Requirements: R-NF2, R-NF3_
 
-- [ ] 7.4 Update CLAUDE.md for all changed directories
+- [x] 7.4 Update CLAUDE.md for all changed directories
   - **Purpose:** Document all new/modified code
   - **Directories requiring CLAUDE.md:**
     - `backend/cmd/api/`
@@ -265,8 +265,34 @@ Task 7 (Integration): Depends on all implementation tasks
 
 ## SDLC Gap Tracking
 
-_Gaps discovered during iteration 4 will be logged here._
+_Gaps discovered during iteration 4._
 
 | # | Phase | Gap Description | Impact | Fix Applied |
 |---|-------|-----------------|--------|-------------|
-| - | - | - | - | - |
+| 1 | 4 (Verify) | Handler `limit=0` treated as "use default" instead of "return all" | `parsed > 0` condition rejected valid limit=0 | Changed to `parsed >= 0` in hello.go:75 |
+
+### Gap Details
+
+**Gap 1: Handler limit parameter validation**
+- **Found during:** Task 7.2 Local stack validation
+- **Root cause:** Handler checked `parsed > 0` which rejected `limit=0`, falling back to default of 10
+- **Service was correct:** Service correctly handles `limit <= 0` as "return all tracks"
+- **Fix:** Changed condition to `parsed >= 0` to pass limit=0 through to service
+- **Lesson:** Unit tests with mocks tested the service correctly, but the handler had a separate bug. Integration testing via `make local` caught this.
+
+### Iteration 4 Summary
+
+**Commits:**
+1. `796b858` - Red phase: 13 test files
+2. `d07f229` - Green phase: 16 implementation files
+3. `3f3444e` - Fix: Handler limit=0 bug
+4. `b0b3528` - Docs: 10 CLAUDE.md files
+
+**Tests:**
+- Frontend: 628 tests (53 new)
+- Backend: All passing
+
+**Validation:**
+- BUILD: All checks pass (go vet, go build, tsc, eslint, npm build)
+- Contract: FE/BE aligned (`q` param, `items` response)
+- Local stack: All endpoints working correctly
