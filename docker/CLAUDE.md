@@ -11,7 +11,9 @@ docker/
 ├── docker-compose.yml       # LocalStack service definition
 ├── localstack-init/         # Initialization scripts
 │   ├── init-aws.sh          # Creates DynamoDB table and S3 bucket
-│   └── init-cognito.sh      # Creates Cognito user pool and test users
+│   ├── init-cognito.sh      # Creates Cognito user pool and test users
+│   ├── init-seed-music.sh   # Seeds 20 tracks for Hello World feature
+│   └── CLAUDE.md            # Documentation for init scripts
 └── CLAUDE.md                # This file
 ```
 
@@ -22,6 +24,7 @@ docker/
 | `docker-compose.yml` | Defines LocalStack container with DynamoDB, S3, and Cognito services |
 | `localstack-init/init-aws.sh` | Initialization script that creates DynamoDB table and S3 bucket |
 | `localstack-init/init-cognito.sh` | Creates Cognito user pool, app client, groups, and test users |
+| `localstack-init/init-seed-music.sh` | Seeds 20 tracks (5 artists x 4 tracks) for local dev testing |
 
 ## Quick Start
 
@@ -88,6 +91,30 @@ docker-compose down
 | `artist@local.test` | `LocalTest123!` | artist |
 
 **Note**: All test users are pre-confirmed with verified email addresses.
+
+## Resources Created by init-seed-music.sh
+
+### Seed Tracks (Hello World Feature)
+Seeds 20 tracks for local development testing of the Hello World search feature.
+
+**Data Structure:**
+- 5 artists, 4 tracks each
+- Stored under `USER#seed-user` in DynamoDB
+- Track IDs: `seed-t1` through `seed-t20` (idempotent)
+
+**Artists:**
+| Artist | Genre | Albums |
+|--------|-------|--------|
+| Aurora Waves | jazz | Dreamscape, Polar Nights |
+| Electric Pulse | electronic | Circuit Breaker, Synth City |
+| Stone Temple | rock | Carved in Time, Seismic |
+| Velvet Soul | soul | Silky Nights, Warm Embrace |
+| Ambient Dreams | ambient | Ethereal Skies, Nature Sounds |
+
+**Run manually:**
+```bash
+./docker/localstack-init/init-seed-music.sh
+```
 
 ## AWS CLI Usage
 

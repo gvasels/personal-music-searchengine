@@ -29,6 +29,7 @@ Business logic layer implementing domain operations for the Personal Music Searc
 | `camelot.go` | Camelot key compatibility utilities for DJ mixing |
 | `camelot_test.go` | Unit tests for Camelot utilities |
 | `similarity.go` | SimilarityService - similar/mixable tracks for DJs |
+| `hello.go` | HelloService - Hello World search feature for local development |
 
 ## Service Interfaces
 
@@ -137,6 +138,31 @@ Business logic layer implementing domain operations for the Personal Music Searc
 - `FindSimilarTracks` - Find tracks similar by semantic/features
 - `FindMixableTracks` - Find DJ-compatible tracks (BPM + key)
 - `CosineSimilarity` - Calculate vector similarity
+
+### HelloService
+Local development search feature using seed data from LocalStack DynamoDB.
+
+**Types:**
+```go
+type HelloTrack struct {
+    ID       string `json:"id"`
+    Title    string `json:"title"`
+    Artist   string `json:"artist"`
+    Album    string `json:"album"`
+    Genre    string `json:"genre"`
+    Year     int    `json:"year"`
+    Duration int    `json:"duration"`
+}
+
+type HelloRepository interface {
+    GetSeedTracks(ctx context.Context) ([]HelloTrack, error)
+}
+```
+
+**Methods:**
+- `NewHelloService(repo HelloRepository) *HelloService` - Constructor
+- `Search(ctx, query string) ([]HelloTrack, error)` - Case-insensitive search across title, artist, album, genre. Empty query returns empty slice.
+- `Featured(ctx, limit int) ([]HelloTrack, error)` - Returns up to `limit` tracks. `limit <= 0` returns all tracks.
 
 ### Camelot Key Utilities
 - `IsKeyCompatible` - Check if two keys can be mixed harmonically

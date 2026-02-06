@@ -34,6 +34,7 @@ src/
 │   ├── index.tsx     # Home page
 │   ├── login.tsx     # Login page
 │   ├── hello.tsx     # Hello World validation page
+│   ├── hello-search.tsx  # Hello World search page (full-stack demo)
 │   ├── search.tsx    # Search results
 │   ├── upload.tsx    # File upload
 │   ├── tracks/       # /tracks routes

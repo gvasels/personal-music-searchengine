@@ -10,6 +10,7 @@ React frontend for the Personal Music Search Engine. Built with Vite, TypeScript
 frontend/
 ├── src/
 │   ├── components/         # Reusable React components
+│   │   ├── hello/          # Hello World demo (HelloNav, SearchInput, TrackCard)
 │   │   ├── layout/         # Layout components (Header, Sidebar, Layout)
 │   │   ├── library/        # Music library (TrackList, AlbumCard, ArtistCard)
 │   │   ├── player/         # Audio player (PlayerBar)
@@ -81,6 +82,14 @@ frontend/
 |-----------|------|-------------|
 | `UploadDropzone` | `UploadDropzone.tsx` | Drag-and-drop file upload with progress |
 
+### Hello (`src/components/hello/`)
+| Component | File | Description |
+|-----------|------|-------------|
+| `HelloNav` | `HelloNav.tsx` | Navigation bar for Hello search page |
+| `SearchInput` | `SearchInput.tsx` | Controlled search input with DaisyUI styling |
+| `TrackCard` | `TrackCard.tsx` | Track info card with duration formatting |
+| `TrackCardSkeleton` | `TrackCardSkeleton.tsx` | Loading skeleton for TrackCard |
+
 ## Hooks (`src/hooks/`)
 
 | Hook | File | Purpose |
@@ -95,6 +104,7 @@ frontend/
 | `useTags` | `useTags.ts` | Tag queries and tracks-by-tag with `tagKeys` factory |
 | `useFeatureFlags` | `useFeatureFlags.ts` | Feature flags with role-based access, respects simulation |
 | `useRoleSimulation` | `useRoleSimulation.ts` | Admin role simulation for testing UI as different roles |
+| `useHelloSearch` | `useHelloSearch.ts` | Hello World search hooks with `helloKeys` factory |
 
 ## Utilities (`src/lib/`)
 
@@ -110,6 +120,7 @@ frontend/
 | `search.ts` | `searchTracks`, `searchAutocomplete` |
 | `playlists.ts` | `getPlaylists`, `getPlaylist`, `createPlaylist`, `updatePlaylist`, `deletePlaylist`, `addTrackToPlaylist`, `removeTrackFromPlaylist` |
 | `tags.ts` | `getTags`, `getTracksByTag`, `addTagToTrack`, `removeTagFromTrack` |
+| `helloSearch.ts` | `searchHelloTracks`, `getFeaturedHelloTracks`, `getHelloHealth` |
 
 ### Types (`api/types.ts`)
 ```typescript
@@ -171,6 +182,7 @@ TanStack Router file-based routing:
 | `/tags/$tagName` | `tags/$tagName.tsx` | Tracks by tag |
 | `/upload` | `upload.tsx` | File upload page |
 | `/search` | `search.tsx` | Search results page |
+| `/hello-search` | `hello-search.tsx` | Hello World full-stack search demo |
 
 ### Route Protection
 
@@ -180,6 +192,7 @@ The `__root.tsx` implements guest user route protection:
 - `/` - Dashboard/home page
 - `/login` - Login page
 - `/permission-denied` - Access denied page
+- `/hello-search` - Hello World search demo (local dev)
 
 **Protected Routes** (require authentication):
 All other routes redirect unauthenticated users to `/permission-denied`.

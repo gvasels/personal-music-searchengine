@@ -17,6 +17,7 @@ HTTP handlers using Echo framework for the Personal Music Search Engine API. All
 | `upload.go` | Upload workflow handlers (presigned URLs, confirmation) |
 | `stream.go` | Streaming and download URL handlers |
 | `search.go` | Search handlers (simple and advanced) |
+| `hello.go` | Hello World handlers (search, featured, health) |
 
 ## Route Registration
 
@@ -98,6 +99,14 @@ All routes are registered under `/api/v1`:
 | GET | `/search` | SimpleSearch | Simple text search |
 | POST | `/search` | AdvancedSearch | Advanced search with filters |
 
+### Hello World Routes (No auth required)
+Registered via `RegisterHelloRoutes[T](e *echo.Echo, h *HelloHandler[T])`:
+| Method | Path | Handler | Description |
+|--------|------|---------|-------------|
+| GET | `/hello/health` | Health | Service health check |
+| GET | `/hello/search` | Search | Search tracks by query param `q` |
+| GET | `/hello/featured` | Featured | Get featured tracks with optional `limit` |
+
 ### Admin Routes (Admin role required)
 | Method | Path | Handler | Description |
 |--------|------|---------|-------------|
@@ -114,6 +123,34 @@ These routes support admin global access via `hasGlobal` parameter:
 | `GET /tracks` | Returns ALL tracks from all users |
 | `GET /tracks/:id` | Can access any track regardless of visibility |
 | `DELETE /tracks/:id` | Can delete any user's track (cleans up S3 + HLS files) |
+
+## Hello World Handler
+
+Generic handler for the Hello World local dev feature.
+
+```go
+// Generic interface for any track type
+type helloServiceSearcher[T any] interface {
+    Search(ctx context.Context, query string) ([]T, error)
+    Featured(ctx context.Context, limit int) ([]T, error)
+}
+
+// Handler with generic type parameter
+type HelloHandler[T any] struct {
+    service helloServiceSearcher[T]
+}
+
+// Constructor
+func NewHelloHandler[T any](svc helloServiceSearcher[T]) *HelloHandler[T]
+
+// Route registration (no auth middleware)
+func RegisterHelloRoutes[T any](e *echo.Echo, h *HelloHandler[T])
+```
+
+**API Contract:**
+- Search uses query param `q` (NOT `query`)
+- Response uses `items` key (NOT `tracks`)
+- Returns `{"items": [...], "total": N}`
 
 ## Helper Functions
 
