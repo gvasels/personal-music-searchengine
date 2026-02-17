@@ -21,7 +21,7 @@ func setupPlaylistService(t *testing.T) (*testutil.TestContext, service.Playlist
 	repo := repository.NewDynamoDBRepository(tc.DynamoDB, tc.TableName)
 	presignClient := s3.NewPresignClient(tc.S3)
 	s3Repo := repository.NewS3Repository(tc.S3, presignClient, tc.BucketName)
-	svc := service.NewPlaylistService(repo, s3Repo)
+	svc := service.NewPlaylistService(repo, s3Repo, nil)
 	return tc, svc, repo, cleanup
 }
 

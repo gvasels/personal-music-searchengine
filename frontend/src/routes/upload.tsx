@@ -14,13 +14,15 @@ export default function UploadPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Upload Music</h1>
+        <h1 className="text-2xl font-bold">Upload Audio Files</h1>
         {uploads.length > 0 && (
           <button className="btn btn-ghost btn-sm" onClick={reset}>
             Clear
           </button>
         )}
       </div>
+
+      <p className="text-sm text-base-content/60">🎬 Video upload coming soon</p>
 
       <UploadDropzone
         onFilesSelected={handleFilesSelected}

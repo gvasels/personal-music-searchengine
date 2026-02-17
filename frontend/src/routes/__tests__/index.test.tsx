@@ -71,13 +71,41 @@ function renderHome() {
     path: '/upload',
     component: () => <div>Upload Page</div>,
   });
-  const libraryRoute = createRoute({
+  const musicRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/library',
-    component: () => <div>Library Page</div>,
+    path: '/music',
+    component: () => <div>Music</div>,
+  });
+  const musicTracksRoute = createRoute({
+    getParentRoute: () => musicRoute,
+    path: '/tracks',
+    component: () => <div>Tracks</div>,
+  });
+  const musicPlaylistsRoute = createRoute({
+    getParentRoute: () => musicRoute,
+    path: '/playlists',
+    component: () => <div>Playlists</div>,
+  });
+  const videosRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/videos',
+    component: () => <div>Videos</div>,
+  });
+  const gamingRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/gaming',
+    component: () => <div>Gaming</div>,
+  });
+  const searchRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/search',
+    component: () => <div>Search</div>,
   });
 
-  const routeTree = rootRoute.addChildren([homeRoute, loginRoute, uploadRoute, libraryRoute]);
+  const routeTree = rootRoute.addChildren([
+    homeRoute, loginRoute, uploadRoute, searchRoute, videosRoute, gamingRoute,
+    musicRoute.addChildren([musicTracksRoute, musicPlaylistsRoute]),
+  ]);
   const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: ['/'] }) });
 
   return {
@@ -270,7 +298,7 @@ describe('Home Page (Task 1.11)', () => {
       renderHome();
 
       await waitFor(() => {
-        expect(screen.getByRole('link', { name: /library|browse/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /^browse library$/i })).toBeInTheDocument();
       });
     });
 

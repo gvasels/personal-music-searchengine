@@ -10,10 +10,12 @@ App shell components providing the main layout structure including header, sideb
 |------|-------------|
 | `Layout.tsx` | Main app shell with role simulation support |
 | `Header.tsx` | Top navigation bar with theme toggle button |
-| `Sidebar.tsx` | Role-aware navigation menu |
-| `MobileNav.tsx` | Mobile navigation overlay |
+| `Sidebar.tsx` | Section-based navigation (Home, Music, Videos, Gaming) |
+| `MobileNav.tsx` | Mobile navigation overlay with collapsible Music sub-nav |
+| `MusicLayout.tsx` | Pass-through Outlet wrapper for /music/* routes |
 | `index.ts` | Barrel export for all layout components |
 | `__tests__/Layout.test.tsx` | Unit tests for layout components |
+| `__tests__/Sidebar.test.tsx` | Unit tests for section-based sidebar |
 
 ## Key Functions
 
@@ -65,16 +67,19 @@ export function Sidebar(): JSX.Element
 ```
 Role-aware navigation menu with TanStack Router `Link` components.
 
-**Navigation Items by Role:**
+**Navigation Sections (Epic 2.1):**
+| Section | Route | Required Role | Sub-nav |
+|---------|-------|---------------|---------|
+| Home | `/` | guest | — |
+| Music | `/music` | subscriber | Tracks, Albums, Artists, Playlists, Tags |
+| Videos | `/videos` | subscriber | — |
+| Gaming | `/gaming` | subscriber | — |
+
+**Utility Items:**
 | Route | Required Role | Description |
 |-------|---------------|-------------|
-| `/` (Home) | guest | Dashboard - accessible to all |
-| `/tracks` | subscriber | Track listing |
-| `/albums` | subscriber | Album grid |
-| `/artists` | subscriber | Artist listing |
-| `/playlists` | subscriber | Playlist management |
-| `/tags` | subscriber | Tag cloud |
 | `/upload` | artist | File upload |
+| `/search` | subscriber | Search |
 | `/settings` | subscriber | User settings |
 | `/admin/users` | admin | User management (admin section) |
 

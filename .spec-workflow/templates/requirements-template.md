@@ -6,7 +6,7 @@
 
 ## Alignment with Product Vision
 
-[Explain how this feature supports the project goals. Reference `.spec-workflow/steering/product.md` if it exists, otherwise reference the root `CLAUDE.md` project overview.]
+[Explain how this feature supports the goals outlined in product.md]
 
 ## Requirements
 

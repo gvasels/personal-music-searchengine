@@ -19,11 +19,18 @@ resource "aws_lambda_function" "api" {
       DYNAMODB_TABLE_NAME           = local.dynamodb_table_name
       MEDIA_BUCKET                  = local.media_bucket_name
       STEP_FUNCTIONS_ARN            = aws_sfn_state_machine.upload_processor.arn
+      AUDIO_PIPELINE_ARN            = aws_sfn_state_machine.audio_pipeline.arn
       NIXIESEARCH_FUNCTION_NAME     = aws_lambda_function.nixiesearch.function_name
       CLOUDFRONT_DOMAIN             = aws_cloudfront_distribution.media.domain_name
       CLOUDFRONT_KEY_PAIR_ID        = aws_cloudfront_public_key.signing.id
       CLOUDFRONT_SIGNING_KEY_SECRET = aws_secretsmanager_secret.cloudfront_signing_key.name
       COGNITO_USER_POOL_ID          = local.cognito_user_pool_id
+      EMBEDDING_GATEWAY_URL         = aws_apigatewayv2_api.bedrock_gateway.api_endpoint
+      EMBEDDING_API_KEY_SECRET      = aws_secretsmanager_secret.bedrock_gateway_api_key.name
+      VECTOR_BUCKET_NAME            = local.vector_bucket_name
+      VECTOR_INDEX_NAME             = "media-embeddings"
+      VECTOR_S3_BUCKET              = local.media_bucket_name
+      VECTOR_S3_PREFIX              = "vectors"
     }
   }
 

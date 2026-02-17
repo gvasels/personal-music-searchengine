@@ -18,6 +18,7 @@ type Config struct {
 
 	// Step Functions
 	StepFunctionsARN string
+	AudioPipelineARN string
 
 	// Nixiesearch
 	NixiesearchFunctionName string
@@ -30,6 +31,18 @@ type Config struct {
 	// Cognito (for admin operations)
 	CognitoUserPoolID string
 
+	// S3 Vectors
+	VectorBucketName string
+	VectorIndexName  string
+
+	// S3 flat vector backup (for dual-write)
+	VectorS3Bucket string
+	VectorS3Prefix string
+
+	// Embedding Gateway
+	EmbeddingGatewayURL    string
+	EmbeddingGatewaySecret string
+
 	// Server (for local development)
 	ServerPort string
 }
@@ -41,11 +54,18 @@ func LoadConfig() (*Config, error) {
 		DynamoDBTableName:       os.Getenv("DYNAMODB_TABLE_NAME"),
 		MediaBucketName:         os.Getenv("MEDIA_BUCKET"),
 		StepFunctionsARN:        os.Getenv("STEP_FUNCTIONS_ARN"),
+		AudioPipelineARN:        os.Getenv("AUDIO_PIPELINE_ARN"),
 		NixiesearchFunctionName: os.Getenv("NIXIESEARCH_FUNCTION_NAME"),
 		CloudFrontDomain:        os.Getenv("CLOUDFRONT_DOMAIN"),
 		CloudFrontKeyPairID:     os.Getenv("CLOUDFRONT_KEY_PAIR_ID"),
 		CloudFrontPrivateKey:    os.Getenv("CLOUDFRONT_PRIVATE_KEY"),
 		CognitoUserPoolID:       os.Getenv("COGNITO_USER_POOL_ID"),
+		VectorBucketName:        os.Getenv("VECTOR_BUCKET_NAME"),
+		VectorIndexName:         getEnvOrDefault("VECTOR_INDEX_NAME", "media-embeddings"),
+		VectorS3Bucket:          os.Getenv("VECTOR_S3_BUCKET"),
+		VectorS3Prefix:          getEnvOrDefault("VECTOR_S3_PREFIX", "vectors"),
+		EmbeddingGatewayURL:    os.Getenv("EMBEDDING_GATEWAY_URL"),
+		EmbeddingGatewaySecret: os.Getenv("EMBEDDING_GATEWAY_SECRET"),
 		ServerPort:              getEnvOrDefault("PORT", "8080"),
 	}
 

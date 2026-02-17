@@ -51,3 +51,18 @@ export async function updateTrackVisibility(
   );
   return response.data;
 }
+
+
+export interface SimilarTrack {
+  track: import('../../types').Track;
+  score: number;
+}
+
+export interface SimilarTracksResponse {
+  similar: SimilarTrack[];
+}
+
+export async function getSimilarTracks(id: string): Promise<SimilarTracksResponse> {
+  const response = await apiClient.get<SimilarTracksResponse>(`/tracks/${id}/similar`);
+  return response.data;
+}

@@ -124,3 +124,32 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc" {
   role       = aws_iam_role.lambda_execution.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
+
+
+# S3 Vectors access policy
+resource "aws_iam_policy" "s3vectors_access" {
+  name        = "${local.name_prefix}-s3vectors-access"
+  description = "Allow Lambda to access S3 Vectors"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3vectors:PutVectors",
+          "s3vectors:GetVectors",
+          "s3vectors:DeleteVectors",
+          "s3vectors:QueryVectors",
+          "s3vectors:ListVectors"
+        ]
+        Resource = "arn:aws:s3vectors:${var.aws_region}:${data.aws_caller_identity.current.account_id}:bucket/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_s3vectors" {
+  role       = aws_iam_role.lambda_execution.name
+  policy_arn = aws_iam_policy.s3vectors_access.arn
+}

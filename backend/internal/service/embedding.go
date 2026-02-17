@@ -191,3 +191,29 @@ func (s *EmbeddingService) BatchGenerateEmbeddings(ctx context.Context, tracks [
 
 	return result, nil
 }
+
+// ComposeEmbedTextFromMetadata creates embedding text from upload metadata.
+// This is a convenience function for the indexer which has metadata but not a full Track.
+func ComposeEmbedTextFromMetadata(meta *models.UploadMetadata) string {
+	if meta == nil {
+		return ""
+	}
+	var parts []string
+	if meta.Title != "" {
+		parts = append(parts, meta.Title)
+	}
+	if meta.Artist != "" {
+		parts = append(parts, meta.Artist)
+	}
+	if meta.Album != "" {
+		parts = append(parts, meta.Album)
+	}
+	if meta.Genre != "" {
+		parts = append(parts, meta.Genre)
+	}
+	result := strings.Join(parts, " ")
+	if len(result) > MaxEmbedTextLength {
+		result = result[:MaxEmbedTextLength]
+	}
+	return result
+}

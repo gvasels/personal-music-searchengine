@@ -1,6 +1,6 @@
 # S3 bucket for OpenTofu state
 resource "aws_s3_bucket" "tofu_state" {
-  bucket = "${local.name_prefix}-tofu-state"
+  bucket = "${local.name_prefix}-tofu-state-${data.aws_caller_identity.current.account_id}"
 
   lifecycle {
     prevent_destroy = true

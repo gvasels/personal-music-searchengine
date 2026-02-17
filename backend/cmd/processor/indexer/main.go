@@ -10,9 +10,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awslambda "github.com/aws/aws-sdk-go-v2/service/lambda"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/gvasels/personal-music-searchengine/internal/clients"
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
 	"github.com/gvasels/personal-music-searchengine/internal/search"
+	"github.com/gvasels/personal-music-searchengine/internal/service"
 	"github.com/gvasels/personal-music-searchengine/internal/validation"
 )
 
@@ -34,6 +37,7 @@ type Response struct {
 
 var searchClient *search.Client
 var repo repository.Repository
+var embeddingGateway clients.EmbeddingGateway
 
 func init() {
 	cfg, err := config.LoadDefaultConfig(context.Background())
@@ -57,6 +61,14 @@ func init() {
 
 	lambdaClient := awslambda.NewFromConfig(cfg)
 	searchClient = search.NewClient(lambdaClient, nixieFunctionName)
+
+	// Initialize embedding gateway client if configured
+	gatewayURL := os.Getenv("EMBEDDING_GATEWAY_URL")
+	secretName := os.Getenv("EMBEDDING_API_KEY_SECRET")
+	if gatewayURL != "" && secretName != "" {
+		smClient := clients.NewAWSSecretsManager(secretsmanager.NewFromConfig(cfg))
+		embeddingGateway = clients.NewEmbeddingGatewayClient(gatewayURL, secretName, smClient)
+	}
 }
 
 func handleRequest(ctx context.Context, event Event) (*Response, error) {
@@ -66,33 +78,21 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 
 	// Validate required fields
 	if err := validation.ValidateUUID(event.TrackID, "trackId"); err != nil {
-		return &Response{
-			Indexed: false,
-			Reason:  err.Error(),
-		}, nil
+		return &Response{Indexed: false, Reason: err.Error()}, nil
 	}
 
 	if err := validation.ValidateUUID(event.UserID, "userId"); err != nil {
-		return &Response{
-			Indexed: false,
-			Reason:  err.Error(),
-		}, nil
+		return &Response{Indexed: false, Reason: err.Error()}, nil
 	}
 
 	// If search client not initialized, skip indexing
 	if searchClient == nil {
-		return &Response{
-			Indexed: false,
-			Reason:  "search_disabled",
-		}, nil
+		return &Response{Indexed: false, Reason: "search_disabled"}, nil
 	}
 
 	// Validate metadata is present
 	if event.Metadata == nil {
-		return &Response{
-			Indexed: false,
-			Reason:  "missing_metadata",
-		}, nil
+		return &Response{Indexed: false, Reason: "missing_metadata"}, nil
 	}
 
 	// Build search document from metadata
@@ -109,20 +109,27 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 		IndexedAt: time.Now(),
 	}
 
+	// Generate embedding if gateway is available (graceful degradation)
+	if embeddingGateway != nil {
+		text := service.ComposeEmbedTextFromMetadata(event.Metadata)
+		if text != "" {
+			embedding, err := embeddingGateway.GenerateEmbedding(ctx, text)
+			if err != nil {
+				fmt.Printf("Warning: embedding generation failed for track %s: %v\n", event.TrackID, err)
+			} else {
+				doc.Embedding = embedding
+			}
+		}
+	}
+
 	// Index the document
 	resp, err := searchClient.Index(ctx, doc)
 	if err != nil {
-		return &Response{
-			Indexed: false,
-			Reason:  fmt.Sprintf("index_failed: %v", err),
-		}, nil
+		return &Response{Indexed: false, Reason: fmt.Sprintf("index_failed: %v", err)}, nil
 	}
 
 	if !resp.Indexed {
-		return &Response{
-			Indexed: false,
-			Reason:  "index_rejected",
-		}, nil
+		return &Response{Indexed: false, Reason: "index_rejected"}, nil
 	}
 
 	// Update step progress
@@ -132,9 +139,7 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 		}
 	}
 
-	return &Response{
-		Indexed: true,
-	}, nil
+	return &Response{Indexed: true}, nil
 }
 
 func main() {

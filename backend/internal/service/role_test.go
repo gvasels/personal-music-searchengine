@@ -36,6 +36,13 @@ func (m *MockRoleRepository) ListUsersByRole(ctx context.Context, role models.Us
 	}
 	return args.Get(0).(*repository.PaginatedResult[models.User]), args.Error(1)
 }
+func (m *MockRoleRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockRoleRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 func TestNewRoleService(t *testing.T) {
 	t.Run("creates service with repository", func(t *testing.T) {

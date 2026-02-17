@@ -16,8 +16,11 @@ src/
 │   ├── search/       # Search: SearchBar
 │   ├── tag/          # Tags: TagInput
 │   └── upload/       # Upload: UploadDropzone
+│       └── track/        # Track: SimilarTracks
 ├── hooks/
-│   └── useAuth.ts    # Authentication hook
+│   ├── useAuth.ts    # Authentication hook
+│   ├── useSimilarTracks.ts  # Similar tracks via vector similarity
+│   └── ...           # 19 hooks total (see hooks/CLAUDE.md)
 ├── lib/
 │   ├── api/          # API client and types
 │   │   ├── client.ts # Axios client with auth interceptor
@@ -33,8 +36,6 @@ src/
 │   ├── __root.tsx    # Root layout with auth guard
 │   ├── index.tsx     # Home page
 │   ├── login.tsx     # Login page
-│   ├── hello.tsx     # Hello World validation page
-│   ├── hello-search.tsx  # Hello World search page (full-stack demo)
 │   ├── search.tsx    # Search results
 │   ├── upload.tsx    # File upload
 │   ├── tracks/       # /tracks routes
@@ -43,7 +44,6 @@ src/
 │   ├── playlists/    # /playlists routes
 │   ├── tags/         # /tags routes
 │   └── __tests__/    # Route unit tests
-│       └── hello.test.tsx  # HelloPage tests
 ├── main.tsx          # Application entry point
 ├── index.css         # Global styles (Tailwind + DaisyUI)
 ├── vite-env.d.ts     # Vite type declarations

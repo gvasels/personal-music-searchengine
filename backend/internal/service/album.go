@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"sort"
-	"time"
 
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
@@ -13,13 +12,15 @@ import (
 type albumService struct {
 	repo   repository.Repository
 	s3Repo repository.S3Repository
+	cf     repository.CloudFrontSigner
 }
 
 // NewAlbumService creates a new album service
-func NewAlbumService(repo repository.Repository, s3Repo repository.S3Repository) AlbumService {
+func NewAlbumService(repo repository.Repository, s3Repo repository.S3Repository, cf repository.CloudFrontSigner) AlbumService {
 	return &albumService{
 		repo:   repo,
 		s3Repo: s3Repo,
+		cf:     cf,
 	}
 }
 
@@ -32,13 +33,7 @@ func (s *albumService) GetAlbum(ctx context.Context, userID, albumID string) (*m
 		return nil, err
 	}
 
-	coverArtURL := ""
-	if album.CoverArtKey != "" {
-		url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, album.CoverArtKey, 24*time.Hour)
-		if err == nil {
-			coverArtURL = url
-		}
-	}
+	coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, album.CoverArtKey)
 
 	// Get tracks for this album
 	filter := models.TrackFilter{
@@ -54,13 +49,7 @@ func (s *albumService) GetAlbum(ctx context.Context, userID, albumID string) (*m
 	var tracks []models.TrackResponse
 	for _, track := range trackResult.Items {
 		if track.Album == album.Title && track.Artist == album.Artist {
-			trackCoverURL := ""
-			if track.CoverArtKey != "" {
-				url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
-				if err == nil {
-					trackCoverURL = url
-				}
-			}
+			trackCoverURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, track.CoverArtKey)
 			tracks = append(tracks, track.ToResponse(trackCoverURL))
 		}
 	}
@@ -135,13 +124,7 @@ func (s *albumService) ListAlbums(ctx context.Context, userID string, filter mod
 			continue
 		}
 
-		coverArtURL := ""
-		if album.CoverArtKey != "" {
-			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, album.CoverArtKey, 24*time.Hour)
-			if err == nil {
-				coverArtURL = url
-			}
-		}
+		coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, album.CoverArtKey)
 
 		resp := album.ToResponse(coverArtURL)
 		// Override with calculated values
@@ -200,13 +183,7 @@ func (s *albumService) ListAlbumsByArtist(ctx context.Context, userID, artist st
 			continue
 		}
 
-		coverArtURL := ""
-		if album.CoverArtKey != "" {
-			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, album.CoverArtKey, 24*time.Hour)
-			if err == nil {
-				coverArtURL = url
-			}
-		}
+		coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, album.CoverArtKey)
 
 		resp := album.ToResponse(coverArtURL)
 		resp.TrackCount = stats.trackCount

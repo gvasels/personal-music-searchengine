@@ -54,6 +54,32 @@ func (c *Client) Search(ctx context.Context, userID string, query SearchQuery) (
 	return &searchResp, nil
 }
 
+// HybridSearch executes a search with both keyword and semantic components.
+func (c *Client) HybridSearch(ctx context.Context, userID string, query SearchQuery) (*SearchResponse, error) {
+	query.Filters.UserID = userID
+
+	req := NixiesearchRequest{
+		Operation: "hybrid_search",
+		Payload:   query,
+	}
+
+	resp, err := c.invoke(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("hybrid search failed: %w", err)
+	}
+
+	var searchResp SearchResponse
+	data, err := json.Marshal(resp.Data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+	if err := json.Unmarshal(data, &searchResp); err != nil {
+		return nil, fmt.Errorf("failed to parse search response: %w", err)
+	}
+
+	return &searchResp, nil
+}
+
 // Index adds or updates a document in the search index.
 func (c *Client) Index(ctx context.Context, doc Document) (*IndexResponse, error) {
 	req := NixiesearchRequest{

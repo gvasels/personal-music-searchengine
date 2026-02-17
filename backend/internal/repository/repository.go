@@ -56,6 +56,8 @@ type Repository interface {
 	ListTracksByArtist(ctx context.Context, userID, artist string) ([]models.Track, error)
 	ListPublicTracks(ctx context.Context, limit int, cursor string) (*PaginatedResult[models.Track], error)
 	UpdateTrackVisibility(ctx context.Context, userID, trackID string, visibility models.TrackVisibility) error
+	UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error
+	UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error
 
 	// Album operations
 	GetOrCreateAlbum(ctx context.Context, userID, albumName, artist string) (*models.Album, error)

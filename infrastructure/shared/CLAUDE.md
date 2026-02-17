@@ -12,6 +12,7 @@ Shared services used by multiple components: authentication (Cognito), database 
 | `cognito.tf` | Cognito User Pool and App Client |
 | `dynamodb.tf` | Single-table DynamoDB with GSIs |
 | `s3.tf` | Media bucket with Intelligent-Tiering |
+| `s3-vectors.tf` | S3 Vectors bucket and index for audio embeddings |
 
 ## Resources Created
 

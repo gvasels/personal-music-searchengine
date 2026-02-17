@@ -215,6 +215,22 @@ resource "aws_s3_bucket_policy" "media_cloudfront" {
             "AWS:SourceArn" = aws_cloudfront_distribution.media.arn
           }
         }
+      },
+      {
+        Sid    = "BedrockAsyncInvokeAccess"
+        Effect = "Allow"
+        Principal = {
+          Service = "bedrock.amazonaws.com"
+        }
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:GetBucketLocation"
+        ]
+        Resource = [
+          local.media_bucket_arn,
+          "${local.media_bucket_arn}/*"
+        ]
       }
     ]
   })

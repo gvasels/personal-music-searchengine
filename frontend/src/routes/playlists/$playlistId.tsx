@@ -85,7 +85,7 @@ export default function PlaylistDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link to="/playlists" className="btn btn-ghost btn-sm">
+        <Link to="/music/playlists" className="btn btn-ghost btn-sm">
           ← Back
         </Link>
       </div>

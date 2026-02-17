@@ -68,6 +68,13 @@ func (m *MockFollowRepository) GetArtistProfile(ctx context.Context, userID stri
 	}
 	return args.Get(0).(*models.ArtistProfile), args.Error(1)
 }
+func (m *MockFollowRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockFollowRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 func TestNewFollowService(t *testing.T) {
 	t.Run("creates service with repository", func(t *testing.T) {

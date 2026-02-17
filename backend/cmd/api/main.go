@@ -17,9 +17,12 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/gvasels/personal-music-searchengine/internal/handlers"
+	"github.com/gvasels/personal-music-searchengine/internal/clients"
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
 	"github.com/gvasels/personal-music-searchengine/internal/search"
 	"github.com/gvasels/personal-music-searchengine/internal/service"
+	"github.com/gvasels/personal-music-searchengine/internal/vectors"
+	cfSigner "github.com/gvasels/personal-music-searchengine/internal/cloudfront"
 )
 
 var echoLambda *echoadapter.EchoLambdaV2
@@ -115,9 +118,12 @@ func setupEcho() (*echo.Echo, error) {
 	// Create CloudFront signer (optional)
 	var cloudfront repository.CloudFrontSigner
 	if appCfg.CloudFrontDomain != "" && appCfg.CloudFrontKeyPairID != "" && appCfg.CloudFrontPrivateKey != "" {
-		// CloudFront signer would be initialized here
-		// For now, we use S3 presigned URLs as fallback
-		cloudfront = nil
+		signer, err := cfSigner.NewSigner(appCfg.CloudFrontDomain, appCfg.CloudFrontKeyPairID, []byte(appCfg.CloudFrontPrivateKey))
+		if err != nil {
+			log.Printf("Warning: failed to initialize CloudFront signer: %v (falling back to S3 presigned URLs)", err)
+		} else {
+			cloudfront = signer
+		}
 	}
 
 	// Create services
@@ -138,13 +144,38 @@ func setupEcho() (*echo.Echo, error) {
 	// Initialize search service if Nixiesearch function name is configured
 	if appCfg.NixiesearchFunctionName != "" {
 		searchClient := search.NewClient(lambdaClient, appCfg.NixiesearchFunctionName)
-		services.Search = service.NewSearchService(searchClient, repo, s3Repo)
+		services.Search = service.NewSearchService(searchClient, repo, s3Repo, cloudfront)
 	}
 
 	// Initialize admin service if Cognito User Pool ID is configured
 	if appCfg.CognitoUserPoolID != "" {
 		cognitoSvc := service.NewCognitoClient(cognitoClient, appCfg.CognitoUserPoolID)
 		services.Admin = service.NewAdminService(repo, cognitoSvc)
+	}
+
+	// Initialize vector service if Vector Bucket is configured
+	if appCfg.VectorBucketName != "" {
+		if appCfg.VectorS3Bucket != "" {
+			// Dual-write: S3 Vectors (kNN) + S3 flat (backup/testing)
+			services.Vector = vectors.NewDualWriteAdapter(
+				appCfg.VectorBucketName, appCfg.VectorIndexName,
+				appCfg.VectorS3Bucket, appCfg.VectorS3Prefix,
+			)
+		} else {
+			services.Vector = vectors.NewServiceAdapter(appCfg.VectorBucketName, appCfg.VectorIndexName)
+		}
+	}
+
+	// Initialize embedding gateway if configured
+	var embGateway clients.EmbeddingGateway
+	if appCfg.EmbeddingGatewayURL != "" {
+		embGateway = clients.NewEmbeddingGatewayClient(appCfg.EmbeddingGatewayURL, appCfg.EmbeddingGatewaySecret, nil)
+	}
+
+	// Upgrade search service with semantic search if both embedding gateway and vectors are available
+	if appCfg.NixiesearchFunctionName != "" && embGateway != nil && services.Vector != nil {
+		searchClient := search.NewClient(lambdaClient, appCfg.NixiesearchFunctionName)
+		services.Search = service.NewSearchServiceWithEmbeddings(searchClient, repo, s3Repo, cloudfront, embGateway, services.Vector)
 	}
 
 	// Create handlers

@@ -5,9 +5,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'react-hot-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
 import { useSearchUsers } from '../../hooks/useAdmin';
 import { UserSearchForm, UserCard, UserDetailModal } from '../../components/admin';
+import { getSelfSignUp, setSelfSignUp } from '../../lib/api/admin';
 
 export default function AdminUsersPage() {
   const navigate = useNavigate();
@@ -17,6 +19,20 @@ export default function AdminUsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: searchResults, isLoading: searchLoading } = useSearchUsers(searchQuery);
+
+  const queryClient = useQueryClient();
+  const { data: selfSignUp } = useQuery({
+    queryKey: ['admin', 'self-signup'],
+    queryFn: getSelfSignUp,
+  });
+  const selfSignUpMutation = useMutation({
+    mutationFn: (enabled: boolean) => setSelfSignUp(enabled),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['admin', 'self-signup'], data);
+      toast.success(`Self-registration ${data.enabled ? 'enabled' : 'disabled'}`);
+    },
+    onError: () => toast.error('Failed to update setting'),
+  });
 
   // Redirect non-admins
   useEffect(() => {
@@ -67,6 +83,32 @@ export default function AdminUsersPage() {
         <p className="text-base-content/60 mt-1">
           Search and manage user accounts, roles, and status
         </p>
+      </div>
+
+      {/* Settings */}
+      <div className="card bg-base-100 shadow-sm">
+        <div className="card-body">
+          <h2 className="card-title text-lg mb-2">Settings</h2>
+          <div className="form-control">
+            <label className="label cursor-pointer justify-start gap-3">
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={selfSignUp?.enabled ?? false}
+                onChange={(e) => selfSignUpMutation.mutate(e.target.checked)}
+                disabled={selfSignUpMutation.isPending}
+              />
+              <div>
+                <span className="label-text font-medium">Allow self-registration</span>
+                <p className="text-xs text-base-content/60">
+                  {selfSignUp?.enabled
+                    ? 'Users can create their own accounts'
+                    : 'Only admins can create new accounts'}
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
       </div>
 
       {/* Search Form */}

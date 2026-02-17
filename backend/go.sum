@@ -46,6 +46,10 @@ github.com/aws/aws-sdk-go-v2/service/mediaconvert v1.86.1 h1:n9EUSVO2W0odPdBeZHz
 github.com/aws/aws-sdk-go-v2/service/mediaconvert v1.86.1/go.mod h1:2VdIvoTkHA7iZeutHky1BSCufmaIVEyidII2lZ8FfWw=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.58.3 h1:hT8ZAZRIfqBqHbzKTII+CIiY8G2oC9OpLedkZ51DWl8=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.58.3/go.mod h1:Lcxzg5rojyVPU/0eFwLtcyTaek/6Mtic5B1gJo7e/zE=
+github.com/aws/aws-sdk-go-v2/service/s3vectors v1.6.2 h1:WaiEcVt+PLQHKcVHTNLyNdEtSCJg66UgkZPz/7U1sRw=
+github.com/aws/aws-sdk-go-v2/service/s3vectors v1.6.2/go.mod h1:jx5h7TDVkeiGejYTJ7zRiKIb80TMNzkf6LyLwvmXLkQ=
+github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.1 h1:72DBkm/CCuWx2LMHAXvLDkZfzopT3psfAeyZDIt1/yE=
+github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.1/go.mod h1:A+oSJxFvzgjZWkpM0mXs3RxB5O1SD6473w3qafOC9eU=
 github.com/aws/aws-sdk-go-v2/service/sfn v1.27.4 h1:5+BloTL4s6ecDozPnVJ985AjSSnjn3cIfOxPs/DqTXY=
 github.com/aws/aws-sdk-go-v2/service/sfn v1.27.4/go.mod h1:mF+banHOuvb4T6M00j732iV5mbzc1/Ey8D9DNsO0SAg=
 github.com/aws/aws-sdk-go-v2/service/sso v1.22.4 h1:BXx0ZIxvrJdSgSvKTZ+yRBeSqqgPM89VPlulEcl37tM=

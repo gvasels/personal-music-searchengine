@@ -83,15 +83,40 @@ export interface Track {
   s3Key: string;
   coverArtUrl?: string;
   tags: string[];
+  // Audio analysis fields
   bpm?: number;           // Beats per minute (20-300)
+  bpmConfidence?: number; // Detection confidence (0-1)
   musicalKey?: string;    // e.g., "Am", "C", "F#m"
   keyMode?: string;       // "major" or "minor"
   keyCamelot?: string;    // Camelot notation, e.g., "8A", "11B"
+  keyConfidence?: number; // Detection confidence (0-1)
+  energy?: number;        // Energy level (0-1)
+  loudness?: number;      // Loudness in LUFS
+  // GenAI analysis fields (Epic 2.3)
+  subGenre?: string;        // Sub-genre classification
+  mood?: string;            // One-word mood
+  toneDescription?: string; // 2-3 sentence description
+  sections?: Section[];     // Section analysis
+  instrumentation?: string; // Detected instruments
+  vocalPresence?: string;   // none/male/female/mixed
+  energyProfile?: string;   // Energy arc description
+  embeddingId?: string;     // S3 Vectors embedding ID
+  analysisStatus?: string;  // PENDING/ANALYZING/COMPLETED/FAILED
+  analyzedAt?: string;      // Analysis timestamp
+  // Visibility fields
   visibility?: TrackVisibility;         // Track visibility level (default: private)
   ownerDisplayName?: string;            // Display name of track owner (for admin/global users)
   publishedAt?: string;                 // When track was made public
   createdAt: string;
   updatedAt: string;
+}
+
+// Section represents a detected section in audio analysis
+export interface Section {
+  name: string;        // intro, buildup, drop, breakdown, outro
+  startSec: number;    // Start time in seconds
+  endSec: number;      // End time in seconds
+  description: string; // Section description
 }
 
 export interface Album {

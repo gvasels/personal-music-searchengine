@@ -3,7 +3,7 @@
  * Task 1.1 - Amplify Auth Configuration
  */
 
-import { signIn as amplifySignIn, signOut as amplifySignOut, getCurrentUser as amplifyGetCurrentUser, fetchAuthSession, signUp as amplifySignUp, confirmSignUp as amplifyConfirmSignUp, resendSignUpCode as amplifyResendSignUpCode } from 'aws-amplify/auth';
+import { signIn as amplifySignIn, signOut as amplifySignOut, getCurrentUser as amplifyGetCurrentUser, fetchAuthSession, signUp as amplifySignUp, confirmSignUp as amplifyConfirmSignUp, resendSignUpCode as amplifyResendSignUpCode, confirmSignIn as amplifyConfirmSignIn } from 'aws-amplify/auth';
 import { Amplify } from 'aws-amplify';
 import type { UserRole } from '../types';
 import { isLocalStackMode, logConfig } from './config';
@@ -22,9 +22,11 @@ export enum AuthErrorCode {
   TOKEN_REFRESH_FAILED = 'TOKEN_REFRESH_FAILED',
   AUTH_CONFIG_INVALID = 'AUTH_CONFIG_INVALID',
   SIGN_OUT_FAILED = 'SIGN_OUT_FAILED',
+  SIGNUP_NOT_ALLOWED = 'SIGNUP_NOT_ALLOWED',
   SIGN_UP_FAILED = 'SIGN_UP_FAILED',
   CONFIRMATION_FAILED = 'CONFIRMATION_FAILED',
   MFA_REQUIRED = 'MFA_REQUIRED',
+  NEW_PASSWORD_REQUIRED = 'NEW_PASSWORD_REQUIRED',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -150,6 +152,7 @@ function mapAmplifyError(error: unknown): AuthError {
     case 'TokenExpiredException':
       return new AuthError('Token expired', AuthErrorCode.TOKEN_EXPIRED, error as Error);
     default:
+      console.warn('[Auth] Unmapped Amplify error:', name, message);
       return new AuthError(message, AuthErrorCode.UNKNOWN, error as Error);
   }
 }
@@ -192,9 +195,13 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
       username: email.trim(),
       password,
     });
+    console.log('[Auth] signIn result:', JSON.stringify({ isSignedIn: result.isSignedIn, nextStep: result.nextStep }));
 
     if (!result.isSignedIn) {
       const step = result.nextStep?.signInStep || '';
+      if (step === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+        throw new AuthError('New password required', AuthErrorCode.NEW_PASSWORD_REQUIRED);
+      }
       if (step.includes('MFA') || step.includes('SMS') || step.includes('TOTP')) {
         throw new AuthError('MFA required', AuthErrorCode.MFA_REQUIRED);
       }
@@ -206,6 +213,35 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
     return {
       userId: user.userId,
       email: user.signInDetails?.loginId || email.trim(),
+      role: roleFromGroups(groups),
+      groups,
+    };
+  } catch (error) {
+    if (error instanceof AuthError) throw error;
+    // Amplify may throw instead of returning a challenge result
+    const err = error as { name?: string; message?: string };
+    if (
+      err?.name === 'PasswordResetRequiredException' ||
+      err?.name === 'NewPasswordRequired' ||
+      (err?.message && /new.?password|password.?reset|force.?change/i.test(err.message))
+    ) {
+      throw new AuthError('New password required', AuthErrorCode.NEW_PASSWORD_REQUIRED, error as Error);
+    }
+    throw mapAmplifyError(error);
+  }
+}
+
+export async function completeNewPassword(newPassword: string): Promise<AuthUser> {
+  try {
+    const result = await amplifyConfirmSignIn({ challengeResponse: newPassword });
+    if (!result.isSignedIn) {
+      throw new AuthError('Password change failed', AuthErrorCode.UNKNOWN);
+    }
+    const user = await amplifyGetCurrentUser();
+    const groups = await getGroupsFromSession();
+    return {
+      userId: user.userId,
+      email: user.signInDetails?.loginId || '',
       role: roleFromGroups(groups),
       groups,
     };
@@ -326,6 +362,10 @@ export async function signUp(email: string, password: string): Promise<SignUpRes
     };
   } catch (error) {
     if (error instanceof AuthError) throw error;
+    const err = error as { name?: string; message?: string };
+    if (err?.name === 'NotAuthorizedException' && /sign.?up.*not.*permitted/i.test(err?.message || '')) {
+      throw new AuthError('Self-registration is currently disabled. Please contact an administrator to create your account.', AuthErrorCode.SIGNUP_NOT_ALLOWED, error as Error);
+    }
     throw mapAmplifyError(error);
   }
 }

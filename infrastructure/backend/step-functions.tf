@@ -300,7 +300,10 @@ resource "aws_iam_role_policy" "lambda_step_functions" {
           "states:StartExecution",
           "states:DescribeExecution"
         ]
-        Resource = aws_sfn_state_machine.upload_processor.arn
+        Resource = [
+          aws_sfn_state_machine.upload_processor.arn,
+          aws_sfn_state_machine.audio_pipeline.arn
+        ]
       }
     ]
   })

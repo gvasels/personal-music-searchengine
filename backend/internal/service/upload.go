@@ -44,11 +44,11 @@ type StepFunctionsStartOutput struct {
 
 // UploadServiceImpl implements UploadService (exported for type assertion)
 type UploadServiceImpl struct {
-	repo             repository.Repository
-	s3Repo           repository.S3Repository
-	mediaBucket      string
-	stepFunctionsARN string
-	sfnClient        StepFunctionsClient
+	repo              repository.Repository
+	s3Repo            repository.S3Repository
+	mediaBucket       string
+	stepFunctionsARN  string
+	sfnClient         StepFunctionsClient
 }
 
 // NewUploadService creates a new upload service
@@ -345,3 +345,5 @@ func getFileExtension(filename string) string {
 	}
 	return ""
 }
+
+

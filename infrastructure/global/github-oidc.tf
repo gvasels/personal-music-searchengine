@@ -170,7 +170,7 @@ resource "aws_iam_policy" "github_actions_tofu_state" {
           "s3:ListBucket"
         ]
         Resource = [
-          "arn:aws:s3:::${local.name_prefix}-tofu-state",
+          "arn:aws:s3:::${local.name_prefix}-tofu-state-${data.aws_caller_identity.current.account_id}",
           "arn:aws:s3:::${local.name_prefix}-tofu-state/*"
         ]
       },

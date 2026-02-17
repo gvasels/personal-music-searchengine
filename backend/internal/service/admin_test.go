@@ -49,6 +49,18 @@ func (m *MockAdminRepository) GetFollowerCount(ctx context.Context, userID strin
 	return args.Int(0), args.Error(1)
 }
 
+func (m *MockAdminRepository) CreateUser(ctx context.Context, user models.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+func (m *MockAdminRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockAdminRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
+
 // MockCognitoClient is a mock implementation of CognitoClient.
 type MockCognitoClient struct {
 	mock.Mock
@@ -93,6 +105,21 @@ func (m *MockCognitoClient) SearchUsers(ctx context.Context, query string, limit
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]CognitoUser), args.Error(1)
+}
+
+func (m *MockCognitoClient) GetSelfSignUpEnabled(ctx context.Context) (bool, error) {
+	args := m.Called(ctx)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockCognitoClient) SetSelfSignUpEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(ctx, enabled)
+	return args.Error(0)
+}
+
+func (m *MockCognitoClient) GetUserEmail(ctx context.Context, userID string) (string, error) {
+	args := m.Called(ctx, userID)
+	return args.String(0), args.Error(1)
 }
 
 func TestNewAdminService(t *testing.T) {

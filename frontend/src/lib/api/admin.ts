@@ -84,3 +84,42 @@ export async function updateUserStatus(userId: string, disabled: boolean): Promi
   } as UpdateUserStatusRequest);
   return response.data;
 }
+
+/**
+ * Get self-signup setting
+ */
+export async function getSelfSignUp(): Promise<{ enabled: boolean }> {
+  const response = await apiClient.get<{ enabled: boolean }>('/admin/settings/self-signup');
+  return response.data;
+}
+
+/**
+ * Update self-signup setting
+ */
+export async function setSelfSignUp(enabled: boolean): Promise<{ enabled: boolean }> {
+  const response = await apiClient.put<{ enabled: boolean }>('/admin/settings/self-signup', { enabled });
+  return response.data;
+}
+
+
+// Vector backend settings
+export interface VectorBackendOption {
+  value: string;
+  label: string;
+  description: string;
+}
+
+export interface VectorBackendResponse {
+  mode: string;
+  options: VectorBackendOption[];
+}
+
+export async function getVectorBackend(): Promise<VectorBackendResponse> {
+  const response = await apiClient.get<VectorBackendResponse>('/admin/settings/vector-backend');
+  return response.data;
+}
+
+export async function setVectorBackend(mode: string): Promise<{ mode: string }> {
+  const response = await apiClient.put<{ mode: string }>('/admin/settings/vector-backend', { mode });
+  return response.data;
+}

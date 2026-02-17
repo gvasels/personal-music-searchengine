@@ -148,3 +148,64 @@ func (h *AdminHandler) UpdateUserStatus(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, details)
 }
+
+// GetSelfSignUp handles GET /api/v1/admin/settings/self-signup
+func (h *AdminHandler) GetSelfSignUp(c echo.Context) error {
+	enabled, err := h.adminService.GetSelfSignUpEnabled(c.Request().Context())
+	if err != nil {
+		return handleError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]bool{"enabled": enabled})
+}
+
+// SetSelfSignUp handles PUT /api/v1/admin/settings/self-signup
+func (h *AdminHandler) SetSelfSignUp(c echo.Context) error {
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	}
+	if err := h.adminService.SetSelfSignUpEnabled(c.Request().Context(), req.Enabled); err != nil {
+		return handleError(c, err)
+	}
+	return c.JSON(http.StatusOK, map[string]bool{"enabled": req.Enabled})
+}
+
+// Vector backend mode: "s3vectors", "s3flat", or "auto" (default).
+// Stored in-memory — resets to "auto" on cold start.
+var vectorBackendMode = "auto"
+
+// GetVectorBackend handles GET /api/v1/admin/settings/vector-backend
+func (h *AdminHandler) GetVectorBackend(c echo.Context) error {
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"mode": vectorBackendMode,
+		"options": []map[string]string{
+			{"value": "auto", "label": "Auto", "description": "S3 Vectors for kNN queries, S3 flat files as backup. Falls back gracefully if either is unavailable."},
+			{"value": "s3vectors", "label": "S3 Vectors", "description": "AWS managed vector database. Best for kNN similarity search with cosine distance. Scales independently of Lambda memory."},
+			{"value": "s3flat", "label": "S3 Flat Files", "description": "Vectors stored as JSON in S3. No kNN support — useful for debugging, data export, and native S3 testing."},
+		},
+	})
+}
+
+// SetVectorBackend handles PUT /api/v1/admin/settings/vector-backend
+func (h *AdminHandler) SetVectorBackend(c echo.Context) error {
+	var req struct {
+		Mode string `json:"mode"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	}
+	switch req.Mode {
+	case "auto", "s3vectors", "s3flat":
+		vectorBackendMode = req.Mode
+	default:
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "mode must be auto, s3vectors, or s3flat"})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"mode": vectorBackendMode})
+}
+
+// GetVectorBackendMode returns the current vector backend mode (used by services).
+func GetVectorBackendMode() string {
+	return vectorBackendMode
+}

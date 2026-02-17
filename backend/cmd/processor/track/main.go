@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/sfn"
 	"github.com/google/uuid"
 
 	"github.com/gvasels/personal-music-searchengine/internal/models"
@@ -51,6 +55,8 @@ type Response struct {
 }
 
 var repo repository.Repository
+var sfnClient *sfn.Client
+var audioPipelineARN = os.Getenv("AUDIO_PIPELINE_ARN")
 
 func init() {
 	cfg, err := config.LoadDefaultConfig(context.Background())
@@ -65,6 +71,7 @@ func init() {
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 	repo = repository.NewDynamoDBRepository(dynamoClient, tableName)
+	sfnClient = sfn.NewFromConfig(cfg)
 }
 
 func handleRequest(ctx context.Context, event Event) (*Response, error) {
@@ -136,6 +143,25 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 
 	response := &Response{TrackID: trackID}
 
+	// Trigger audio analysis pipeline for audio files
+	if audioPipelineARN != "" && sfnClient != nil && isAudioFile(event.S3Key) {
+		audioInput, _ := json.Marshal(map[string]string{
+			"trackId": trackID,
+			"userId":  event.UserID,
+			"s3Key":   event.S3Key,
+			"title":   track.Title,
+			"artist":  track.Artist,
+		})
+		_, err := sfnClient.StartExecution(ctx, &sfn.StartExecutionInput{
+			StateMachineArn: aws.String(audioPipelineARN),
+			Name:            aws.String(fmt.Sprintf("audio-%s-%d", trackID, time.Now().Unix())),
+			Input:           aws.String(string(audioInput)),
+		})
+		if err != nil {
+			fmt.Printf("Warning: failed to start audio pipeline for track %s: %v\n", trackID, err)
+		}
+	}
+
 	// Create or update album if album name is present
 	if track.Album != "" {
 		album, err := repo.GetOrCreateAlbum(ctx, event.UserID, track.Album, track.Artist)
@@ -190,6 +216,13 @@ func getIntOrDefault(meta *models.UploadMetadata, field string, defaultVal int) 
 		}
 	}
 	return defaultVal
+}
+
+func isAudioFile(key string) bool {
+	lower := strings.ToLower(key)
+	return strings.HasSuffix(lower, ".mp3") || strings.HasSuffix(lower, ".flac") ||
+		strings.HasSuffix(lower, ".wav") || strings.HasSuffix(lower, ".m4a") ||
+		strings.HasSuffix(lower, ".aac") || strings.HasSuffix(lower, ".ogg")
 }
 
 func main() {

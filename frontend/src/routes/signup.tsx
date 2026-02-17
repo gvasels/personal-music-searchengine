@@ -17,6 +17,8 @@ function getErrorMessage(code: AuthErrorCode): string {
       return 'Invalid verification code. Please try again.';
     case AuthErrorCode.CODE_EXPIRED:
       return 'Verification code has expired. Please request a new one.';
+    case AuthErrorCode.SIGNUP_NOT_ALLOWED:
+      return 'Self-registration is currently disabled. Please contact an administrator to create your account.';
     case AuthErrorCode.TOO_MANY_REQUESTS:
       return 'Too many attempts. Please try again later.';
     case AuthErrorCode.NETWORK_ERROR:

@@ -518,6 +518,127 @@ func (r *DynamoDBRepository) UpdateTrackVisibility(ctx context.Context, userID, 
 	return nil
 }
 
+// UpdateTrackAnalysis updates a track with audio analysis results
+func (r *DynamoDBRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	pk := fmt.Sprintf("USER#%s", userID)
+	sk := fmt.Sprintf("TRACK#%s", trackID)
+	now := time.Now()
+
+	updateExpr := "SET #upd = :upd, #status = :status, #analyzedAt = :analyzedAt"
+	exprNames := map[string]string{
+		"#upd":        "updatedAt",
+		"#status":     "analysisStatus",
+		"#analyzedAt": "analyzedAt",
+	}
+	exprValues := map[string]types.AttributeValue{
+		":upd":        &types.AttributeValueMemberS{Value: now.Format(time.RFC3339)},
+		":status":     &types.AttributeValueMemberS{Value: "COMPLETED"},
+		":analyzedAt": &types.AttributeValueMemberS{Value: now.Format(time.RFC3339)},
+	}
+
+	// Add signal analysis fields
+	if analysis.BPM > 0 {
+		updateExpr += ", #bpm = :bpm"
+		exprNames["#bpm"] = "bpm"
+		exprValues[":bpm"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", analysis.BPM)}
+	}
+	if analysis.MusicalKey != "" {
+		updateExpr += ", #key = :key, #mode = :mode, #camelot = :camelot"
+		exprNames["#key"] = "musicalKey"
+		exprNames["#mode"] = "keyMode"
+		exprNames["#camelot"] = "keyCamelot"
+		exprValues[":key"] = &types.AttributeValueMemberS{Value: analysis.MusicalKey}
+		exprValues[":mode"] = &types.AttributeValueMemberS{Value: analysis.KeyMode}
+		exprValues[":camelot"] = &types.AttributeValueMemberS{Value: analysis.KeyCamelot}
+	}
+	if analysis.Energy > 0 {
+		updateExpr += ", #energy = :energy"
+		exprNames["#energy"] = "energy"
+		exprValues[":energy"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%f", analysis.Energy)}
+	}
+	if analysis.Loudness != 0 {
+		updateExpr += ", #loudness = :loudness"
+		exprNames["#loudness"] = "loudness"
+		exprValues[":loudness"] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%f", analysis.Loudness)}
+	}
+
+	// Add GenAI analysis fields
+	if analysis.Genre != "" {
+		updateExpr += ", #genre = :genre"
+		exprNames["#genre"] = "genre"
+		exprValues[":genre"] = &types.AttributeValueMemberS{Value: analysis.Genre}
+	}
+	if analysis.SubGenre != "" {
+		updateExpr += ", #subgenre = :subgenre"
+		exprNames["#subgenre"] = "subGenre"
+		exprValues[":subgenre"] = &types.AttributeValueMemberS{Value: analysis.SubGenre}
+	}
+	if analysis.Mood != "" {
+		updateExpr += ", #mood = :mood"
+		exprNames["#mood"] = "mood"
+		exprValues[":mood"] = &types.AttributeValueMemberS{Value: analysis.Mood}
+	}
+	if analysis.ToneDescription != "" {
+		updateExpr += ", #tone = :tone"
+		exprNames["#tone"] = "toneDescription"
+		exprValues[":tone"] = &types.AttributeValueMemberS{Value: analysis.ToneDescription}
+	}
+	if analysis.Instrumentation != "" {
+		updateExpr += ", #instr = :instr"
+		exprNames["#instr"] = "instrumentation"
+		exprValues[":instr"] = &types.AttributeValueMemberS{Value: analysis.Instrumentation}
+	}
+	if analysis.VocalPresence != "" {
+		updateExpr += ", #vocal = :vocal"
+		exprNames["#vocal"] = "vocalPresence"
+		exprValues[":vocal"] = &types.AttributeValueMemberS{Value: analysis.VocalPresence}
+	}
+	if analysis.EnergyProfile != "" {
+		updateExpr += ", #profile = :profile"
+		exprNames["#profile"] = "energyProfile"
+		exprValues[":profile"] = &types.AttributeValueMemberS{Value: analysis.EnergyProfile}
+	}
+	if analysis.EmbeddingID != "" {
+		updateExpr += ", #embed = :embed"
+		exprNames["#embed"] = "embeddingId"
+		exprValues[":embed"] = &types.AttributeValueMemberS{Value: analysis.EmbeddingID}
+	}
+
+	_, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+		UpdateExpression:          aws.String(updateExpr),
+		ExpressionAttributeNames:  exprNames,
+		ExpressionAttributeValues: exprValues,
+		ConditionExpression:       aws.String("attribute_exists(PK)"),
+	})
+	if err != nil {
+		var condErr *types.ConditionalCheckFailedException
+		if errors.As(err, &condErr) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to update track analysis: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateTrackAnalysisWithFeatures updates a track with audio analysis and BPM/key features
+func (r *DynamoDBRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	// Merge BPM/key into analysis struct
+	if bpm > 0 {
+		analysis.BPM = bpm
+	}
+	if key != "" {
+		analysis.MusicalKey = key
+		analysis.KeyCamelot = camelotCode
+	}
+	return r.UpdateTrackAnalysis(ctx, userID, trackID, analysis)
+}
+
 // ============================================================================
 // Album Operations
 // ============================================================================

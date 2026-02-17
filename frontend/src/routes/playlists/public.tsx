@@ -47,7 +47,7 @@ export default function PublicPlaylistsPage() {
           {data.items.map((playlist: Playlist) => (
             <Link
               key={playlist.id}
-              to="/playlists/$playlistId"
+              to="/music/playlists/$playlistId"
               params={{ playlistId: playlist.id }}
               className="card bg-base-100 shadow hover:shadow-lg transition-shadow"
             >

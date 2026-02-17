@@ -9,7 +9,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "music-library-prod-tofu-state"
+    bucket         = "music-library-prod-tofu-state-851725417685"
     key            = "frontend/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "music-library-prod-tofu-lock"
@@ -63,7 +63,7 @@ variable "acm_certificate_arn" {
 data "terraform_remote_state" "shared" {
   backend = "s3"
   config = {
-    bucket = "music-library-prod-tofu-state"
+    bucket = "music-library-prod-tofu-state-851725417685"
     key    = "shared/terraform.tfstate"
     region = "us-east-1"
   }
@@ -72,7 +72,7 @@ data "terraform_remote_state" "shared" {
 data "terraform_remote_state" "backend" {
   backend = "s3"
   config = {
-    bucket = "music-library-prod-tofu-state"
+    bucket = "music-library-prod-tofu-state-851725417685"
     key    = "backend/terraform.tfstate"
     region = "us-east-1"
   }
@@ -111,4 +111,26 @@ output "frontend_custom_domain" {
 output "frontend_url" {
   description = "Frontend URL (custom domain or CloudFront)"
   value       = var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+
+# Frontend environment configuration from backend/shared outputs
+output "frontend_env_config" {
+  description = "Environment variables for frontend build"
+  value = {
+    VITE_API_URL             = "${data.terraform_remote_state.backend.outputs.api_gateway_url}api/v1"
+    VITE_COGNITO_USER_POOL_ID = data.terraform_remote_state.shared.outputs.cognito_user_pool_id
+    VITE_COGNITO_CLIENT_ID    = data.terraform_remote_state.shared.outputs.cognito_client_id
+    VITE_COGNITO_REGION       = var.aws_region
+  }
+}
+
+# Generate .env.production file for frontend builds
+resource "local_file" "frontend_env" {
+  filename = "${path.module}/../../frontend/.env.production"
+  content  = <<-EOT
+    VITE_API_URL=${data.terraform_remote_state.backend.outputs.api_gateway_url}api/v1
+    VITE_COGNITO_USER_POOL_ID=${data.terraform_remote_state.shared.outputs.cognito_user_pool_id}
+    VITE_COGNITO_CLIENT_ID=${data.terraform_remote_state.shared.outputs.cognito_client_id}
+    VITE_COGNITO_REGION=${var.aws_region}
+  EOT
 }

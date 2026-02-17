@@ -38,6 +38,13 @@ func (m *MockTrackVisibilityRepository) GetUserDisplayName(ctx context.Context, 
 	args := m.Called(ctx, userID)
 	return args.String(0), args.Error(1)
 }
+func (m *MockTrackVisibilityRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockTrackVisibilityRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 // MockS3RepoForVisibility mocks S3 repository for visibility tests.
 type MockS3RepoForVisibility struct {
@@ -602,6 +609,13 @@ func (m *MockTrackServiceRepository) ListUploads(ctx context.Context, userID str
 func (m *MockTrackServiceRepository) ListUploadsByStatus(ctx context.Context, status models.UploadStatus) ([]models.Upload, error) {
 	return nil, nil
 }
+func (m *MockTrackServiceRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockTrackServiceRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 // MockS3RepoForTrackService mocks S3 repository for track service tests.
 type MockS3RepoForTrackService struct {
@@ -670,7 +684,7 @@ func TestTrackService_GetTrack_OwnerCanAccessPrivate(t *testing.T) {
 	// Owner requests their own private track
 	mockRepo.On("GetTrack", ctx, ownerID, trackID).Return(privateTrack, nil)
 
-	svc := NewTrackService(mockRepo, mockS3)
+	svc := NewTrackService(mockRepo, mockS3, nil)
 	result, err := svc.GetTrack(ctx, ownerID, trackID, false) // hasGlobal=false
 
 	require.NoError(t, err)
@@ -701,7 +715,7 @@ func TestTrackService_GetTrack_AdminCanAccessAnyTrack(t *testing.T) {
 	mockRepo.On("GetTrack", ctx, adminID, trackID).Return(nil, repository.ErrNotFound)
 	mockRepo.On("GetTrackByID", ctx, trackID).Return(privateTrack, nil)
 
-	svc := NewTrackService(mockRepo, mockS3)
+	svc := NewTrackService(mockRepo, mockS3, nil)
 	result, err := svc.GetTrack(ctx, adminID, trackID, true) // hasGlobal=true (admin)
 
 	require.NoError(t, err)
@@ -732,7 +746,7 @@ func TestTrackService_GetTrack_NonOwnerForbiddenForPrivate(t *testing.T) {
 	mockRepo.On("GetTrack", ctx, requesterID, trackID).Return(nil, repository.ErrNotFound)
 	mockRepo.On("GetTrackByID", ctx, trackID).Return(privateTrack, nil)
 
-	svc := NewTrackService(mockRepo, mockS3)
+	svc := NewTrackService(mockRepo, mockS3, nil)
 	result, err := svc.GetTrack(ctx, requesterID, trackID, false) // hasGlobal=false
 
 	require.Error(t, err)
@@ -767,7 +781,7 @@ func TestTrackService_GetTrack_NonOwnerCanAccessPublic(t *testing.T) {
 	mockRepo.On("GetTrack", ctx, requesterID, trackID).Return(nil, repository.ErrNotFound)
 	mockRepo.On("GetTrackByID", ctx, trackID).Return(publicTrack, nil)
 
-	svc := NewTrackService(mockRepo, mockS3)
+	svc := NewTrackService(mockRepo, mockS3, nil)
 	result, err := svc.GetTrack(ctx, requesterID, trackID, false) // hasGlobal=false
 
 	require.NoError(t, err)
@@ -798,7 +812,7 @@ func TestTrackService_GetTrack_NonOwnerCanAccessUnlisted(t *testing.T) {
 	mockRepo.On("GetTrack", ctx, requesterID, trackID).Return(nil, repository.ErrNotFound)
 	mockRepo.On("GetTrackByID", ctx, trackID).Return(unlistedTrack, nil)
 
-	svc := NewTrackService(mockRepo, mockS3)
+	svc := NewTrackService(mockRepo, mockS3, nil)
 	result, err := svc.GetTrack(ctx, requesterID, trackID, false) // hasGlobal=false
 
 	require.NoError(t, err)
@@ -819,7 +833,7 @@ func TestTrackService_GetTrack_NotFoundReturns404(t *testing.T) {
 	mockRepo.On("GetTrack", ctx, requesterID, trackID).Return(nil, repository.ErrNotFound)
 	mockRepo.On("GetTrackByID", ctx, trackID).Return(nil, repository.ErrNotFound)
 
-	svc := NewTrackService(mockRepo, mockS3)
+	svc := NewTrackService(mockRepo, mockS3, nil)
 	result, err := svc.GetTrack(ctx, requesterID, trackID, false)
 
 	require.Error(t, err)
@@ -831,3 +845,4 @@ func TestTrackService_GetTrack_NotFoundReturns404(t *testing.T) {
 	assert.Equal(t, 404, apiErr.StatusCode)
 	mockRepo.AssertExpectations(t)
 }
+

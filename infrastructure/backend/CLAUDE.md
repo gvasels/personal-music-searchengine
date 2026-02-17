@@ -17,6 +17,7 @@ Backend infrastructure: API Gateway with Cognito authorizer, Lambda functions, S
 | `mediaconvert.tf` | MediaConvert queue, IAM, and transcode Lambdas |
 | `cloudfront.tf` | CloudFront distribution with signed URLs |
 | `eventbridge.tf` | EventBridge rules for MediaConvert and scheduled tasks |
+| `step-functions-audio.tf` | Audio analysis pipeline state machine (analyzer, features, embeddings, track-updater) |
 
 ## Resources Created
 
@@ -48,6 +49,10 @@ Backend infrastructure: API Gateway with Cognito authorizer, Lambda functions, S
 | `transcode-start` | `mediaconvert.tf` | Start MediaConvert HLS job |
 | `transcode-complete` | `mediaconvert.tf` | Handle transcode completion |
 | `index-rebuild` | `eventbridge.tf` | Daily search index rebuild |
+| `audio-analyzer` | `lambda-processors.tf` | AI genre/mood classification (Bedrock Claude) |
+| `audio-features` | `lambda-processors.tf` | BPM/key detection (Python/librosa container) |
+| `embedding-generator` | `lambda-processors.tf` | Audio embeddings (Bedrock Marengo) |
+| `track-updater` | `lambda-processors.tf` | Consolidate analysis results to DynamoDB |
 
 ### MediaConvert (`mediaconvert.tf`)
 | Resource | Name | Purpose |
@@ -141,3 +146,12 @@ locals {
   lambda_role_arn            = data.terraform_remote_state.global.outputs.lambda_execution_role_arn
 }
 ```
+
+## Admin Settings Routes (api-gateway.tf)
+
+- `GET /api/v1/admin/settings/self-signup` — read self-signup status
+- `PUT /api/v1/admin/settings/self-signup` — toggle self-signup
+
+## Cognito IAM (iam-cognito.tf)
+
+Includes `cognito-idp:DescribeUserPool` and `cognito-idp:UpdateUserPool` for admin self-signup toggle.

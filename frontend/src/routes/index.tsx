@@ -121,7 +121,7 @@ function HomePage() {
         {/* Welcome Header */}
         <header className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Welcome back, {displayName}!</h1>
-          <p className="text-base-content/70">Here's what's happening with your music library.</p>
+          <p className="text-base-content/70">Here's what's happening across your media platform.</p>
         </header>
 
         {/* Library Stats */}
@@ -177,14 +177,42 @@ function HomePage() {
               </svg>
               {isEmpty ? 'Upload Your First Track' : 'Upload Music'}
             </button>
-            <Link to="/tracks" className="btn btn-outline">
+            <Link to="/music/tracks" className="btn btn-outline">
               Browse Library
             </Link>
-            <Link to="/playlists" className="btn btn-outline">
+            <Link to="/music/playlists" className="btn btn-outline">
               Playlists
             </Link>
             <Link to="/search" className="btn btn-outline">
               Search
+            </Link>
+          </div>
+        </section>
+
+        {/* Platform Sections */}
+        <section aria-labelledby="sections-heading" className="mb-8">
+          <h2 id="sections-heading" className="text-xl font-semibold mb-4">Explore</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link to="/music" className="card bg-base-100 shadow hover:shadow-lg transition-shadow">
+              <div className="card-body items-center text-center">
+                <span className="text-4xl">🎵</span>
+                <h3 className="card-title">Music</h3>
+                <p className="text-base-content/70 text-sm">Browse your music library</p>
+              </div>
+            </Link>
+            <Link to="/videos" className="card bg-base-100 shadow hover:shadow-lg transition-shadow">
+              <div className="card-body items-center text-center">
+                <span className="text-4xl">🎬</span>
+                <h3 className="card-title">Videos</h3>
+                <p className="text-base-content/70 text-sm">Video catalog coming soon</p>
+              </div>
+            </Link>
+            <Link to="/gaming" className="card bg-base-100 shadow hover:shadow-lg transition-shadow">
+              <div className="card-body items-center text-center">
+                <span className="text-4xl">🎮</span>
+                <h3 className="card-title">Gaming</h3>
+                <p className="text-base-content/70 text-sm">Coming in Phase 3</p>
+              </div>
             </Link>
           </div>
         </section>
@@ -194,7 +222,7 @@ function HomePage() {
           <div className="flex items-center justify-between mb-4">
             <h2 id="recent-heading" className="text-xl font-semibold">Recent Tracks</h2>
             {recentTracks.length > 0 && (
-              <Link to="/tracks" className="link link-primary text-sm">
+              <Link to="/music/tracks" className="link link-primary text-sm">
                 View all
               </Link>
             )}
@@ -217,7 +245,7 @@ function HomePage() {
                   <li
                     key={track.id}
                     className="p-4 hover:bg-base-200 transition-colors cursor-pointer"
-                    onClick={() => navigate({ to: `/tracks/${track.id}` })}
+                    onClick={() => navigate({ to: `/music/tracks/${track.id}` })}
                     role="listitem"
                   >
                     <div className="flex items-center justify-between">
