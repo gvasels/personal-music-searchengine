@@ -52,7 +52,7 @@ export default function AlbumDetailPage() {
     return (
       <main className="p-4 md:p-8">
         <div className="mb-4">
-          <Link to="/albums" className="link link-primary">
+          <Link to="/music/albums" className="link link-primary">
             ← Back to Albums
           </Link>
         </div>
@@ -78,7 +78,7 @@ export default function AlbumDetailPage() {
     return (
       <main className="p-4 md:p-8">
         <div className="mb-4">
-          <Link to="/albums" className="link link-primary">
+          <Link to="/music/albums" className="link link-primary">
             ← Back to Albums
           </Link>
         </div>
@@ -96,7 +96,7 @@ export default function AlbumDetailPage() {
     return (
       <main className="p-4 md:p-8">
         <div className="mb-4">
-          <Link to="/albums" className="link link-primary">
+          <Link to="/music/albums" className="link link-primary">
             ← Back to Albums
           </Link>
         </div>
@@ -112,7 +112,7 @@ export default function AlbumDetailPage() {
   return (
     <main className="p-4 md:p-8">
       <div className="mb-4">
-        <Link to="/albums" className="link link-primary">
+        <Link to="/music/albums" className="link link-primary">
           ← Back to Albums
         </Link>
       </div>
@@ -142,7 +142,7 @@ export default function AlbumDetailPage() {
           <h1 className="text-3xl md:text-4xl font-bold mt-1">{album.name}</h1>
           <div className="flex items-center gap-2 mt-2 text-base-content/80">
             <Link
-              to="/artists/$artistName"
+              to="/music/artists/$artistName"
               params={{ artistName: album.artist }}
               className="font-medium hover:underline"
             >
@@ -225,7 +225,7 @@ export default function AlbumDetailPage() {
                     </td>
                     <td>
                       <Link
-                        to="/tracks/$trackId"
+                        to="/music/tracks/$trackId"
                         params={{ trackId: track.id }}
                         className="font-medium hover:text-primary"
                       >

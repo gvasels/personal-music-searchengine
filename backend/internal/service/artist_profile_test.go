@@ -60,6 +60,13 @@ func (m *MockArtistProfileRepository) GetUser(ctx context.Context, userID string
 	}
 	return args.Get(0).(*models.User), args.Error(1)
 }
+func (m *MockArtistProfileRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockArtistProfileRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 func TestNewArtistProfileService(t *testing.T) {
 	t.Run("creates service with repository", func(t *testing.T) {

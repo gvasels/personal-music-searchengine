@@ -12,13 +12,15 @@ import (
 type trackService struct {
 	repo   repository.Repository
 	s3Repo repository.S3Repository
+	cf     repository.CloudFrontSigner
 }
 
 // NewTrackService creates a new track service
-func NewTrackService(repo repository.Repository, s3Repo repository.S3Repository) TrackService {
+func NewTrackService(repo repository.Repository, s3Repo repository.S3Repository, cf repository.CloudFrontSigner) TrackService {
 	return &trackService{
 		repo:   repo,
 		s3Repo: s3Repo,
+		cf:     cf,
 	}
 }
 
@@ -61,14 +63,7 @@ func (s *trackService) GetTrack(ctx context.Context, requesterID, trackID string
 		}
 	}
 
-	coverArtURL := ""
-	if track.CoverArtKey != "" {
-		// Generate signed URL for cover art
-		url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
-		if err == nil {
-			coverArtURL = url
-		}
-	}
+	coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, track.CoverArtKey)
 
 	// For admin view of other users' tracks, populate owner display name
 	if hasGlobal && !isOwner && track.UserID != "" {
@@ -132,13 +127,7 @@ func (s *trackService) UpdateTrack(ctx context.Context, userID, trackID string, 
 		return nil, err
 	}
 
-	coverArtURL := ""
-	if track.CoverArtKey != "" {
-		url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
-		if err == nil {
-			coverArtURL = url
-		}
-	}
+	coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, track.CoverArtKey)
 
 	response := track.ToResponse(coverArtURL)
 	return &response, nil
@@ -235,13 +224,7 @@ func (s *trackService) listAllTracks(ctx context.Context, userID string, filter 
 
 	responses := make([]models.TrackResponse, 0, len(result.Items))
 	for _, track := range result.Items {
-		coverArtURL := ""
-		if track.CoverArtKey != "" {
-			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
-			if err == nil {
-				coverArtURL = url
-			}
-		}
+		coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, track.CoverArtKey)
 		// Set owner display name for admin view
 		// Show "You" for current user's tracks, otherwise show the owner's display name
 		if track.UserID == userID {
@@ -274,13 +257,7 @@ func (s *trackService) listTracksForRegularUser(ctx context.Context, userID stri
 	// Process own tracks
 	for _, track := range ownResult.Items {
 		seenIDs[track.ID] = true
-		coverArtURL := ""
-		if track.CoverArtKey != "" {
-			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
-			if err == nil {
-				coverArtURL = url
-			}
-		}
+		coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, track.CoverArtKey)
 		responses = append(responses, track.ToResponse(coverArtURL))
 	}
 
@@ -298,13 +275,7 @@ func (s *trackService) listTracksForRegularUser(ctx context.Context, userID stri
 			}
 			seenIDs[track.ID] = true
 
-			coverArtURL := ""
-			if track.CoverArtKey != "" {
-				url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
-				if err == nil {
-					coverArtURL = url
-				}
-			}
+			coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, track.CoverArtKey)
 			responses = append(responses, track.ToResponse(coverArtURL))
 		}
 	}
@@ -324,13 +295,7 @@ func (s *trackService) ListTracksByArtist(ctx context.Context, userID, artist st
 
 	responses := make([]models.TrackResponse, 0, len(tracks))
 	for _, track := range tracks {
-		coverArtURL := ""
-		if track.CoverArtKey != "" {
-			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
-			if err == nil {
-				coverArtURL = url
-			}
-		}
+		coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, track.CoverArtKey)
 		responses = append(responses, track.ToResponse(coverArtURL))
 	}
 

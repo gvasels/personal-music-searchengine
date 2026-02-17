@@ -2,8 +2,11 @@
  * Settings Page
  * User preferences configuration
  */
+import { useState, useEffect } from 'react';
 import { usePreferencesStore, type TrackListColumn } from '../lib/store/preferencesStore';
 import { useThemeStore } from '../lib/store/themeStore';
+import { useAuth } from '../hooks/useAuth';
+import { getVectorBackend, setVectorBackend, type VectorBackendOption } from '../lib/api/admin';
 
 const COLUMN_OPTIONS: { value: TrackListColumn; label: string }[] = [
   { value: 'title', label: 'Title' },
@@ -44,6 +47,37 @@ function SettingsPage() {
   } = usePreferencesStore();
 
   const { theme, toggleTheme } = useThemeStore();
+  const { isAdmin } = useAuth();
+
+  // Admin: vector backend state
+  const [vectorMode, setVectorMode] = useState('auto');
+  const [vectorOptions, setVectorOptions] = useState<VectorBackendOption[]>([]);
+  const [vectorLoading, setVectorLoading] = useState(false);
+  const [vectorSaving, setVectorSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    setVectorLoading(true);
+    getVectorBackend()
+      .then((data) => {
+        setVectorMode(data.mode);
+        setVectorOptions(data.options);
+      })
+      .catch(() => {})
+      .finally(() => setVectorLoading(false));
+  }, [isAdmin]);
+
+  const handleVectorModeChange = async (mode: string) => {
+    setVectorSaving(true);
+    try {
+      const result = await setVectorBackend(mode);
+      setVectorMode(result.mode);
+    } catch {
+      // revert on error
+    } finally {
+      setVectorSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -352,6 +386,61 @@ function SettingsPage() {
           </div>
         </div>
       </section>
+
+      {/* Admin: Vector Backend */}
+      {isAdmin && (
+        <section className="card bg-base-100 shadow-sm border-2 border-warning/30">
+          <div className="card-body">
+            <div className="flex items-center gap-2">
+              <h2 className="card-title">Vector Search Backend</h2>
+              <span className="badge badge-warning badge-sm">Admin</span>
+            </div>
+            <p className="text-sm text-base-content/60">
+              Controls how vector embeddings are stored and queried for semantic search.
+              Changes take effect immediately for new requests.
+            </p>
+
+            <div className="divider mt-0" />
+
+            {vectorLoading ? (
+              <div className="flex justify-center py-4">
+                <span className="loading loading-spinner loading-md" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {vectorOptions.map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      vectorMode === option.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-base-300 hover:border-base-content/20'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="vector-backend"
+                      className="radio radio-primary mt-0.5"
+                      checked={vectorMode === option.value}
+                      disabled={vectorSaving}
+                      onChange={() => handleVectorModeChange(option.value)}
+                    />
+                    <div>
+                      <p className="font-medium">{option.label}</p>
+                      <p className="text-sm text-base-content/60">{option.description}</p>
+                    </div>
+                  </label>
+                ))}
+                {vectorSaving && (
+                  <p className="text-sm text-info flex items-center gap-1">
+                    <span className="loading loading-spinner loading-xs" /> Saving...
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Version info */}
       <div className="text-center text-sm text-base-content/50">

@@ -6,8 +6,10 @@ import { useState } from 'react';
 import { useNavigate, useParams, Link } from '@tanstack/react-router';
 import { toast } from 'react-hot-toast';
 import { useTrackQuery, useUpdateTrack, useDeleteTrack, useUpdateTrackVisibility } from '../../hooks/useTracks';
+import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuth } from '../../hooks/useAuth';
 import { VisibilitySelector, VisibilityBadge } from '../../components/playlist';
+import { SimilarTracks } from '../../components/track/SimilarTracks';
 import type { TrackVisibility } from '../../types';
 
 function formatDuration(seconds: number): string {
@@ -18,12 +20,13 @@ function formatDuration(seconds: number): string {
 
 export default function TrackDetailPage() {
   const navigate = useNavigate();
-  const { trackId } = useParams({ from: '/tracks/$trackId' });
+  const { trackId } = useParams({ from: '/music/tracks/$trackId' });
   const { data: track, isLoading, isError, error } = useTrackQuery(trackId);
   const updateTrack = useUpdateTrack();
   const deleteTrack = useDeleteTrack();
   const updateVisibility = useUpdateTrackVisibility();
   const { isArtist } = useAuth();
+  const { currentTrack, isPlaying, setQueue, pause, play: resumePlay } = usePlayerStore();
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -147,13 +150,13 @@ export default function TrackDetailPage() {
             <>
               <h1 className="text-3xl font-bold">{track.title}</h1>
               <p className="text-lg">
-                <Link to="/artists/$artistName" params={{ artistName: track.artist }} className="link">
+                <Link to="/music/artists/$artistName" params={{ artistName: track.artist }} className="link">
                   {track.artist}
                 </Link>
               </p>
               {track.albumId && (
                 <p>
-                  <Link to="/albums/$albumId" params={{ albumId: track.albumId }} className="link">
+                  <Link to="/music/albums/$albumId" params={{ albumId: track.albumId }} className="link">
                     {track.album}
                   </Link>
                 </p>
@@ -195,6 +198,61 @@ export default function TrackDetailPage() {
                 </div>
               )}
 
+              {/* AI Analysis Section */}
+              {(track.genre || track.mood) && (
+                <div className="card bg-base-200 p-4 space-y-4">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <span className="text-lg">🎵</span> AI Analysis
+                  </h3>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {track.genre && (
+                      <span className="badge badge-primary">{track.genre}</span>
+                    )}
+                    {track.subGenre && (
+                      <span className="badge badge-secondary">{track.subGenre}</span>
+                    )}
+                    {track.mood && (
+                      <span className="badge badge-accent">{track.mood}</span>
+                    )}
+                    {track.vocalPresence && track.vocalPresence !== 'none' && (
+                      <span className="badge badge-ghost">Vocals: {track.vocalPresence}</span>
+                    )}
+                  </div>
+
+                  {track.toneDescription && (
+                    <p className="text-sm text-base-content/80">{track.toneDescription}</p>
+                  )}
+
+                  {track.instrumentation && (
+                    <div>
+                      <span className="text-xs font-medium text-base-content/60">Instrumentation:</span>
+                      <p className="text-sm">{track.instrumentation}</p>
+                    </div>
+                  )}
+
+                  {track.energyProfile && (
+                    <div>
+                      <span className="text-xs font-medium text-base-content/60">Energy:</span>
+                      <p className="text-sm">{track.energyProfile}</p>
+                    </div>
+                  )}
+
+                  {track.sections && track.sections.length > 0 && (
+                    <div>
+                      <span className="text-xs font-medium text-base-content/60">Sections:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {track.sections.map((section, i) => (
+                          <span key={i} className="badge badge-sm badge-outline">
+                            {section.name} ({section.startSec}s-{section.endSec}s)
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Track Visibility */}
               <div className="card bg-base-200 p-4">
                 <div className="flex items-center justify-between gap-4">
@@ -221,13 +279,29 @@ export default function TrackDetailPage() {
               </div>
 
               <div className="flex gap-2">
-                <button className="btn btn-primary">Play</button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    if (currentTrack?.id === track.id) {
+                      isPlaying ? pause() : resumePlay();
+                    } else {
+                      setQueue([track]);
+                    }
+                  }}
+                >
+                  {currentTrack?.id === track.id && isPlaying ? '⏸ Pause' : '▶ Play'}
+                </button>
                 <button className="btn btn-outline" onClick={handleEdit}>
                   Edit
                 </button>
                 <button className="btn btn-error btn-outline" onClick={() => setShowDeleteConfirm(true)}>
                   Delete
                 </button>
+              </div>
+
+              {/* Similar Tracks */}
+              <div className="card bg-base-200 p-4">
+                <SimilarTracks trackId={track.id} />
               </div>
             </>
           )}

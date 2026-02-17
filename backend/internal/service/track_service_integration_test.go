@@ -26,7 +26,7 @@ func setupTrackService(t *testing.T) (*testutil.TestContext, service.TrackServic
 	repo := repository.NewDynamoDBRepository(tc.DynamoDB, tc.TableName)
 	presignClient := s3.NewPresignClient(tc.S3)
 	s3Repo := repository.NewS3Repository(tc.S3, presignClient, tc.BucketName)
-	svc := service.NewTrackService(repo, s3Repo)
+	svc := service.NewTrackService(repo, s3Repo, nil)
 	return tc, svc, repo, cleanup
 }
 

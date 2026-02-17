@@ -20,7 +20,9 @@ resource "aws_iam_policy" "cognito_admin" {
           "cognito-idp:AdminDisableUser",
           "cognito-idp:AdminEnableUser",
           "cognito-idp:ListUsers",
-          "cognito-idp:ListUsersInGroup"
+          "cognito-idp:ListUsersInGroup",
+          "cognito-idp:DescribeUserPool",
+          "cognito-idp:UpdateUserPool"
         ]
         Resource = local.cognito_user_pool_arn
       }

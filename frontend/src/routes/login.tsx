@@ -22,6 +22,8 @@ function getErrorMessage(code: AuthErrorCode): string {
       return 'Network error. Please check your connection and try again.';
     case AuthErrorCode.MFA_REQUIRED:
       return 'Multi-factor authentication is required.';
+    case AuthErrorCode.NEW_PASSWORD_REQUIRED:
+      return 'You must set a new password.';
     default:
       return 'An error occurred. Please try again.';
   }
@@ -29,10 +31,14 @@ function getErrorMessage(code: AuthErrorCode): string {
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { isLoading: isAuthLoading, isAuthenticated, isSigningIn, signIn, error, clearError } = useAuth();
+  const { isLoading: isAuthLoading, isAuthenticated, isSigningIn, signIn, completeNewPassword, error, clearError } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [needsNewPassword, setNeedsNewPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({});
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
   const emailInputRef = useRef<HTMLInputElement>(null);
@@ -105,10 +111,29 @@ function LoginPage() {
     try {
       await signIn(email.trim(), password);
       navigate({ to: '/' });
-    } catch {
-      // Error handled by useAuth
+    } catch (err: unknown) {
+      if (err instanceof Error && 'code' in err && (err as { code: string }).code === AuthErrorCode.NEW_PASSWORD_REQUIRED) {
+        setNeedsNewPassword(true);
+        clearError();
+      }
     }
   }, [email, password, signIn, clearError, navigate]);
+
+  const handleNewPasswordSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    clearError();
+    if (!newPassword || newPassword.length < 8) return;
+    if (newPassword !== confirmPassword) return;
+    setIsChangingPassword(true);
+    try {
+      await completeNewPassword(newPassword);
+      navigate({ to: '/' });
+    } catch {
+      // Error handled by useAuth
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }, [newPassword, confirmPassword, completeNewPassword, clearError, navigate]);
 
   const handleDismissError = useCallback(() => clearError(), [clearError]);
 
@@ -127,7 +152,9 @@ function LoginPage() {
     <main id="main-content" className="min-h-screen flex items-center justify-center bg-base-200 p-4">
       <div className="card w-full max-w-md bg-base-100 shadow-xl">
         <div className="card-body">
-          <h1 className="card-title text-2xl font-bold text-center justify-center mb-6">Sign In</h1>
+          <h1 className="card-title text-2xl font-bold text-center justify-center mb-6">
+            {needsNewPassword ? 'Set New Password' : 'Sign In'}
+          </h1>
 
           {error && (
             <div role="alert" aria-live="polite" className="alert alert-error mb-4">
@@ -143,6 +170,62 @@ function LoginPage() {
             </div>
           )}
 
+          {needsNewPassword ? (
+            <form onSubmit={handleNewPasswordSubmit} aria-label="New password form" noValidate>
+              <p className="text-sm mb-4">Your account requires a password change.</p>
+              <div className="form-control w-full mb-4">
+                <label htmlFor="newPassword" className="label">
+                  <span className="label-text">New Password</span>
+                </label>
+                <input
+                  type="password"
+                  id="newPassword"
+                  placeholder="Enter new password"
+                  className="input input-bordered w-full"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  disabled={isChangingPassword}
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </div>
+              <div className="form-control w-full mb-6">
+                <label htmlFor="confirmPassword" className="label">
+                  <span className="label-text">Confirm Password</span>
+                </label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  placeholder="Confirm new password"
+                  className={`input input-bordered w-full ${newPassword && confirmPassword && newPassword !== confirmPassword ? 'input-error' : ''}`}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isChangingPassword}
+                  autoComplete="new-password"
+                  required
+                />
+                {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                  <span className="text-error text-sm mt-1">Passwords do not match</span>
+                )}
+              </div>
+              <button
+                type="submit"
+                className="btn btn-primary w-full"
+                disabled={isChangingPassword || !newPassword || newPassword.length < 8 || newPassword !== confirmPassword}
+              >
+                {isChangingPassword ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Changing password...
+                  </>
+                ) : (
+                  'Set New Password'
+                )}
+              </button>
+            </form>
+          ) : (
+          <>
           <form onSubmit={handleSubmit} aria-label="Login form" noValidate>
             <div className="form-control w-full mb-4">
               <label htmlFor="email" className="label">
@@ -221,6 +304,8 @@ function LoginPage() {
               Create account
             </Link>
           </p>
+          </>
+          )}
         </div>
       </div>
     </main>

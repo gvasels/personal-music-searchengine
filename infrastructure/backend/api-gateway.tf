@@ -6,7 +6,7 @@ resource "aws_apigatewayv2_api" "api" {
   description   = "Personal Music Search Engine API"
 
   cors_configuration {
-    allow_origins     = ["http://localhost:5173", "http://localhost:3000", "https://d8wn3lkytn5qe.cloudfront.net", "https://music.vasels.com"]
+    allow_origins     = ["http://localhost:5173", "http://localhost:3000", "https://d1xxw2bv6ilv0c.cloudfront.net", "https://gvasels.people.aws.dev"]
     allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers     = ["Authorization", "Content-Type", "X-User-ID"]
     expose_headers    = ["X-Request-Id"]
@@ -115,6 +115,14 @@ resource "aws_apigatewayv2_route" "list_tracks" {
 resource "aws_apigatewayv2_route" "get_track" {
   api_id             = aws_apigatewayv2_api.api.id
   route_key          = "GET /api/v1/tracks/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_similar_tracks" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/tracks/{id}/similar"
   target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
@@ -526,6 +534,38 @@ resource "aws_apigatewayv2_route" "admin_update_user_role" {
 resource "aws_apigatewayv2_route" "admin_update_user_status" {
   api_id             = aws_apigatewayv2_api.api.id
   route_key          = "PUT /api/v1/admin/users/{id}/status"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "admin_get_self_signup" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/admin/settings/self-signup"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "admin_set_self_signup" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "PUT /api/v1/admin/settings/self-signup"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "admin_get_vector_backend" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/v1/admin/settings/vector-backend"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "admin_set_vector_backend" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "PUT /api/v1/admin/settings/vector-backend"
   target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

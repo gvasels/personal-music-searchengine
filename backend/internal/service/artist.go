@@ -42,13 +42,15 @@ type ArtistRepository interface {
 type artistService struct {
 	artistRepo ArtistRepository
 	s3Repo     repository.S3Repository
+	cf         repository.CloudFrontSigner
 }
 
 // NewArtistService creates a new ArtistService
-func NewArtistService(artistRepo ArtistRepository, s3Repo repository.S3Repository) ArtistService {
+func NewArtistService(artistRepo ArtistRepository, s3Repo repository.S3Repository, cf repository.CloudFrontSigner) ArtistService {
 	return &artistService{
 		artistRepo: artistRepo,
 		s3Repo:     s3Repo,
+		cf:         cf,
 	}
 }
 
@@ -234,13 +236,7 @@ func (s *artistService) GetArtistTracks(ctx context.Context, userID, artistID st
 
 	responses := make([]models.TrackResponse, 0, len(tracks))
 	for _, track := range tracks {
-		coverArtURL := ""
-		if track.CoverArtKey != "" && s.s3Repo != nil {
-			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
-			if err == nil {
-				coverArtURL = url
-			}
-		}
+		coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, track.CoverArtKey)
 		responses = append(responses, track.ToResponse(coverArtURL))
 	}
 

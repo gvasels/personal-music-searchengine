@@ -69,6 +69,21 @@ func (m *MockAdminService) SetUserStatus(ctx context.Context, userID string, dis
 	return args.Error(0)
 }
 
+func (m *MockAdminService) GetSelfSignUpEnabled(ctx context.Context) (bool, error) {
+	args := m.Called(ctx)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockAdminService) SetSelfSignUpEnabled(ctx context.Context, enabled bool) error {
+	args := m.Called(ctx, enabled)
+	return args.Error(0)
+}
+
+func (m *MockAdminService) EnsureUserProfile(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
 func resetAdminMock(m *MockAdminService) {
 	m.ExpectedCalls = nil
 	m.Calls = nil

@@ -1,8 +1,10 @@
 # S3 Bucket for Frontend Static Assets
 # Serves React SPA via CloudFront
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_s3_bucket" "frontend" {
-  bucket = "${local.name_prefix}-frontend"
+  bucket = "${data.aws_caller_identity.current.account_id}-${local.name_prefix}-frontend"
 }
 
 resource "aws_s3_bucket_versioning" "frontend" {

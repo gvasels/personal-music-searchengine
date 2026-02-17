@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/gvasels/personal-music-searchengine/internal/clients"
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
 	"github.com/gvasels/personal-music-searchengine/internal/search"
@@ -18,17 +20,33 @@ const (
 
 // searchServiceImpl implements SearchService using Nixiesearch.
 type searchServiceImpl struct {
-	client *search.Client
-	repo   repository.Repository
-	s3Repo repository.S3Repository
+	client           *search.Client
+	repo             repository.Repository
+	s3Repo           repository.S3Repository
+	cf               repository.CloudFrontSigner
+	embeddingGateway clients.EmbeddingGateway
+	vectorService    VectorService
 }
 
 // NewSearchService creates a new search service.
-func NewSearchService(client *search.Client, repo repository.Repository, s3Repo repository.S3Repository) SearchService {
+func NewSearchService(client *search.Client, repo repository.Repository, s3Repo repository.S3Repository, cf repository.CloudFrontSigner) SearchService {
 	return &searchServiceImpl{
 		client: client,
 		repo:   repo,
 		s3Repo: s3Repo,
+		cf:     cf,
+	}
+}
+
+// NewSearchServiceWithEmbeddings creates a search service with hybrid search support.
+func NewSearchServiceWithEmbeddings(client *search.Client, repo repository.Repository, s3Repo repository.S3Repository, cf repository.CloudFrontSigner, embGateway clients.EmbeddingGateway, vectorSvc VectorService) SearchService {
+	return &searchServiceImpl{
+		client:           client,
+		repo:             repo,
+		s3Repo:           s3Repo,
+		cf:               cf,
+		embeddingGateway: embGateway,
+		vectorService:    vectorSvc,
 	}
 }
 
@@ -67,8 +85,44 @@ func (s *searchServiceImpl) Search(ctx context.Context, userID string, req model
 		}
 	}
 
-	// Execute search
-	resp, err := s.client.Search(ctx, userID, searchQuery)
+	// Execute search — try hybrid if embedding gateway available, fallback to keyword-only
+	var resp *search.SearchResponse
+	var err error
+	if s.embeddingGateway != nil && req.Query != "" {
+		embedding, embErr := s.embeddingGateway.GenerateEmbedding(ctx, req.Query)
+		if embErr == nil {
+			// If S3 Vectors is available, use it for kNN instead of in-process HNSW
+			if s.vectorService != nil {
+				// Keyword search via Nixiesearch
+				resp, err = s.client.Search(ctx, userID, searchQuery)
+				if err == nil {
+					// S3 Vectors kNN search
+					vectorResults, vecErr := s.vectorService.QuerySimilar(ctx, embedding, limit)
+					if vecErr == nil {
+						resp = mergeVectorResults(resp, vectorResults, 0.5)
+					} else {
+						fmt.Printf("Warning: S3 Vectors query failed, using keyword-only: %v\n", vecErr)
+					}
+				}
+			} else {
+				searchQuery.Embedding = embedding
+				searchQuery.SemanticWeight = 0.5
+				resp, err = s.client.HybridSearch(ctx, userID, searchQuery)
+			}
+		}
+		if embErr != nil || err != nil {
+			if embErr != nil {
+				fmt.Printf("Warning: query embedding failed, falling back to keyword search: %v\n", embErr)
+			} else {
+				fmt.Printf("Warning: hybrid search failed, falling back to keyword search: %v\n", err)
+			}
+			searchQuery.Embedding = nil
+			searchQuery.SemanticWeight = 0
+			resp, err = s.client.Search(ctx, userID, searchQuery)
+		}
+	} else {
+		resp, err = s.client.Search(ctx, userID, searchQuery)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("search failed: %w", err)
 	}
@@ -460,12 +514,7 @@ func (s *searchServiceImpl) enrichTracksWithCoverArt(ctx context.Context, userID
 		if err != nil {
 			continue
 		}
-		if track.CoverArtKey != "" && s.s3Repo != nil {
-			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
-			if err == nil {
-				tracks[i].CoverArtURL = url
-			}
-		}
+		tracks[i].CoverArtURL = generateCoverArtURL(ctx, s.cf, s.s3Repo, track.CoverArtKey)
 	}
 }
 
@@ -477,6 +526,58 @@ func formatDuration(seconds int) string {
 	minutes := seconds / 60
 	secs := seconds % 60
 	return fmt.Sprintf("%d:%02d", minutes, secs)
+}
+
+// mergeVectorResults merges keyword search results with S3 Vectors kNN results using RRF.
+// semanticWeight controls the balance (0.0 = keyword only, 1.0 = vector only).
+func mergeVectorResults(keywordResp *search.SearchResponse, vectorResults []VectorResult, semanticWeight float64) *search.SearchResponse {
+	const k = 60.0 // RRF constant
+
+	scores := make(map[string]float64)
+	resultMap := make(map[string]search.SearchResult)
+
+	// Score keyword results
+	for rank, r := range keywordResp.Results {
+		rrf := (1.0 - semanticWeight) / (k + float64(rank+1))
+		scores[r.ID] = rrf
+		resultMap[r.ID] = r
+	}
+
+	// Score vector results and merge
+	for rank, v := range vectorResults {
+		rrf := semanticWeight / (k + float64(rank+1))
+		scores[v.ID] += rrf
+		if _, exists := resultMap[v.ID]; !exists {
+			resultMap[v.ID] = search.SearchResult{
+				ID:    v.ID,
+				Score: float64(v.Score),
+			}
+		}
+	}
+
+	// Sort by fused score
+	type scored struct {
+		id    string
+		score float64
+	}
+	ranked := make([]scored, 0, len(scores))
+	for id, s := range scores {
+		ranked = append(ranked, scored{id, s})
+	}
+	sort.Slice(ranked, func(i, j int) bool { return ranked[i].score > ranked[j].score })
+
+	merged := make([]search.SearchResult, 0, len(ranked))
+	for _, r := range ranked {
+		result := resultMap[r.id]
+		result.Score = r.score
+		merged = append(merged, result)
+	}
+
+	return &search.SearchResponse{
+		Results:    merged,
+		Total:      len(merged),
+		NextCursor: keywordResp.NextCursor,
+	}
 }
 
 // deduplicateSearchResults removes duplicate tracks from search results (by ID).

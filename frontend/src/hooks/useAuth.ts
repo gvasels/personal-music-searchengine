@@ -9,6 +9,7 @@ import {
   signIn as authSignIn,
   signOut as authSignOut,
   getCurrentUser,
+  completeNewPassword as authCompleteNewPassword,
   AuthUser,
   AuthError,
   AuthErrorCode,
@@ -24,6 +25,7 @@ export interface UseAuthReturn {
   isSigningOut: boolean;
   signIn: (email: string, password: string) => Promise<AuthUser>;
   signOut: () => Promise<void>;
+  completeNewPassword: (newPassword: string) => Promise<AuthUser>;
   error: { message: string; code: AuthErrorCode } | null;
   clearError: () => void;
   refetch: () => Promise<unknown>;
@@ -63,6 +65,7 @@ export function useAuth(): UseAuthReturn {
     },
     onError: (err: unknown) => {
       if (err instanceof AuthError) {
+        if (err.code === AuthErrorCode.NEW_PASSWORD_REQUIRED) return; // handled in login.tsx
         setError({ message: err.message, code: err.code });
       } else {
         setError({ message: 'Sign in failed', code: AuthErrorCode.UNKNOWN });
@@ -94,6 +97,26 @@ export function useAuth(): UseAuthReturn {
     [signInMutation]
   );
 
+  const completeNewPassword = useCallback(
+    async (newPassword: string): Promise<AuthUser> => {
+      setError(null);
+      try {
+        const user = await authCompleteNewPassword(newPassword);
+        queryClient.clear();
+        queryClient.setQueryData(['auth', 'user'], user);
+        return user;
+      } catch (err: unknown) {
+        if (err instanceof AuthError) {
+          setError({ message: err.message, code: err.code });
+        } else {
+          setError({ message: 'Password change failed', code: AuthErrorCode.UNKNOWN });
+        }
+        throw err;
+      }
+    },
+    [queryClient]
+  );
+
   const signOut = useCallback(async (): Promise<void> => {
     return signOutMutation.mutateAsync();
   }, [signOutMutation]);
@@ -120,6 +143,7 @@ export function useAuth(): UseAuthReturn {
     isSigningOut: signOutMutation.isPending,
     signIn,
     signOut,
+    completeNewPassword,
     error,
     clearError,
     refetch,

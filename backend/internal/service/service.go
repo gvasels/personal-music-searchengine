@@ -113,6 +113,22 @@ type SearchService interface {
 	IndexTrack(ctx context.Context, track models.Track) error
 }
 
+// VectorService defines vector storage and similarity search operations
+// Implementation is in internal/vectors package
+type VectorService interface {
+	PutVector(ctx context.Context, id string, vector []float32, metadata map[string]string) error
+	GetVector(ctx context.Context, id string) ([]float32, error)
+	QuerySimilar(ctx context.Context, vector []float32, k int) ([]VectorResult, error)
+	DeleteVector(ctx context.Context, id string) error
+}
+
+// VectorResult represents a similarity search result
+type VectorResult struct {
+	ID       string
+	Score    float32
+	Metadata map[string]string
+}
+
 // HelloServiceInterface defines hello world operations for local dev
 type HelloServiceInterface interface {
 	Search(ctx context.Context, query string) ([]HelloTrack, error)
@@ -131,6 +147,7 @@ type Services struct {
 	Stream   StreamService
 	Search   SearchService
 	Admin    AdminService
+	Vector   VectorService
 	Hello    HelloServiceInterface
 }
 
@@ -143,11 +160,11 @@ func NewServices(
 	stepFunctionsARN string,
 ) *Services {
 	return &Services{
-		Track:    NewTrackService(repo, s3Repo),
-		Album:    NewAlbumService(repo, s3Repo),
-		Artist:   NewArtistService(repo, s3Repo),
+		Track:    NewTrackService(repo, s3Repo, cloudfront),
+		Album:    NewAlbumService(repo, s3Repo, cloudfront),
+		Artist:   NewArtistService(repo, s3Repo, cloudfront),
 		User:     NewUserService(repo),
-		Playlist: NewPlaylistService(repo, s3Repo),
+		Playlist: NewPlaylistService(repo, s3Repo, cloudfront),
 		Tag:      NewTagService(repo),
 		Upload:   NewUploadService(repo, s3Repo, mediaBucket, stepFunctionsARN),
 		Stream:   NewStreamService(repo, cloudfront, s3Repo),

@@ -8,6 +8,7 @@ import {
   createRootRoute,
   createRoute,
   Outlet,
+  redirect,
 } from '@tanstack/react-router';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
@@ -34,10 +35,13 @@ import TagDetailPage from './routes/tags/$tagName';
 import SettingsPage from './routes/settings';
 import AdminUsersPage from './routes/admin/users';
 import PermissionDeniedPage from './routes/permission-denied';
-
+import MusicIndexPage from './routes/music/index';
+import VideosPage from './routes/videos/index';
+import GamingPage from './routes/gaming/index';
 // Import layout components
 import { Layout } from './components/layout';
 import { AuthGuard } from './components/auth';
+import MusicLayout from './components/layout/MusicLayout';
 
 // Helper to wrap protected pages with AuthGuard
 function withAuthGuard<P extends object>(Component: React.ComponentType<P>) {
@@ -79,7 +83,7 @@ const rootRoute = createRootRoute({
   ),
 });
 
-// Create routes - Public routes (no auth required)
+// Public routes
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
@@ -98,15 +102,13 @@ const permissionDeniedRoute = createRoute({
   component: PermissionDeniedPage,
 });
 
-// Create routes - Public routes (guests can access dashboard)
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: HomePage, // Dashboard is accessible to all, including guests
+  component: HomePage,
 });
 
-// Create routes - Protected routes (auth required)
-
+// Protected routes
 const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/search',
@@ -117,66 +119,6 @@ const uploadRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/upload',
   component: withAuthGuard(UploadPage),
-});
-
-const tracksRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tracks',
-  component: withAuthGuard(TracksPage),
-});
-
-const trackDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tracks/$trackId',
-  component: withAuthGuard(TrackDetailPage),
-});
-
-const albumsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/albums',
-  component: withAuthGuard(AlbumsPage),
-});
-
-const albumDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/albums/$albumId',
-  component: withAuthGuard(AlbumDetailPage),
-});
-
-const artistsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/artists',
-  component: withAuthGuard(ArtistsPage),
-});
-
-const artistDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/artists/$artistName',
-  component: withAuthGuard(ArtistDetailPage),
-});
-
-const playlistsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/playlists',
-  component: withAuthGuard(PlaylistsPage),
-});
-
-const playlistDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/playlists/$playlistId',
-  component: withAuthGuard(PlaylistDetailPage),
-});
-
-const tagsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tags',
-  component: withAuthGuard(TagsPage),
-});
-
-const tagDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/tags/$tagName',
-  component: withAuthGuard(TagDetailPage),
 });
 
 const settingsRoute = createRoute({
@@ -191,6 +133,164 @@ const adminUsersRoute = createRoute({
   component: withAuthGuard(AdminUsersPage),
 });
 
+// Music layout route — wraps all /music/* routes
+const musicLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/music',
+  component: withAuthGuard(MusicLayout),
+});
+
+// Music child routes
+const musicIndexRoute = createRoute({
+  getParentRoute: () => musicLayoutRoute,
+  path: '/',
+  component: MusicIndexPage,
+});
+
+const musicTracksRoute = createRoute({
+  getParentRoute: () => musicLayoutRoute,
+  path: '/tracks',
+  component: TracksPage,
+});
+
+const musicTrackDetailRoute = createRoute({
+  getParentRoute: () => musicLayoutRoute,
+  path: '/tracks/$trackId',
+  component: TrackDetailPage,
+});
+
+const musicAlbumsRoute = createRoute({
+  getParentRoute: () => musicLayoutRoute,
+  path: '/albums',
+  component: AlbumsPage,
+});
+
+const musicAlbumDetailRoute = createRoute({
+  getParentRoute: () => musicLayoutRoute,
+  path: '/albums/$albumId',
+  component: AlbumDetailPage,
+});
+
+const musicArtistsRoute = createRoute({
+  getParentRoute: () => musicLayoutRoute,
+  path: '/artists',
+  component: ArtistsPage,
+});
+
+const musicArtistDetailRoute = createRoute({
+  getParentRoute: () => musicLayoutRoute,
+  path: '/artists/$artistName',
+  component: ArtistDetailPage,
+});
+
+const musicPlaylistsRoute = createRoute({
+  getParentRoute: () => musicLayoutRoute,
+  path: '/playlists',
+  component: PlaylistsPage,
+});
+
+const musicPlaylistDetailRoute = createRoute({
+  getParentRoute: () => musicLayoutRoute,
+  path: '/playlists/$playlistId',
+  component: PlaylistDetailPage,
+});
+
+const musicTagsRoute = createRoute({
+  getParentRoute: () => musicLayoutRoute,
+  path: '/tags',
+  component: TagsPage,
+});
+
+const musicTagDetailRoute = createRoute({
+  getParentRoute: () => musicLayoutRoute,
+  path: '/tags/$tagName',
+  component: TagDetailPage,
+});
+
+// New section routes
+const videosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/videos',
+  component: withAuthGuard(VideosPage),
+});
+
+const gamingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/gaming',
+  component: withAuthGuard(GamingPage),
+});
+
+// Legacy redirect routes
+const legacyTracksRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tracks',
+  beforeLoad: () => { throw redirect({ to: '/music/tracks' }); },
+  component: () => null,
+});
+
+const legacyTrackDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tracks/$trackId',
+  beforeLoad: ({ params }) => { throw redirect({ to: '/music/tracks/$trackId', params }); },
+  component: () => null,
+});
+
+const legacyAlbumsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/albums',
+  beforeLoad: () => { throw redirect({ to: '/music/albums' }); },
+  component: () => null,
+});
+
+const legacyAlbumDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/albums/$albumId',
+  beforeLoad: ({ params }) => { throw redirect({ to: '/music/albums/$albumId', params }); },
+  component: () => null,
+});
+
+const legacyArtistsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/artists',
+  beforeLoad: () => { throw redirect({ to: '/music/artists' }); },
+  component: () => null,
+});
+
+const legacyArtistDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/artists/$artistName',
+  beforeLoad: ({ params }) => { throw redirect({ to: '/music/artists/$artistName', params }); },
+  component: () => null,
+});
+
+const legacyPlaylistsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/playlists',
+  beforeLoad: () => { throw redirect({ to: '/music/playlists' }); },
+  component: () => null,
+});
+
+const legacyPlaylistDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/playlists/$playlistId',
+  beforeLoad: ({ params }) => { throw redirect({ to: '/music/playlists/$playlistId', params }); },
+  component: () => null,
+});
+
+const legacyTagsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tags',
+  beforeLoad: () => { throw redirect({ to: '/music/tags' }); },
+  component: () => null,
+});
+
+const legacyTagDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tags/$tagName',
+  beforeLoad: ({ params }) => { throw redirect({ to: '/music/tags/$tagName', params }); },
+  component: () => null,
+});
+
 // Build route tree
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -199,18 +299,34 @@ const routeTree = rootRoute.addChildren([
   permissionDeniedRoute,
   searchRoute,
   uploadRoute,
-  tracksRoute,
-  trackDetailRoute,
-  albumsRoute,
-  albumDetailRoute,
-  artistsRoute,
-  artistDetailRoute,
-  playlistsRoute,
-  playlistDetailRoute,
-  tagsRoute,
-  tagDetailRoute,
   settingsRoute,
   adminUsersRoute,
+  musicLayoutRoute.addChildren([
+    musicIndexRoute,
+    musicTracksRoute,
+    musicTrackDetailRoute,
+    musicAlbumsRoute,
+    musicAlbumDetailRoute,
+    musicArtistsRoute,
+    musicArtistDetailRoute,
+    musicPlaylistsRoute,
+    musicPlaylistDetailRoute,
+    musicTagsRoute,
+    musicTagDetailRoute,
+  ]),
+  videosRoute,
+  gamingRoute,
+  // Legacy redirects
+  legacyTracksRoute,
+  legacyTrackDetailRoute,
+  legacyAlbumsRoute,
+  legacyAlbumDetailRoute,
+  legacyArtistsRoute,
+  legacyArtistDetailRoute,
+  legacyPlaylistsRoute,
+  legacyPlaylistDetailRoute,
+  legacyTagsRoute,
+  legacyTagDetailRoute,
 ]);
 
 // Create router

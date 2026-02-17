@@ -151,6 +151,13 @@ func (m *MockArtistRepository) ListFollowing(ctx context.Context, userID string,
 func (m *MockArtistRepository) IncrementUserFollowingCount(ctx context.Context, userID string, delta int) error {
 	return nil
 }
+func (m *MockArtistRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockArtistRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 // ArtistMockS3Repository for artist service tests (separate from search_test mock)
 type ArtistMockS3Repository struct {
@@ -248,7 +255,7 @@ func TestArtistService_CreateArtist(t *testing.T) {
 	t.Run("creates artist successfully", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		req := models.CreateArtistRequest{
 			Name: "The Beatles",
@@ -273,7 +280,7 @@ func TestArtistService_CreateArtist(t *testing.T) {
 	t.Run("uses provided sort name", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		req := models.CreateArtistRequest{
 			Name:     "The Beatles",
@@ -293,7 +300,7 @@ func TestArtistService_CreateArtist(t *testing.T) {
 	t.Run("returns error on repository failure", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		req := models.CreateArtistRequest{
 			Name: "Test Artist",
@@ -319,7 +326,7 @@ func TestArtistService_GetArtist(t *testing.T) {
 	t.Run("returns artist with stats", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		artist := &models.Artist{
 			ID:       artistID,
@@ -348,7 +355,7 @@ func TestArtistService_GetArtist(t *testing.T) {
 	t.Run("returns not found error", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		mockRepo.On("GetArtist", ctx, userID, artistID).Return(nil, repository.ErrNotFound)
 
@@ -367,7 +374,7 @@ func TestArtistService_GetArtist(t *testing.T) {
 	t.Run("handles stats fetch errors gracefully", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		artist := &models.Artist{
 			ID:     artistID,
@@ -400,7 +407,7 @@ func TestArtistService_UpdateArtist(t *testing.T) {
 	t.Run("updates artist successfully", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		existingArtist := &models.Artist{
 			ID:       artistID,
@@ -430,7 +437,7 @@ func TestArtistService_UpdateArtist(t *testing.T) {
 	t.Run("updates specific fields only", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		existingArtist := &models.Artist{
 			ID:       artistID,
@@ -460,7 +467,7 @@ func TestArtistService_UpdateArtist(t *testing.T) {
 	t.Run("returns not found error", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		newName := "New Name"
 		req := models.UpdateArtistRequest{
@@ -490,7 +497,7 @@ func TestArtistService_DeleteArtist(t *testing.T) {
 	t.Run("deletes artist successfully", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		artist := &models.Artist{
 			ID:     artistID,
@@ -510,7 +517,7 @@ func TestArtistService_DeleteArtist(t *testing.T) {
 	t.Run("returns not found error", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		mockRepo.On("GetArtist", ctx, userID, artistID).Return(nil, repository.ErrNotFound)
 
@@ -533,7 +540,7 @@ func TestArtistService_ListArtists(t *testing.T) {
 	t.Run("returns paginated artists", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		artists := []models.Artist{
 			{ID: "artist-1", UserID: userID, Name: "Artist One"},
@@ -564,7 +571,7 @@ func TestArtistService_ListArtists(t *testing.T) {
 	t.Run("returns empty list", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		filter := models.ArtistFilter{}
 
@@ -590,7 +597,7 @@ func TestArtistService_SearchArtists(t *testing.T) {
 	t.Run("searches artists successfully", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		artists := []*models.Artist{
 			{ID: "artist-1", Name: "The Beatles"},
@@ -611,7 +618,7 @@ func TestArtistService_SearchArtists(t *testing.T) {
 	t.Run("uses default limit when zero", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		mockRepo.On("SearchArtists", ctx, userID, "test", 10).Return([]*models.Artist{}, nil)
 
@@ -630,7 +637,7 @@ func TestArtistService_GetArtistTracks(t *testing.T) {
 	t.Run("returns artist tracks", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		artist := &models.Artist{
 			ID:     artistID,
@@ -657,7 +664,7 @@ func TestArtistService_GetArtistTracks(t *testing.T) {
 	t.Run("returns not found for non-existent artist", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		mockRepo.On("GetArtist", ctx, userID, artistID).Return(nil, repository.ErrNotFound)
 
@@ -676,7 +683,7 @@ func TestArtistService_GetArtistTracks(t *testing.T) {
 	t.Run("generates cover art URLs", func(t *testing.T) {
 		mockRepo := new(MockArtistRepository)
 		mockS3 := new(ArtistMockS3Repository)
-		service := NewArtistService(mockRepo, mockS3)
+		service := NewArtistService(mockRepo, mockS3, nil)
 
 		artist := &models.Artist{
 			ID:     artistID,

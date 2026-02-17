@@ -13,7 +13,8 @@ import (
 
 // MarengoClient provides access to TwelveLabs Marengo video embedding models via Bedrock
 type MarengoClient struct {
-	client *bedrockruntime.Client
+	client       *bedrockruntime.Client
+	outputBucket string
 }
 
 // NewMarengoClient creates a new MarengoClient
@@ -21,8 +22,13 @@ func NewMarengoClient(client *bedrockruntime.Client) *MarengoClient {
 	return &MarengoClient{client: client}
 }
 
-// MarengoModelID is the Bedrock model ID for TwelveLabs Marengo
-const MarengoModelID = "twelvelabs.marengo-retrieval-2.7"
+// SetOutputBucket sets the S3 bucket for async output
+func (c *MarengoClient) SetOutputBucket(bucket string) {
+	c.outputBucket = bucket
+}
+
+// MarengoModelID is the Bedrock model ID for TwelveLabs Marengo Embed 3.0
+const MarengoModelID = "twelvelabs.marengo-embed-3-0-v1:0"
 
 // VideoEmbeddingRequest represents a video embedding request
 type VideoEmbeddingRequest struct {
@@ -56,13 +62,14 @@ type VideoEmbedOptions struct {
 
 // VideoEmbeddingResponse represents the video embedding response
 type VideoEmbeddingResponse struct {
-	ID              string            `json:"id"`
-	Object          string            `json:"object"`
-	Model           string            `json:"model"`
-	Embedding       []float32         `json:"embedding"`       // 1024-dimensional vector
+	ID                string             `json:"id"`
+	Object            string             `json:"object"`
+	Model             string             `json:"model"`
+	Embedding         []float32          `json:"embedding,omitempty"`       // 1024-dimensional vector (for sync)
+	InvocationARN     string             `json:"invocationArn,omitempty"`   // For async invocations
 	SegmentEmbeddings []SegmentEmbedding `json:"segment_embeddings,omitempty"`
-	Duration        float64           `json:"duration"`        // Video duration in seconds
-	CreatedAt       time.Time         `json:"created_at"`
+	Duration          float64            `json:"duration,omitempty"`        // Video duration in seconds
+	CreatedAt         time.Time          `json:"created_at"`
 }
 
 // SegmentEmbedding represents an embedding for a specific video segment
@@ -73,87 +80,18 @@ type SegmentEmbedding struct {
 }
 
 // CreateVideoEmbedding generates embeddings for a video using Marengo
+// NOTE: Marengo 3.0 requires StartAsyncInvoke for video/audio files.
+// This is a placeholder that returns an error - async implementation needed.
 func (c *MarengoClient) CreateVideoEmbedding(ctx context.Context, req VideoEmbeddingRequest) (*VideoEmbeddingResponse, error) {
-	// Set defaults
-	if req.EmbedType == "" {
-		req.EmbedType = EmbedTypeCombined
-	}
-	if req.Options == nil {
-		req.Options = &VideoEmbedOptions{}
-	}
-	if req.Options.MaxDuration == 0 {
-		req.Options.MaxDuration = 14400 // 4 hours max
-	}
-
-	// Build Marengo request
-	marengoReq := map[string]interface{}{
-		"video_url":  req.VideoURI,
-		"embed_type": string(req.EmbedType),
-	}
-
-	if len(req.Segments) > 0 {
-		segments := make([]map[string]float64, len(req.Segments))
-		for i, seg := range req.Segments {
-			segments[i] = map[string]float64{
-				"start_time": seg.StartTime,
-				"end_time":   seg.EndTime,
-			}
-		}
-		marengoReq["segments"] = segments
-	}
-
-	body, err := json.Marshal(marengoReq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	output, err := c.client.InvokeModel(ctx, &bedrockruntime.InvokeModelInput{
-		ModelId:     aws.String(MarengoModelID),
-		ContentType: aws.String("application/json"),
-		Accept:      aws.String("application/json"),
-		Body:        body,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to invoke Marengo model: %w", err)
-	}
-
-	// Parse Marengo response
-	var marengoResp struct {
-		Embedding []float32 `json:"embedding"`
-		Segments  []struct {
-			StartTime float64   `json:"start_time"`
-			EndTime   float64   `json:"end_time"`
-			Embedding []float32 `json:"embedding"`
-		} `json:"segments,omitempty"`
-		Duration float64 `json:"duration"`
-	}
-	if err := json.Unmarshal(output.Body, &marengoResp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	// Build response
-	resp := &VideoEmbeddingResponse{
+	// Marengo 3.0 requires StartAsyncInvoke API for video/audio
+	// which involves polling and S3 output parsing.
+	// For now, return a placeholder response indicating async is needed.
+	return &VideoEmbeddingResponse{
 		ID:        fmt.Sprintf("emb-%s", uuid.New().String()[:8]),
-		Object:    "video.embedding",
+		Object:    "video.embedding.pending",
 		Model:     MarengoModelID,
-		Embedding: marengoResp.Embedding,
-		Duration:  marengoResp.Duration,
 		CreatedAt: time.Now(),
-	}
-
-	// Add segment embeddings if present
-	if len(marengoResp.Segments) > 0 {
-		resp.SegmentEmbeddings = make([]SegmentEmbedding, len(marengoResp.Segments))
-		for i, seg := range marengoResp.Segments {
-			resp.SegmentEmbeddings[i] = SegmentEmbedding{
-				StartTime: seg.StartTime,
-				EndTime:   seg.EndTime,
-				Embedding: seg.Embedding,
-			}
-		}
-	}
-
-	return resp, nil
+	}, fmt.Errorf("Marengo 3.0 requires async invocation - not yet implemented")
 }
 
 // OpenAI-compatible wrapper types for /v1/embeddings/video endpoint

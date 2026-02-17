@@ -314,6 +314,12 @@ func (m *MockPlaylistRepository) GetUserSettings(ctx context.Context, userID str
 func (m *MockPlaylistRepository) UpdateUserSettings(ctx context.Context, userID string, update *repository.UserSettingsUpdate) (*models.UserSettings, error) {
 	return nil, nil
 }
+func (m *MockPlaylistRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockPlaylistRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
 
 // MockPlaylistS3Repository provides mockable S3 repository methods
 type MockPlaylistS3Repository struct {
@@ -380,7 +386,7 @@ func TestCreatePlaylist_Success(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	mockRepo.On("CreatePlaylist", ctx, mock.MatchedBy(func(p models.Playlist) bool {
 		return p.UserID == "user-123" && p.Name == "My Playlist" && p.Description == "A great playlist"
@@ -409,7 +415,7 @@ func TestGetPlaylist_Success(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("GetPlaylist", ctx, "user-123", "playlist-1").Return(&models.Playlist{
@@ -456,7 +462,7 @@ func TestGetPlaylist_NotFound(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	mockRepo.On("GetPlaylist", ctx, "user-123", "nonexistent").Return(nil, repository.ErrNotFound)
 
@@ -476,7 +482,7 @@ func TestGetPlaylist_WithCoverArt(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("GetPlaylist", ctx, "user-123", "playlist-1").Return(&models.Playlist{
@@ -508,7 +514,7 @@ func TestUpdatePlaylist_Success(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("GetPlaylist", ctx, "user-123", "playlist-1").Return(&models.Playlist{
@@ -542,7 +548,7 @@ func TestUpdatePlaylist_NotFound(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	mockRepo.On("GetPlaylist", ctx, "user-123", "nonexistent").Return(nil, repository.ErrNotFound)
 
@@ -568,7 +574,7 @@ func TestDeletePlaylist_Success(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	mockRepo.On("GetPlaylist", ctx, "user-123", "playlist-1").Return(&models.Playlist{
 		ID:     "playlist-1",
@@ -587,7 +593,7 @@ func TestDeletePlaylist_NotFound(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	mockRepo.On("GetPlaylist", ctx, "user-123", "nonexistent").Return(nil, repository.ErrNotFound)
 
@@ -610,7 +616,7 @@ func TestListPlaylists_Success(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("ListPlaylists", ctx, "user-123", mock.Anything).Return(&repository.PaginatedResult[models.Playlist]{
@@ -642,7 +648,7 @@ func TestListPlaylists_Empty(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	mockRepo.On("ListPlaylists", ctx, "user-123", mock.Anything).Return(&repository.PaginatedResult[models.Playlist]{
 		Items:      []models.Playlist{},
@@ -667,7 +673,7 @@ func TestAddTracks_Success(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("GetPlaylist", ctx, "user-123", "playlist-1").Return(&models.Playlist{
@@ -713,7 +719,7 @@ func TestAddTracks_AtPosition(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("GetPlaylist", ctx, "user-123", "playlist-1").Return(&models.Playlist{
@@ -755,7 +761,7 @@ func TestAddTracks_TrackNotFound(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("GetPlaylist", ctx, "user-123", "playlist-1").Return(&models.Playlist{
@@ -786,7 +792,7 @@ func TestAddTracks_PlaylistNotFound(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	mockRepo.On("GetPlaylist", ctx, "user-123", "nonexistent").Return(nil, repository.ErrNotFound)
 
@@ -813,7 +819,7 @@ func TestRemoveTracks_Success(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("GetPlaylist", ctx, "user-123", "playlist-1").Return(&models.Playlist{
@@ -853,7 +859,7 @@ func TestRemoveTracks_PlaylistNotFound(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	mockRepo.On("GetPlaylist", ctx, "user-123", "nonexistent").Return(nil, repository.ErrNotFound)
 
@@ -880,7 +886,7 @@ func TestUpdatePlaylistVisibility_Success(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("GetPlaylist", ctx, "user-123", "playlist-1").Return(&models.Playlist{
@@ -903,7 +909,7 @@ func TestUpdatePlaylistVisibility_NotOwner(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("GetPlaylist", ctx, "other-user", "playlist-1").Return(&models.Playlist{
@@ -924,7 +930,7 @@ func TestUpdatePlaylistVisibility_InvalidVisibility(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	err := svc.UpdateVisibility(ctx, "user-123", "playlist-1", models.PlaylistVisibility("invalid"))
 
@@ -936,7 +942,7 @@ func TestUpdatePlaylistVisibility_PlaylistNotFound(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	mockRepo.On("GetPlaylist", ctx, "user-123", "nonexistent").Return(nil, repository.ErrNotFound)
 
@@ -954,7 +960,7 @@ func TestListPublicPlaylists_Success(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("ListPublicPlaylists", ctx, 20, "").Return(&repository.PaginatedResult[models.Playlist]{
@@ -995,7 +1001,7 @@ func TestListPublicPlaylists_WithPagination(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	now := time.Now()
 	mockRepo.On("ListPublicPlaylists", ctx, 1, "cursor-1").Return(&repository.PaginatedResult[models.Playlist]{
@@ -1027,7 +1033,7 @@ func TestListPublicPlaylists_Empty(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockPlaylistRepository)
 	mockS3 := new(MockPlaylistS3Repository)
-	svc := NewPlaylistService(mockRepo, mockS3)
+	svc := NewPlaylistService(mockRepo, mockS3, nil)
 
 	mockRepo.On("ListPublicPlaylists", ctx, 20, "").Return(&repository.PaginatedResult[models.Playlist]{
 		Items:   []models.Playlist{},

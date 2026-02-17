@@ -41,7 +41,7 @@ export default function ArtistDetailPage() {
     return (
       <main className="p-4 md:p-8">
         <div className="mb-4">
-          <Link to="/artists" className="link link-primary">
+          <Link to="/music/artists" className="link link-primary">
             ← Back to Artists
           </Link>
         </div>
@@ -74,7 +74,7 @@ export default function ArtistDetailPage() {
     return (
       <main className="p-4 md:p-8">
         <div className="mb-4">
-          <Link to="/artists" className="link link-primary">
+          <Link to="/music/artists" className="link link-primary">
             ← Back to Artists
           </Link>
         </div>
@@ -92,7 +92,7 @@ export default function ArtistDetailPage() {
     return (
       <main className="p-4 md:p-8">
         <div className="mb-4">
-          <Link to="/artists" className="link link-primary">
+          <Link to="/music/artists" className="link link-primary">
             ← Back to Artists
           </Link>
         </div>
@@ -109,7 +109,7 @@ export default function ArtistDetailPage() {
   return (
     <main className="p-4 md:p-8">
       <div className="mb-4">
-        <Link to="/artists" className="link link-primary">
+        <Link to="/music/artists" className="link link-primary">
           ← Back to Artists
         </Link>
       </div>
@@ -145,7 +145,7 @@ export default function ArtistDetailPage() {
             {albums.map((album) => (
               <Link
                 key={album.id}
-                to="/albums/$albumId"
+                to="/music/albums/$albumId"
                 params={{ albumId: album.id }}
                 className="group"
               >
@@ -222,7 +222,7 @@ export default function ArtistDetailPage() {
                       </td>
                       <td>
                         <Link
-                          to="/tracks/$trackId"
+                          to="/music/tracks/$trackId"
                           params={{ trackId: track.id }}
                           className="font-medium hover:text-primary"
                         >
@@ -232,7 +232,7 @@ export default function ArtistDetailPage() {
                       <td>
                         {track.albumId ? (
                           <Link
-                            to="/albums/$albumId"
+                            to="/music/albums/$albumId"
                             params={{ albumId: track.albumId }}
                             className="hover:text-primary"
                           >

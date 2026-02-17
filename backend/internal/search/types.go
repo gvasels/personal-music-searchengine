@@ -14,16 +14,19 @@ type Document struct {
 	Year      int       `json:"year,omitempty"`
 	Duration  int       `json:"duration,omitempty"`
 	Filename  string    `json:"filename"`
+	Embedding []float32 `json:"embedding,omitempty"`
 	IndexedAt time.Time `json:"indexedAt"`
 }
 
 // SearchQuery represents a search request.
 type SearchQuery struct {
-	Query   string        `json:"query"`
-	Filters SearchFilters `json:"filters,omitempty"`
-	Sort    *SortOption   `json:"sort,omitempty"`
-	Limit   int           `json:"limit,omitempty"`
-	Cursor  string        `json:"cursor,omitempty"`
+	Query          string        `json:"query"`
+	Filters        SearchFilters `json:"filters,omitempty"`
+	Sort           *SortOption   `json:"sort,omitempty"`
+	Limit          int           `json:"limit,omitempty"`
+	Cursor         string        `json:"cursor,omitempty"`
+	Embedding      []float32     `json:"embedding,omitempty"`
+	SemanticWeight float64       `json:"semanticWeight,omitempty"`
 }
 
 // SearchFilters represents optional filters for search.

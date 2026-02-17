@@ -17,6 +17,7 @@ const (
 // AdminRepository defines the repository operations needed by AdminService.
 type AdminRepository interface {
 	GetUser(ctx context.Context, userID string) (*models.User, error)
+	CreateUser(ctx context.Context, user models.User) error
 	UpdateUserRole(ctx context.Context, userID string, role models.UserRole) error
 	SearchUsers(ctx context.Context, query string, limit int) ([]models.User, error)
 	SetUserDisabled(ctx context.Context, userID string, disabled bool) error
@@ -39,6 +40,15 @@ type AdminService interface {
 
 	// SetUserStatus enables or disables a user in both DynamoDB and Cognito.
 	SetUserStatus(ctx context.Context, userID string, disabled bool) error
+
+	// GetSelfSignUpEnabled returns whether self-registration is allowed.
+	GetSelfSignUpEnabled(ctx context.Context) (bool, error)
+
+	// SetSelfSignUpEnabled enables or disables self-registration.
+	SetSelfSignUpEnabled(ctx context.Context, enabled bool) error
+
+	// EnsureUserProfile creates a DynamoDB profile for a Cognito user if one doesn't exist.
+	EnsureUserProfile(ctx context.Context, userID string) error
 }
 
 // adminService implements AdminService.
@@ -230,5 +240,37 @@ func (s *adminService) SetUserStatus(ctx context.Context, userID string, disable
 		return fmt.Errorf("failed to update user status in Cognito: %w", cognitoErr)
 	}
 
+	return nil
+}
+
+func (s *adminService) GetSelfSignUpEnabled(ctx context.Context) (bool, error) {
+	return s.cognito.GetSelfSignUpEnabled(ctx)
+}
+
+func (s *adminService) SetSelfSignUpEnabled(ctx context.Context, enabled bool) error {
+	return s.cognito.SetSelfSignUpEnabled(ctx, enabled)
+}
+
+func (s *adminService) EnsureUserProfile(ctx context.Context, userID string) error {
+	// Check if profile already exists
+	if _, err := s.repo.GetUser(ctx, userID); err == nil {
+		return nil
+	}
+
+	// Get email from Cognito
+	email, err := s.cognito.GetUserEmail(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get user email from Cognito: %w", err)
+	}
+
+	user := models.NewUserFromCognito(userID, email, "")
+	user.StorageLimit = 10 * 1024 * 1024 * 1024 // 10 GB
+	if err := s.repo.CreateUser(ctx, user); err != nil {
+		// Race condition: another request created it
+		if _, getErr := s.repo.GetUser(ctx, userID); getErr == nil {
+			return nil
+		}
+		return fmt.Errorf("failed to create user profile: %w", err)
+	}
 	return nil
 }

@@ -79,7 +79,7 @@ resource "aws_cognito_user_pool" "main" {
 
 # Cognito User Pool Domain
 resource "aws_cognito_user_pool_domain" "main" {
-  domain       = "${local.name_prefix}-auth"
+  domain       = "${data.aws_caller_identity.current.account_id}-${local.name_prefix}-auth"
   user_pool_id = aws_cognito_user_pool.main.id
 }
 

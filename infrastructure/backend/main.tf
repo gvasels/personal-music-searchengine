@@ -13,7 +13,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "music-library-prod-tofu-state"
+    bucket         = "music-library-prod-tofu-state-851725417685"
     key            = "backend/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "music-library-prod-tofu-lock"
@@ -61,7 +61,7 @@ variable "frontend_cloudfront_domain" {
 data "terraform_remote_state" "shared" {
   backend = "s3"
   config = {
-    bucket = "music-library-prod-tofu-state"
+    bucket = "music-library-prod-tofu-state-851725417685"
     key    = "shared/terraform.tfstate"
     region = "us-east-1"
   }
@@ -70,7 +70,7 @@ data "terraform_remote_state" "shared" {
 data "terraform_remote_state" "global" {
   backend = "s3"
   config = {
-    bucket = "music-library-prod-tofu-state"
+    bucket = "music-library-prod-tofu-state-851725417685"
     key    = "global/terraform.tfstate"
     region = "us-east-1"
   }
@@ -84,6 +84,8 @@ locals {
   media_bucket_arn           = data.terraform_remote_state.shared.outputs.media_bucket_arn
   search_indexes_bucket_name = data.terraform_remote_state.shared.outputs.search_indexes_bucket_name
   search_indexes_bucket_arn  = data.terraform_remote_state.shared.outputs.search_indexes_bucket_arn
+  vector_bucket_name         = data.terraform_remote_state.shared.outputs.vector_bucket_name
+  vector_bucket_arn          = data.terraform_remote_state.shared.outputs.vector_bucket_arn
   cognito_user_pool_id       = data.terraform_remote_state.shared.outputs.cognito_user_pool_id
   cognito_user_pool_arn      = data.terraform_remote_state.shared.outputs.cognito_user_pool_arn
   lambda_role_arn            = data.terraform_remote_state.global.outputs.lambda_execution_role_arn

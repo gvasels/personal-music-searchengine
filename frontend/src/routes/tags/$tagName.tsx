@@ -38,7 +38,7 @@ export default function TagDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link to="/tags" className="btn btn-ghost btn-sm">
+        <Link to="/music/tags" className="btn btn-ghost btn-sm">
           ← Back
         </Link>
       </div>

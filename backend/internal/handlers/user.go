@@ -62,6 +62,15 @@ func (h *Handlers) GetFeatures(c echo.Context) error {
 		// Fall back to JWT groups if DB lookup fails
 		dbRole = determineRoleFromGroups(authCtx.Groups)
 	}
+
+	// Auto-create profile for new users (e.g., after Cognito signup)
+	if _, profileErr := h.services.User.GetProfile(c.Request().Context(), authCtx.UserID); profileErr != nil {
+		_ = h.services.Admin.EnsureUserProfile(c.Request().Context(), authCtx.UserID)
+		// Re-fetch role after profile creation
+		if newRole, err := h.services.User.GetUserRole(c.Request().Context(), authCtx.UserID); err == nil {
+			dbRole = newRole
+		}
+	}
 	role := dbRole
 
 	// Map role to tier for backward compatibility

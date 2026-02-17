@@ -330,6 +330,13 @@ func (m *MockRepository) GetUserSettings(ctx context.Context, userID string) (*m
 func (m *MockRepository) UpdateUserSettings(ctx context.Context, userID string, update *repository.UserSettingsUpdate) (*models.UserSettings, error) {
 	return nil, nil
 }
+func (m *MockRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 // MockS3Repository mocks the repository.S3Repository
 type MockS3Repository struct {
@@ -375,6 +382,13 @@ func (m *MockS3Repository) ObjectExists(ctx context.Context, key string) (bool, 
 func (m *MockS3Repository) DeleteByPrefix(ctx context.Context, prefix string) error {
 	return nil
 }
+func (m *MockS3Repository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockS3Repository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 // SearchClient interface for mocking
 type SearchClient interface {
@@ -1181,6 +1195,13 @@ func (m *MockFilterTagsRepository) GetUserSettings(ctx context.Context, userID s
 func (m *MockFilterTagsRepository) UpdateUserSettings(ctx context.Context, userID string, update *repository.UserSettingsUpdate) (*models.UserSettings, error) {
 	return nil, nil
 }
+func (m *MockFilterTagsRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 // TestFilterByTags_EmptyTags verifies that empty tags array returns all results unchanged
 func TestFilterByTags_EmptyTags(t *testing.T) {
@@ -1435,3 +1456,4 @@ func TestFilterByTags_NormalizesCase(t *testing.T) {
 	assert.Len(t, filtered, 1)
 	mockRepo.AssertExpectations(t)
 }
+

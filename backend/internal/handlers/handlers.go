@@ -41,6 +41,7 @@ func (h *Handlers) RegisterRoutes(e *echo.Echo) {
 	// Track routes
 	api.GET("/tracks", h.ListTracks)
 	api.GET("/tracks/:id", h.GetTrack)
+	api.GET("/tracks/:id/similar", h.GetSimilarTracks)
 	api.PUT("/tracks/:id", h.UpdateTrack)
 	api.DELETE("/tracks/:id", h.DeleteTrack)
 	api.POST("/tracks/:id/tags", h.AddTagsToTrack)
@@ -117,6 +118,10 @@ func RegisterAdminRoutes(e *echo.Echo, adminHandler *AdminHandler, roleResolver 
 	admin.GET("/users/:id", adminHandler.GetUserDetails)      // Get user details
 	admin.PUT("/users/:id/role", adminHandler.UpdateUserRole) // Update user role
 	admin.PUT("/users/:id/status", adminHandler.UpdateUserStatus) // Enable/disable user
+	admin.GET("/settings/self-signup", adminHandler.GetSelfSignUp)   // Get self-signup setting
+	admin.PUT("/settings/self-signup", adminHandler.SetSelfSignUp)   // Toggle self-signup
+	admin.GET("/settings/vector-backend", adminHandler.GetVectorBackend)   // Get vector backend mode
+	admin.PUT("/settings/vector-backend", adminHandler.SetVectorBackend)   // Set vector backend mode
 }
 
 // AuthContext contains user authentication and permission information

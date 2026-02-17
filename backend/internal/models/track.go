@@ -15,6 +15,40 @@ const (
 	HLSStatusFailed     HLSStatus = "FAILED"
 )
 
+// Section represents a detected section in audio analysis
+type Section struct {
+	Name        string `json:"name" dynamodbav:"name"`               // intro, buildup, drop, breakdown, outro
+	StartSec    int    `json:"startSec" dynamodbav:"startSec"`       // Start time in seconds
+	EndSec      int    `json:"endSec" dynamodbav:"endSec"`           // End time in seconds
+	Description string `json:"description" dynamodbav:"description"` // Section description
+}
+
+// AudioAnalysis represents the combined results from the audio understanding pipeline
+type AudioAnalysis struct {
+	// Signal analysis (from Python Lambda)
+	BPM           int     `json:"bpm,omitempty"`
+	BPMConfidence float64 `json:"bpmConfidence,omitempty"`
+	MusicalKey    string  `json:"musicalKey,omitempty"`
+	KeyMode       string  `json:"keyMode,omitempty"`
+	KeyCamelot    string  `json:"keyCamelot,omitempty"`
+	KeyConfidence float64 `json:"keyConfidence,omitempty"`
+	Energy        float64 `json:"energy,omitempty"`
+	Loudness      float64 `json:"loudness,omitempty"`
+
+	// GenAI analysis (from Bedrock)
+	Genre           string    `json:"genre,omitempty"`
+	SubGenre        string    `json:"subGenre,omitempty"`
+	Mood            string    `json:"mood,omitempty"`
+	ToneDescription string    `json:"toneDescription,omitempty"`
+	Sections        []Section `json:"sections,omitempty"`
+	Instrumentation string    `json:"instrumentation,omitempty"`
+	VocalPresence   string    `json:"vocalPresence,omitempty"`
+	EnergyProfile   string    `json:"energyProfile,omitempty"`
+
+	// Embedding (from Marengo)
+	EmbeddingID string `json:"embeddingId,omitempty"`
+}
+
 // Track represents a music track in the library
 type Track struct {
 	ID          string      `json:"id" dynamodbav:"id"`
@@ -47,10 +81,24 @@ type Track struct {
 	Tags        []string    `json:"tags,omitempty" dynamodbav:"tags,omitempty"`
 
 	// Audio analysis fields
-	BPM         int    `json:"bpm,omitempty" dynamodbav:"bpm,omitempty"`                 // Beats per minute (20-300)
-	MusicalKey  string `json:"musicalKey,omitempty" dynamodbav:"musicalKey,omitempty"`   // e.g., "Am", "C", "F#m"
-	KeyMode     string `json:"keyMode,omitempty" dynamodbav:"keyMode,omitempty"`         // "major" or "minor"
-	KeyCamelot  string `json:"keyCamelot,omitempty" dynamodbav:"keyCamelot,omitempty"`   // e.g., "8A", "11B"
+	BPM           int     `json:"bpm,omitempty" dynamodbav:"bpm,omitempty"`                   // Beats per minute (20-300)
+	BPMConfidence float64 `json:"bpmConfidence,omitempty" dynamodbav:"bpmConfidence,omitempty"` // Detection confidence (0-1)
+	MusicalKey    string  `json:"musicalKey,omitempty" dynamodbav:"musicalKey,omitempty"`     // e.g., "Am", "C", "F#m"
+	KeyMode       string  `json:"keyMode,omitempty" dynamodbav:"keyMode,omitempty"`           // "major" or "minor"
+	KeyCamelot    string  `json:"keyCamelot,omitempty" dynamodbav:"keyCamelot,omitempty"`     // e.g., "8A", "11B"
+	KeyConfidence float64 `json:"keyConfidence,omitempty" dynamodbav:"keyConfidence,omitempty"` // Detection confidence (0-1)
+	Energy        float64 `json:"energy,omitempty" dynamodbav:"energy,omitempty"`             // Energy level (0-1)
+	Loudness      float64 `json:"loudness,omitempty" dynamodbav:"loudness,omitempty"`         // Loudness in LUFS
+
+	// GenAI analysis fields (Epic 2.3)
+	SubGenre        string    `json:"subGenre,omitempty" dynamodbav:"subGenre,omitempty"`               // Sub-genre classification
+	Mood            string    `json:"mood,omitempty" dynamodbav:"mood,omitempty"`                       // One-word mood
+	ToneDescription string    `json:"toneDescription,omitempty" dynamodbav:"toneDescription,omitempty"` // 2-3 sentence description
+	Sections        []Section `json:"sections,omitempty" dynamodbav:"sections,omitempty"`               // Section analysis
+	Instrumentation string    `json:"instrumentation,omitempty" dynamodbav:"instrumentation,omitempty"` // Detected instruments
+	VocalPresence   string    `json:"vocalPresence,omitempty" dynamodbav:"vocalPresence,omitempty"`     // none/male/female/mixed
+	EnergyProfile   string    `json:"energyProfile,omitempty" dynamodbav:"energyProfile,omitempty"`     // Energy arc description
+	EmbeddingID     string    `json:"embeddingId,omitempty" dynamodbav:"embeddingId,omitempty"`         // S3 Vectors embedding ID
 
 	// HLS streaming fields
 	HLSStatus        HLSStatus `json:"hlsStatus,omitempty" dynamodbav:"hlsStatus,omitempty"`
@@ -166,10 +214,25 @@ type TrackResponse struct {
 	PlayCount    int       `json:"playCount"`
 	LastPlayed   *time.Time `json:"lastPlayed,omitempty"`
 	Tags         []string  `json:"tags"`
-	BPM          int       `json:"bpm,omitempty"`
-	MusicalKey   string    `json:"musicalKey,omitempty"`
-	KeyMode      string    `json:"keyMode,omitempty"`
-	KeyCamelot   string    `json:"keyCamelot,omitempty"`
+	// Audio analysis fields
+	BPM           int       `json:"bpm,omitempty"`
+	BPMConfidence float64   `json:"bpmConfidence,omitempty"`
+	MusicalKey    string    `json:"musicalKey,omitempty"`
+	KeyMode       string    `json:"keyMode,omitempty"`
+	KeyCamelot    string    `json:"keyCamelot,omitempty"`
+	KeyConfidence float64   `json:"keyConfidence,omitempty"`
+	Energy        float64   `json:"energy,omitempty"`
+	Loudness      float64   `json:"loudness,omitempty"`
+	// GenAI analysis fields
+	SubGenre        string    `json:"subGenre,omitempty"`
+	Mood            string    `json:"mood,omitempty"`
+	ToneDescription string    `json:"toneDescription,omitempty"`
+	Sections        []Section `json:"sections,omitempty"`
+	Instrumentation string    `json:"instrumentation,omitempty"`
+	VocalPresence   string    `json:"vocalPresence,omitempty"`
+	EnergyProfile   string    `json:"energyProfile,omitempty"`
+	EmbeddingID     string    `json:"embeddingId,omitempty"`
+	// HLS and waveform
 	HLSStatus      string     `json:"hlsStatus,omitempty"`
 	HLSReady       bool       `json:"hlsReady"`
 	WaveformURL    string     `json:"waveformUrl,omitempty"`
@@ -198,36 +261,48 @@ func (t *Track) ToResponse(coverArtURL string) TrackResponse {
 	}
 
 	return TrackResponse{
-		ID:           t.ID,
-		Title:        t.Title,
-		Artist:       t.Artist,
-		ArtistID:     t.ArtistID,
-		Artists:      t.Artists,
-		AlbumArtist:  t.AlbumArtist,
-		Album:        t.Album,
-		AlbumID:      t.AlbumID,
-		Genre:        t.Genre,
-		Year:         t.Year,
-		TrackNumber:  t.TrackNumber,
-		DiscNumber:   t.DiscNumber,
-		Duration:     t.Duration,
-		DurationStr:  formatDuration(t.Duration),
-		Format:       string(t.Format),
-		FileSize:     t.FileSize,
-		FileSizeStr:  formatFileSize(t.FileSize),
-		CoverArtURL:  coverArtURL,
-		PlayCount:    t.PlayCount,
-		LastPlayed:   t.LastPlayed,
-		Tags:         tags,
-		BPM:          t.BPM,
-		MusicalKey:   t.MusicalKey,
-		KeyMode:      t.KeyMode,
-		KeyCamelot:   t.KeyCamelot,
-		HLSStatus:      string(t.HLSStatus),
-		HLSReady:       t.HLSStatus == HLSStatusReady,
-		WaveformURL:    t.WaveformURL,
-		AnalysisStatus: t.AnalysisStatus,
-		AnalyzedAt:     t.AnalyzedAt,
+		ID:              t.ID,
+		Title:           t.Title,
+		Artist:          t.Artist,
+		ArtistID:        t.ArtistID,
+		Artists:         t.Artists,
+		AlbumArtist:     t.AlbumArtist,
+		Album:           t.Album,
+		AlbumID:         t.AlbumID,
+		Genre:           t.Genre,
+		Year:            t.Year,
+		TrackNumber:     t.TrackNumber,
+		DiscNumber:      t.DiscNumber,
+		Duration:        t.Duration,
+		DurationStr:     formatDuration(t.Duration),
+		Format:          string(t.Format),
+		FileSize:        t.FileSize,
+		FileSizeStr:     formatFileSize(t.FileSize),
+		CoverArtURL:     coverArtURL,
+		PlayCount:       t.PlayCount,
+		LastPlayed:      t.LastPlayed,
+		Tags:            tags,
+		BPM:             t.BPM,
+		BPMConfidence:   t.BPMConfidence,
+		MusicalKey:      t.MusicalKey,
+		KeyMode:         t.KeyMode,
+		KeyCamelot:      t.KeyCamelot,
+		KeyConfidence:   t.KeyConfidence,
+		Energy:          t.Energy,
+		Loudness:        t.Loudness,
+		SubGenre:        t.SubGenre,
+		Mood:            t.Mood,
+		ToneDescription: t.ToneDescription,
+		Sections:        t.Sections,
+		Instrumentation: t.Instrumentation,
+		VocalPresence:   t.VocalPresence,
+		EnergyProfile:   t.EnergyProfile,
+		EmbeddingID:     t.EmbeddingID,
+		HLSStatus:       string(t.HLSStatus),
+		HLSReady:        t.HLSStatus == HLSStatusReady,
+		WaveformURL:     t.WaveformURL,
+		AnalysisStatus:  t.AnalysisStatus,
+		AnalyzedAt:      t.AnalyzedAt,
 		Visibility:       visibility,
 		PublishedAt:      t.PublishedAt,
 		OwnerDisplayName: t.OwnerDisplayName,

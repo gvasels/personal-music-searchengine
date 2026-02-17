@@ -1,7 +1,10 @@
 # S3 Bucket for Media Assets (audio files and cover art)
 # Uses Intelligent-Tiering for automatic cost optimization
+
+data "aws_caller_identity" "current" {}
+
 resource "aws_s3_bucket" "media" {
-  bucket = "${local.name_prefix}-media"
+  bucket = "${data.aws_caller_identity.current.account_id}-${local.name_prefix}-media"
 }
 
 resource "aws_s3_bucket_versioning" "media" {
@@ -40,7 +43,8 @@ resource "aws_s3_bucket_cors_configuration" "media" {
     allowed_origins = [
       "http://localhost:5173",
       "http://localhost:3000",
-      "https://d8wn3lkytn5qe.cloudfront.net"
+      "https://d8wn3lkytn5qe.cloudfront.net",
+      "https://d1xxw2bv6ilv0c.cloudfront.net"
     ]
     expose_headers  = ["ETag"]
     max_age_seconds = 3000
@@ -63,6 +67,33 @@ resource "aws_s3_bucket_intelligent_tiering_configuration" "media" {
   }
 }
 
+# Bucket policy to allow Bedrock async invoke to read/write
+resource "aws_s3_bucket_policy" "media_bedrock" {
+  bucket = aws_s3_bucket.media.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "BedrockAsyncInvokeAccess"
+        Effect = "Allow"
+        Principal = {
+          Service = "bedrock.amazonaws.com"
+        }
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:GetBucketLocation"
+        ]
+        Resource = [
+          aws_s3_bucket.media.arn,
+          "${aws_s3_bucket.media.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
 # Lifecycle rules
 resource "aws_s3_bucket_lifecycle_configuration" "media" {
   bucket = aws_s3_bucket.media.id
@@ -71,6 +102,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "media" {
   rule {
     id     = "abort-incomplete-multipart"
     status = "Enabled"
+
+    filter {}
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 7
@@ -109,7 +142,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "media" {
 
 # S3 Bucket for Search Indexes (Nixiesearch)
 resource "aws_s3_bucket" "search_indexes" {
-  bucket = "${local.name_prefix}-search-indexes"
+  bucket = "${data.aws_caller_identity.current.account_id}-${local.name_prefix}-search-indexes"
 }
 
 resource "aws_s3_bucket_versioning" "search_indexes" {

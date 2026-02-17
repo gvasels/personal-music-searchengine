@@ -294,6 +294,13 @@ func (m *MockSimilarityRepository) GetUserSettings(ctx context.Context, userID s
 func (m *MockSimilarityRepository) UpdateUserSettings(ctx context.Context, userID string, update *repository.UserSettingsUpdate) (*models.UserSettings, error) {
 	return nil, nil
 }
+func (m *MockSimilarityRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockSimilarityRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 // Helper function to create test tracks
 func createSimilarityTestTrack(id, artist, album, genre, keyCamelot string, bpm int, tags []string) models.Track {

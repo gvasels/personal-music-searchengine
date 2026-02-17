@@ -288,6 +288,13 @@ func (m *MockStatsRepository) ListUploads(ctx context.Context, userID string, fi
 func (m *MockStatsRepository) ListUploadsByStatus(ctx context.Context, status models.UploadStatus) ([]models.Upload, error) {
 	return nil, nil
 }
+func (m *MockStatsRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockStatsRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 // MockS3RepoForStats mocks S3 repository for stats tests.
 type MockS3RepoForStats struct {

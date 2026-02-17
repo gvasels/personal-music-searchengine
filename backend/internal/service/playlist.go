@@ -13,13 +13,15 @@ import (
 type playlistService struct {
 	repo   repository.Repository
 	s3Repo repository.S3Repository
+	cf     repository.CloudFrontSigner
 }
 
 // NewPlaylistService creates a new playlist service
-func NewPlaylistService(repo repository.Repository, s3Repo repository.S3Repository) PlaylistService {
+func NewPlaylistService(repo repository.Repository, s3Repo repository.S3Repository, cf repository.CloudFrontSigner) PlaylistService {
 	return &playlistService{
 		repo:   repo,
 		s3Repo: s3Repo,
+		cf:     cf,
 	}
 }
 
@@ -54,13 +56,7 @@ func (s *playlistService) GetPlaylist(ctx context.Context, userID, playlistID st
 		return nil, err
 	}
 
-	coverArtURL := ""
-	if playlist.CoverArtKey != "" {
-		url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, playlist.CoverArtKey, 24*time.Hour)
-		if err == nil {
-			coverArtURL = url
-		}
-	}
+	coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, playlist.CoverArtKey)
 
 	// Get playlist tracks
 	playlistTracks, err := s.repo.GetPlaylistTracks(ctx, playlistID)
@@ -79,13 +75,7 @@ func (s *playlistService) GetPlaylist(ctx context.Context, userID, playlistID st
 			return nil, err
 		}
 
-		trackCoverURL := ""
-		if track.CoverArtKey != "" {
-			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, track.CoverArtKey, 24*time.Hour)
-			if err == nil {
-				trackCoverURL = url
-			}
-		}
+		trackCoverURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, track.CoverArtKey)
 		tracks = append(tracks, track.ToResponse(trackCoverURL))
 	}
 
@@ -123,13 +113,7 @@ func (s *playlistService) UpdatePlaylist(ctx context.Context, userID, playlistID
 		return nil, err
 	}
 
-	coverArtURL := ""
-	if playlist.CoverArtKey != "" {
-		url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, playlist.CoverArtKey, 24*time.Hour)
-		if err == nil {
-			coverArtURL = url
-		}
-	}
+	coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, playlist.CoverArtKey)
 
 	response := playlist.ToResponse(coverArtURL)
 	return &response, nil
@@ -155,13 +139,7 @@ func (s *playlistService) ListPlaylists(ctx context.Context, userID string, filt
 
 	responses := make([]models.PlaylistResponse, 0, len(result.Items))
 	for _, playlist := range result.Items {
-		coverArtURL := ""
-		if playlist.CoverArtKey != "" {
-			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, playlist.CoverArtKey, 24*time.Hour)
-			if err == nil {
-				coverArtURL = url
-			}
-		}
+		coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, playlist.CoverArtKey)
 		resp := playlist.ToResponse(coverArtURL)
 
 		// Calculate actual track count from existing tracks only
@@ -227,13 +205,7 @@ func (s *playlistService) AddTracks(ctx context.Context, userID, playlistID stri
 		return nil, err
 	}
 
-	coverArtURL := ""
-	if playlist.CoverArtKey != "" {
-		url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, playlist.CoverArtKey, 24*time.Hour)
-		if err == nil {
-			coverArtURL = url
-		}
-	}
+	coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, playlist.CoverArtKey)
 
 	response := playlist.ToResponse(coverArtURL)
 	return &response, nil
@@ -275,13 +247,7 @@ func (s *playlistService) RemoveTracks(ctx context.Context, userID, playlistID s
 		return nil, err
 	}
 
-	coverArtURL := ""
-	if playlist.CoverArtKey != "" {
-		url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, playlist.CoverArtKey, 24*time.Hour)
-		if err == nil {
-			coverArtURL = url
-		}
-	}
+	coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, playlist.CoverArtKey)
 
 	response := playlist.ToResponse(coverArtURL)
 	return &response, nil
@@ -336,13 +302,7 @@ func (s *playlistService) ReorderTracks(ctx context.Context, userID, playlistID 
 		return nil, err
 	}
 
-	coverArtURL := ""
-	if playlist.CoverArtKey != "" {
-		url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, playlist.CoverArtKey, 24*time.Hour)
-		if err == nil {
-			coverArtURL = url
-		}
-	}
+	coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, playlist.CoverArtKey)
 
 	response := playlist.ToResponse(coverArtURL)
 	return &response, nil
@@ -381,13 +341,7 @@ func (s *playlistService) ListPublicPlaylists(ctx context.Context, limit int, cu
 
 	responses := make([]models.PlaylistResponse, len(result.Items))
 	for i, playlist := range result.Items {
-		coverArtURL := ""
-		if playlist.CoverArtKey != "" {
-			url, err := s.s3Repo.GeneratePresignedDownloadURL(ctx, playlist.CoverArtKey, 24*time.Hour)
-			if err == nil {
-				coverArtURL = url
-			}
-		}
+		coverArtURL := generateCoverArtURL(ctx, s.cf, s.s3Repo, playlist.CoverArtKey)
 
 		responses[i] = playlist.ToResponse(coverArtURL)
 

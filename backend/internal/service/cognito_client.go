@@ -44,6 +44,15 @@ type CognitoClient interface {
 
 	// GetUserStatus gets the enabled/disabled status of a user from Cognito.
 	GetUserStatus(ctx context.Context, userID string) (enabled bool, err error)
+
+	// GetUserEmail returns the email address for a Cognito user by sub/username.
+	GetUserEmail(ctx context.Context, userID string) (string, error)
+
+	// GetSelfSignUpEnabled returns whether self-registration is allowed.
+	GetSelfSignUpEnabled(ctx context.Context) (bool, error)
+
+	// SetSelfSignUpEnabled enables or disables self-registration.
+	SetSelfSignUpEnabled(ctx context.Context, enabled bool) error
 }
 
 // CognitoIdentityProviderAPI defines the subset of Cognito operations we use.
@@ -56,6 +65,8 @@ type CognitoIdentityProviderAPI interface {
 	AdminEnableUser(ctx context.Context, params *cognitoidentityprovider.AdminEnableUserInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.AdminEnableUserOutput, error)
 	ListUsers(ctx context.Context, params *cognitoidentityprovider.ListUsersInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.ListUsersOutput, error)
 	AdminGetUser(ctx context.Context, params *cognitoidentityprovider.AdminGetUserInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.AdminGetUserOutput, error)
+	DescribeUserPool(ctx context.Context, params *cognitoidentityprovider.DescribeUserPoolInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.DescribeUserPoolOutput, error)
+	UpdateUserPool(ctx context.Context, params *cognitoidentityprovider.UpdateUserPoolInput, optFns ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.UpdateUserPoolOutput, error)
 }
 
 // cognitoClient implements CognitoClient using AWS SDK v2.
@@ -175,6 +186,23 @@ func (c *cognitoClient) GetUserStatus(ctx context.Context, userID string) (bool,
 	return output.Enabled, nil
 }
 
+func (c *cognitoClient) GetUserEmail(ctx context.Context, userID string) (string, error) {
+	input := &cognitoidentityprovider.AdminGetUserInput{
+		UserPoolId: aws.String(c.userPoolID),
+		Username:   aws.String(userID),
+	}
+	output, err := c.api.AdminGetUser(ctx, input)
+	if err != nil {
+		return "", c.wrapCognitoError(err, "get user email")
+	}
+	for _, attr := range output.UserAttributes {
+		if aws.ToString(attr.Name) == "email" {
+			return aws.ToString(attr.Value), nil
+		}
+	}
+	return "", fmt.Errorf("email attribute not found for user %s", userID)
+}
+
 // SearchUsers searches for users by email in Cognito.
 func (c *cognitoClient) SearchUsers(ctx context.Context, query string, limit int) ([]CognitoUser, error) {
 	if limit <= 0 {
@@ -244,4 +272,28 @@ func (c *cognitoClient) wrapCognitoError(err error, operation string) error {
 	}
 
 	return fmt.Errorf("failed to %s: %w", operation, err)
+}
+
+func (c *cognitoClient) GetSelfSignUpEnabled(ctx context.Context) (bool, error) {
+	output, err := c.api.DescribeUserPool(ctx, &cognitoidentityprovider.DescribeUserPoolInput{
+		UserPoolId: aws.String(c.userPoolID),
+	})
+	if err != nil {
+		return false, c.wrapCognitoError(err, "describe user pool")
+	}
+	// AllowAdminCreateUserOnly=true means self-signup is DISABLED
+	return !output.UserPool.AdminCreateUserConfig.AllowAdminCreateUserOnly, nil
+}
+
+func (c *cognitoClient) SetSelfSignUpEnabled(ctx context.Context, enabled bool) error {
+	_, err := c.api.UpdateUserPool(ctx, &cognitoidentityprovider.UpdateUserPoolInput{
+		UserPoolId: aws.String(c.userPoolID),
+		AdminCreateUserConfig: &types.AdminCreateUserConfigType{
+			AllowAdminCreateUserOnly: !enabled,
+		},
+	})
+	if err != nil {
+		return c.wrapCognitoError(err, "update self-signup setting")
+	}
+	return nil
 }

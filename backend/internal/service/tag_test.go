@@ -307,6 +307,13 @@ func (m *MockTagRepository) GetUserSettings(ctx context.Context, userID string) 
 func (m *MockTagRepository) UpdateUserSettings(ctx context.Context, userID string, update *repository.UserSettingsUpdate) (*models.UserSettings, error) {
 	return nil, nil
 }
+func (m *MockTagRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockTagRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 // =============================================================================
 // CreateTag Tests

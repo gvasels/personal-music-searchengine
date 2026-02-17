@@ -164,6 +164,13 @@ func (m *MockMigrationRepository) IncrementUserFollowingCount(ctx context.Contex
 	args := m.Called(ctx, userID, delta)
 	return args.Error(0)
 }
+func (m *MockMigrationRepository) UpdateTrackAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) error {
+	return nil
+}
+func (m *MockMigrationRepository) UpdateTrackAnalysisWithFeatures(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis, bpm int, key, camelotCode string) error {
+	return nil
+}
+
 
 // Helper function to create test tracks
 func createMigrationTestTrack(userID, trackID, artist, artistID string) models.Track {
