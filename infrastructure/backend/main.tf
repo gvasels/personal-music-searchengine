@@ -13,7 +13,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "music-library-prod-tofu-state-851725417685"
+    bucket         = "music-library-prod-tofu-state"
     key            = "backend/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "music-library-prod-tofu-lock"
@@ -61,7 +61,7 @@ variable "frontend_cloudfront_domain" {
 data "terraform_remote_state" "shared" {
   backend = "s3"
   config = {
-    bucket = "music-library-prod-tofu-state-851725417685"
+    bucket = "music-library-prod-tofu-state"
     key    = "shared/terraform.tfstate"
     region = "us-east-1"
   }
@@ -70,7 +70,7 @@ data "terraform_remote_state" "shared" {
 data "terraform_remote_state" "global" {
   backend = "s3"
   config = {
-    bucket = "music-library-prod-tofu-state-851725417685"
+    bucket = "music-library-prod-tofu-state"
     key    = "global/terraform.tfstate"
     region = "us-east-1"
   }

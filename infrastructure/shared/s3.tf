@@ -4,7 +4,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "media" {
-  bucket = "${data.aws_caller_identity.current.account_id}-${local.name_prefix}-media"
+  bucket = "${local.name_prefix}-media"
 }
 
 resource "aws_s3_bucket_versioning" "media" {
@@ -67,32 +67,8 @@ resource "aws_s3_bucket_intelligent_tiering_configuration" "media" {
   }
 }
 
-# Bucket policy to allow Bedrock async invoke to read/write
-resource "aws_s3_bucket_policy" "media_bedrock" {
-  bucket = aws_s3_bucket.media.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "BedrockAsyncInvokeAccess"
-        Effect = "Allow"
-        Principal = {
-          Service = "bedrock.amazonaws.com"
-        }
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:GetBucketLocation"
-        ]
-        Resource = [
-          aws_s3_bucket.media.arn,
-          "${aws_s3_bucket.media.arn}/*"
-        ]
-      }
-    ]
-  })
-}
+# Note: Bucket policy for media is managed in infrastructure/backend/cloudfront.tf
+# (combines CloudFront OAC + Bedrock access in a single policy)
 
 # Lifecycle rules
 resource "aws_s3_bucket_lifecycle_configuration" "media" {
@@ -142,7 +118,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "media" {
 
 # S3 Bucket for Search Indexes (Nixiesearch)
 resource "aws_s3_bucket" "search_indexes" {
-  bucket = "${data.aws_caller_identity.current.account_id}-${local.name_prefix}-search-indexes"
+  bucket = "${local.name_prefix}-search-indexes"
 }
 
 resource "aws_s3_bucket_versioning" "search_indexes" {

@@ -4,7 +4,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "frontend" {
-  bucket = "${data.aws_caller_identity.current.account_id}-${local.name_prefix}-frontend"
+  bucket = "${local.name_prefix}-frontend"
 }
 
 resource "aws_s3_bucket_versioning" "frontend" {
