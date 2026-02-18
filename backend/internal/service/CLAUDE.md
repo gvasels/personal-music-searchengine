@@ -130,6 +130,9 @@ Business logic layer implementing domain operations for the Personal Music Searc
 
 ### EmbeddingService
 - `ComposeEmbedText` - Create text representation of track for embedding
+  - Includes title, artist, album, genre, tags, BPM, and musical key
+  - When a Camelot key is present, embeds Camelot wheel neighbors (via `GetCompatibleKeys`) so harmonically adjacent tracks share tokens for higher cosine similarity (e.g., "Key: 8A Am minor compatible: 8A 7A 9A 8B")
+  - Falls back to raw `MusicalKey` when `KeyCamelot` is not set
 - `GenerateTrackEmbedding` - Generate 1024-dim embedding for track metadata
 - `GenerateQueryEmbedding` - Generate embedding for search query
 - `BatchGenerateEmbeddings` - Batch embed multiple tracks with partial failure handling
@@ -138,6 +141,12 @@ Business logic layer implementing domain operations for the Personal Music Searc
 - `FindSimilarTracks` - Find tracks similar by semantic/features
 - `FindMixableTracks` - Find DJ-compatible tracks (BPM + key)
 - `CosineSimilarity` - Calculate vector similarity
+- `calculateSemanticSimilarity` - Metadata-based similarity with weighted factors:
+  - Same artist: +0.35
+  - Same genre: +0.25
+  - Same Camelot key: +0.2, harmonic key: +0.15
+  - Overlapping tags: up to +0.2 (proportional to overlap ratio)
+  - Capped at 1.0
 
 ### HelloService
 Local development search feature using seed data from LocalStack DynamoDB.
