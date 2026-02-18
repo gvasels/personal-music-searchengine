@@ -105,9 +105,13 @@ func TestComposeEmbedText_AllFields(t *testing.T) {
 	assert.Contains(t, text, "Electronic", "should contain genre")
 	assert.Contains(t, text, "synthwave", "should contain tags")
 	assert.Contains(t, text, "128", "should contain BPM")
+	assert.Contains(t, text, "8A", "should contain Camelot key")
 	assert.Contains(t, text, "Am", "should contain musical key")
 	assert.Contains(t, text, "minor", "should contain key mode")
-	assert.Contains(t, text, "8A", "should contain Camelot key")
+	// Camelot wheel neighbors for harmonic mixing
+	assert.Contains(t, text, "7A", "should contain adjacent key -1")
+	assert.Contains(t, text, "9A", "should contain adjacent key +1")
+	assert.Contains(t, text, "8B", "should contain relative major/minor")
 }
 
 func TestComposeEmbedText_MinimalFields(t *testing.T) {
@@ -174,6 +178,10 @@ func TestComposeEmbedText_WithDJMetadata(t *testing.T) {
 
 	assert.Contains(t, text, "140", "should contain BPM value")
 	assert.Contains(t, text, "11B", "should contain Camelot key")
+	// 11B neighbors: 11B, 10B, 12B, 11A
+	assert.Contains(t, text, "10B", "should contain adjacent key -1")
+	assert.Contains(t, text, "12B", "should contain adjacent key +1")
+	assert.Contains(t, text, "11A", "should contain relative minor")
 }
 
 // ============================================================================
