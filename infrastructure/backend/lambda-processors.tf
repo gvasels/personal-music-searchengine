@@ -77,7 +77,7 @@ resource "aws_lambda_function" "audio_analyzer" {
   role          = local.lambda_role_arn
   handler       = "bootstrap"
   runtime       = "provided.al2023"
-  architectures = ["x86_64"]
+  architectures = ["arm64"]
 
   filename         = "${path.module}/../../backend/cmd/processor/audio-analyzer/bootstrap.zip"
   source_code_hash = filebase64sha256("${path.module}/../../backend/cmd/processor/audio-analyzer/bootstrap.zip")
@@ -107,7 +107,7 @@ resource "aws_lambda_function" "embedding_generator" {
   role          = local.lambda_role_arn
   handler       = "bootstrap"
   runtime       = "provided.al2023"
-  architectures = ["x86_64"]
+  architectures = ["arm64"]
 
   filename         = "${path.module}/../../backend/cmd/processor/embedding-generator/bootstrap.zip"
   source_code_hash = filebase64sha256("${path.module}/../../backend/cmd/processor/embedding-generator/bootstrap.zip")
@@ -138,7 +138,7 @@ resource "aws_lambda_function" "track_updater" {
   role          = local.lambda_role_arn
   handler       = "bootstrap"
   runtime       = "provided.al2023"
-  architectures = ["x86_64"]
+  architectures = ["arm64"]
 
   filename         = "${path.module}/../../backend/cmd/processor/track-updater/bootstrap.zip"
   source_code_hash = filebase64sha256("${path.module}/../../backend/cmd/processor/track-updater/bootstrap.zip")
