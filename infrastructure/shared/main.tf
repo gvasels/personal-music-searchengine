@@ -47,20 +47,61 @@ variable "project_name" {
   default     = "music-library"
 }
 
-variable "cognito_callback_urls" {
-  description = "Cognito callback URLs"
+variable "cognito_extra_callback_urls" {
+  description = "Additional Cognito callback URLs beyond auto-computed ones"
   type        = list(string)
-  default     = ["http://localhost:5173/callback", "https://music.example.com/callback"]
+  default     = []
 }
 
-variable "cognito_logout_urls" {
-  description = "Cognito logout URLs"
+variable "cognito_extra_logout_urls" {
+  description = "Additional Cognito logout URLs beyond auto-computed ones"
   type        = list(string)
-  default     = ["http://localhost:5173", "https://music.example.com"]
+  default     = []
+}
+
+variable "custom_domain" {
+  description = "Custom domain for frontend (e.g., music.vasels.com). Used for S3 CORS origins."
+  type        = string
+  default     = ""
+}
+
+data "terraform_remote_state" "frontend" {
+  backend = "s3"
+  config = {
+    bucket = "music-library-prod-tofu-state"
+    key    = "frontend/terraform.tfstate"
+    region = "us-east-1"
+  }
 }
 
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
+
+  # Dynamic CORS origins from frontend outputs
+  frontend_cf_domain     = try(data.terraform_remote_state.frontend.outputs.frontend_cloudfront_domain_name, "")
+  frontend_custom_domain = try(data.terraform_remote_state.frontend.outputs.frontend_custom_domain, var.custom_domain)
+
+  s3_cors_origins = compact([
+    "http://localhost:5173",
+    "http://localhost:3000",
+    local.frontend_cf_domain != "" ? "https://${local.frontend_cf_domain}" : "",
+    local.frontend_custom_domain != null && local.frontend_custom_domain != "" ? "https://${local.frontend_custom_domain}" : "",
+  ])
+
+  # Dynamic Cognito callback/logout URLs
+  cognito_callback_urls = distinct(compact(concat(
+    ["http://localhost:5173/callback"],
+    [local.frontend_cf_domain != "" ? "https://${local.frontend_cf_domain}/callback" : ""],
+    [local.frontend_custom_domain != null && local.frontend_custom_domain != "" ? "https://${local.frontend_custom_domain}/callback" : ""],
+    var.cognito_extra_callback_urls,
+  )))
+
+  cognito_logout_urls = distinct(compact(concat(
+    ["http://localhost:5173"],
+    [local.frontend_cf_domain != "" ? "https://${local.frontend_cf_domain}" : ""],
+    [local.frontend_custom_domain != null && local.frontend_custom_domain != "" ? "https://${local.frontend_custom_domain}" : ""],
+    var.cognito_extra_logout_urls,
+  )))
 }
 
 # Outputs

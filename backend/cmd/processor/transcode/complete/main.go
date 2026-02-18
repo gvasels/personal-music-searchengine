@@ -55,6 +55,7 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 	userID := detail.UserMetadata["userId"]
 
 	if trackID == "" || userID == "" {
+		fmt.Printf("Missing metadata in event: trackId=%q, userId=%q, jobId=%q\n", trackID, userID, detail.JobID)
 		return &Response{
 			Status: "failed",
 			Reason: "missing_metadata",

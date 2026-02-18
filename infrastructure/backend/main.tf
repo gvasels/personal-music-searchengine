@@ -51,8 +51,8 @@ variable "project_name" {
   default     = "music-library"
 }
 
-variable "frontend_cloudfront_domain" {
-  description = "Frontend CloudFront distribution domain for CORS (set after frontend deployment)"
+variable "custom_domain" {
+  description = "Custom domain for frontend (e.g., music.vasels.com). Used for CORS origins."
   type        = string
   default     = ""
 }
@@ -76,6 +76,15 @@ data "terraform_remote_state" "global" {
   }
 }
 
+data "terraform_remote_state" "frontend" {
+  backend = "s3"
+  config = {
+    bucket = "music-library-prod-tofu-state"
+    key    = "frontend/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+
 locals {
   name_prefix                = "${var.project_name}-${var.environment}"
   dynamodb_table_name        = data.terraform_remote_state.shared.outputs.dynamodb_table_name
@@ -91,6 +100,17 @@ locals {
   lambda_role_arn            = data.terraform_remote_state.global.outputs.lambda_execution_role_arn
   # Derive role name from ARN (arn:aws:iam::ACCOUNT:role/ROLE_NAME)
   lambda_role_name = element(split("/", data.terraform_remote_state.global.outputs.lambda_execution_role_arn), 1)
+
+  # Dynamic CORS origins from frontend outputs
+  frontend_cf_domain     = try(data.terraform_remote_state.frontend.outputs.frontend_cloudfront_domain_name, "")
+  frontend_custom_domain = try(data.terraform_remote_state.frontend.outputs.frontend_custom_domain, var.custom_domain)
+
+  cors_origins = compact([
+    "http://localhost:5173",
+    "http://localhost:3000",
+    local.frontend_cf_domain != "" ? "https://${local.frontend_cf_domain}" : "",
+    local.frontend_custom_domain != null && local.frontend_custom_domain != "" ? "https://${local.frontend_custom_domain}" : "",
+  ])
 }
 
 # Outputs

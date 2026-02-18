@@ -130,15 +130,8 @@ resource "aws_apigatewayv2_api" "bedrock_gateway" {
   cors_configuration {
     allow_headers = ["Authorization", "Content-Type", "X-Request-ID"]
     allow_methods = ["GET", "POST", "OPTIONS"]
-    # Restrict CORS to frontend CloudFront and localhost for development
-    # Set frontend_cloudfront_domain variable after frontend deployment
-    # Development: localhost:5173 (Vite default) and localhost:3000
-    allow_origins = compact([
-      var.frontend_cloudfront_domain != "" ? "https://${var.frontend_cloudfront_domain}" : null,
-      "http://localhost:5173",
-      "http://localhost:3000"
-    ])
-    max_age = 3600
+    allow_origins = local.cors_origins
+    max_age       = 3600
   }
 }
 

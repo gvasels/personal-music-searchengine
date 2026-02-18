@@ -96,7 +96,19 @@ resource "aws_sfn_state_machine" "upload_processor" {
             Next        = "MarkUploadFailed"
           }
         ]
-        Next = "MoveToMediaStorage"
+        Next = "CheckDuplicate"
+      }
+
+      CheckDuplicate = {
+        Type = "Choice"
+        Choices = [
+          {
+            Variable     = "$.track.isDuplicate"
+            BooleanEquals = true
+            Next         = "MarkUploadCompleted"
+          }
+        ]
+        Default = "MoveToMediaStorage"
       }
 
       MoveToMediaStorage = {

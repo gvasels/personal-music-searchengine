@@ -353,3 +353,16 @@ export interface UserProfile {
   createdAt: string;
   updatedAt: string;
 }
+
+// Admin Track Reprocess Result
+export interface ReprocessResult {
+  trackId: string;
+  status: 'processing' | 'complete' | 'failed';
+  bpm?: number;
+  bpmConfidence?: number;
+  musicalKey?: string;
+  keyCamelot?: string;
+  embeddingStatus?: string;
+  error?: string;
+  processedAt?: string;
+}
