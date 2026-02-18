@@ -71,6 +71,8 @@ func createFullTestTrackForEmbedding() models.Track {
 		Genre:      "Electronic",
 		Tags:       []string{"synthwave", "retro", "80s", "driving"},
 		BPM:        128,
+		MusicalKey: "Am",
+		KeyMode:    "minor",
 		KeyCamelot: "8A",
 		Duration:   240,
 		Year:       2023,
@@ -103,7 +105,9 @@ func TestComposeEmbedText_AllFields(t *testing.T) {
 	assert.Contains(t, text, "Electronic", "should contain genre")
 	assert.Contains(t, text, "synthwave", "should contain tags")
 	assert.Contains(t, text, "128", "should contain BPM")
-	assert.Contains(t, text, "8A", "should contain key")
+	assert.Contains(t, text, "Am", "should contain musical key")
+	assert.Contains(t, text, "minor", "should contain key mode")
+	assert.Contains(t, text, "8A", "should contain Camelot key")
 }
 
 func TestComposeEmbedText_MinimalFields(t *testing.T) {

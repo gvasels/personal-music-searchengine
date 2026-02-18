@@ -76,9 +76,13 @@ func (s *EmbeddingService) ComposeEmbedText(track models.Track) string {
 		parts = append(parts, fmt.Sprintf("BPM: %d", track.BPM))
 	}
 
-	// Add KeyCamelot if present (labeled)
-	if track.KeyCamelot != "" {
+	// Add musical key info if present (both musical notation and Camelot for richer embeddings)
+	if track.MusicalKey != "" && track.KeyCamelot != "" {
+		parts = append(parts, fmt.Sprintf("Key: %s %s %s", track.MusicalKey, track.KeyMode, track.KeyCamelot))
+	} else if track.KeyCamelot != "" {
 		parts = append(parts, fmt.Sprintf("Key: %s", track.KeyCamelot))
+	} else if track.MusicalKey != "" {
+		parts = append(parts, fmt.Sprintf("Key: %s", track.MusicalKey))
 	}
 
 	// Join all parts with space
