@@ -12,6 +12,7 @@ export interface UploadItem {
   currentStep: string;
   trackId: string | null;
   error: string | null;
+  isDuplicate: boolean;
 }
 
 export interface UseUploadReturn {
@@ -120,6 +121,7 @@ export function useUpload(): UseUploadReturn {
           currentStep: 'Uploading...',
           trackId: null,
           error: null,
+          isDuplicate: false,
         };
 
         setUploads((prev) => [...prev, uploadItem]);
@@ -169,6 +171,7 @@ export function useUpload(): UseUploadReturn {
 
         // Final status update
         const finalStatus = status.status === 'COMPLETED' ? 'completed' : 'failed';
+        const isDuplicate = status.isDuplicate ?? false;
         setUploads((prev) =>
           prev.map((u) =>
             u.id === presigned.uploadId
@@ -176,9 +179,12 @@ export function useUpload(): UseUploadReturn {
                   ...u,
                   status: finalStatus,
                   progress: finalStatus === 'completed' ? 100 : u.progress,
-                  currentStep: finalStatus === 'completed' ? 'Completed' : 'Failed',
+                  currentStep: finalStatus === 'completed'
+                    ? (isDuplicate ? 'Already in library' : 'Completed')
+                    : 'Failed',
                   trackId: status.trackId,
                   error: status.errorMsg,
+                  isDuplicate,
                 }
               : u
           )

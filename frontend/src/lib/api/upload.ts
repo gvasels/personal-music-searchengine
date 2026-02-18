@@ -35,6 +35,7 @@ export interface UploadStatusResponse {
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   trackId: string | null;
   errorMsg: string | null;
+  isDuplicate?: boolean;
   steps: UploadSteps;
 }
 

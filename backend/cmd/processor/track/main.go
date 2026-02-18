@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
 	"github.com/google/uuid"
 
@@ -50,13 +52,20 @@ type AnalysisResult struct {
 
 // Response represents the output to Step Functions
 type Response struct {
-	TrackID string `json:"trackId"`
-	AlbumID string `json:"albumId,omitempty"`
+	TrackID     string `json:"trackId"`
+	AlbumID     string `json:"albumId,omitempty"`
+	IsDuplicate bool   `json:"isDuplicate"`
 }
 
 var repo repository.Repository
+var s3Client *s3.Client
 var sfnClient *sfn.Client
 var audioPipelineARN = os.Getenv("AUDIO_PIPELINE_ARN")
+var mediaBucket = os.Getenv("MEDIA_BUCKET")
+
+// doTriggerAudioPipeline is the function called to trigger the audio analysis
+// pipeline. It defaults to triggerAudioPipeline but can be replaced in tests.
+var doTriggerAudioPipeline = triggerAudioPipeline
 
 func init() {
 	cfg, err := config.LoadDefaultConfig(context.Background())
@@ -71,6 +80,7 @@ func init() {
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 	repo = repository.NewDynamoDBRepository(dynamoClient, tableName)
+	s3Client = s3.NewFromConfig(cfg)
 	sfnClient = sfn.NewFromConfig(cfg)
 }
 
@@ -87,6 +97,40 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 		return nil, err
 	}
 
+	title := getOrDefault(event.Metadata, "title", event.FileName)
+	artist := getOrDefault(event.Metadata, "artist", "Unknown Artist")
+	duration := getIntOrDefault(event.Metadata, "duration", 0)
+
+	// Check for duplicate track (same title + artist for this user)
+	if existing := findDuplicate(ctx, event.UserID, title, artist, duration); existing != nil {
+		fmt.Printf("Duplicate detected: existing track %s matches upload %s (%s - %s)\n",
+			existing.ID, event.UploadID, title, artist)
+
+		// Clean up the uploaded file
+		cleanupUploadedFile(ctx, event.S3Key)
+
+		// Trigger delta analysis if existing track has HLS ready but is missing AI analysis
+		if needsAnalysis(existing) && existing.HLSStatus == models.HLSStatusReady {
+			fmt.Printf("Existing track %s needs analysis, triggering audio pipeline\n", existing.ID)
+			doTriggerAudioPipeline(ctx, existing.ID, event.UserID, existing.S3Key, existing.Title, existing.Artist)
+		}
+
+		// Update step progress
+		if err := repo.UpdateUploadStep(ctx, event.UserID, event.UploadID, models.StepCreateTrack, true); err != nil {
+			fmt.Printf("Warning: failed to update step progress: %v\n", err)
+		}
+
+		// Mark upload as duplicate so frontend can show appropriate message
+		if upload, err := repo.GetUpload(ctx, event.UserID, event.UploadID); err == nil {
+			upload.IsDuplicate = true
+			if err := repo.UpdateUpload(ctx, *upload); err != nil {
+				fmt.Printf("Warning: failed to mark upload as duplicate: %v\n", err)
+			}
+		}
+
+		return &Response{TrackID: existing.ID, IsDuplicate: true}, nil
+	}
+
 	trackID := uuid.New().String()
 	now := time.Now()
 
@@ -98,17 +142,18 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 
 	// Create track record
 	track := models.Track{
-		ID:        trackID,
-		UserID:    event.UserID,
-		Title:     getOrDefault(event.Metadata, "title", event.FileName),
-		Artist:    getOrDefault(event.Metadata, "artist", "Unknown Artist"),
-		Album:     getOrDefault(event.Metadata, "album", ""),
-		Genre:     getOrDefault(event.Metadata, "genre", ""),
-		Year:      getIntOrDefault(event.Metadata, "year", 0),
-		Duration:  getIntOrDefault(event.Metadata, "duration", 0),
-		Format:    format,
-		S3Key:     event.S3Key, // Will be updated after file is moved
-		PlayCount: 0,
+		ID:         trackID,
+		UserID:     event.UserID,
+		Title:      title,
+		Artist:     artist,
+		Album:      getOrDefault(event.Metadata, "album", ""),
+		Genre:      getOrDefault(event.Metadata, "genre", ""),
+		Year:       getIntOrDefault(event.Metadata, "year", 0),
+		Duration:   duration,
+		Format:     format,
+		S3Key:      event.S3Key, // Will be updated after file is moved
+		Visibility: models.VisibilityPrivate,
+		PlayCount:  0,
 	}
 	track.CreatedAt = now
 	track.UpdatedAt = now
@@ -143,25 +188,6 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 
 	response := &Response{TrackID: trackID}
 
-	// Trigger audio analysis pipeline for audio files
-	if audioPipelineARN != "" && sfnClient != nil && isAudioFile(event.S3Key) {
-		audioInput, _ := json.Marshal(map[string]string{
-			"trackId": trackID,
-			"userId":  event.UserID,
-			"s3Key":   event.S3Key,
-			"title":   track.Title,
-			"artist":  track.Artist,
-		})
-		_, err := sfnClient.StartExecution(ctx, &sfn.StartExecutionInput{
-			StateMachineArn: aws.String(audioPipelineARN),
-			Name:            aws.String(fmt.Sprintf("audio-%s-%d", trackID, time.Now().Unix())),
-			Input:           aws.String(string(audioInput)),
-		})
-		if err != nil {
-			fmt.Printf("Warning: failed to start audio pipeline for track %s: %v\n", trackID, err)
-		}
-	}
-
 	// Create or update album if album name is present
 	if track.Album != "" {
 		album, err := repo.GetOrCreateAlbum(ctx, event.UserID, track.Album, track.Artist)
@@ -174,6 +200,79 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 	}
 
 	return response, nil
+}
+
+// findDuplicate checks if a track with the same title+artist already exists for this user.
+// Returns the existing track if found, nil otherwise.
+func findDuplicate(ctx context.Context, userID, title, artist string, duration int) *models.Track {
+	tracks, err := repo.ListTracksByArtist(ctx, userID, artist)
+	if err != nil {
+		fmt.Printf("Warning: failed to check for duplicates: %v\n", err)
+		return nil
+	}
+
+	for i := range tracks {
+		if strings.EqualFold(tracks[i].Title, title) {
+			// Skip tracks whose file was never moved to permanent storage —
+			// they came from a failed/incomplete previous upload and aren't playable.
+			if !strings.HasPrefix(tracks[i].S3Key, "media/") {
+				continue
+			}
+			// If both have duration, check within 5-second tolerance
+			if duration > 0 && tracks[i].Duration > 0 {
+				if math.Abs(float64(tracks[i].Duration-duration)) > 5 {
+					continue
+				}
+			}
+			return &tracks[i]
+		}
+	}
+	return nil
+}
+
+// needsAnalysis returns true if the track is missing AI analysis data.
+func needsAnalysis(track *models.Track) bool {
+	if track.AnalysisStatus == "COMPLETED" {
+		return false
+	}
+	// Missing BPM, or missing embedding, or no analysis status at all
+	return track.BPM == 0 || track.EmbeddingID == "" || track.AnalysisStatus == "" || track.AnalysisStatus == "FAILED"
+}
+
+// triggerAudioPipeline starts the audio analysis Step Functions pipeline for a track.
+func triggerAudioPipeline(ctx context.Context, trackID, userID, s3Key, title, artist string) {
+	if audioPipelineARN == "" || sfnClient == nil {
+		return
+	}
+	audioInput, _ := json.Marshal(map[string]string{
+		"trackId": trackID,
+		"userId":  userID,
+		"s3Key":   s3Key,
+		"title":   title,
+		"artist":  artist,
+	})
+	_, err := sfnClient.StartExecution(ctx, &sfn.StartExecutionInput{
+		StateMachineArn: aws.String(audioPipelineARN),
+		Name:            aws.String(fmt.Sprintf("audio-%s-%d", trackID, time.Now().Unix())),
+		Input:           aws.String(string(audioInput)),
+	})
+	if err != nil {
+		fmt.Printf("Warning: failed to start audio pipeline for track %s: %v\n", trackID, err)
+	}
+}
+
+// cleanupUploadedFile deletes the uploaded file from S3 since it's a duplicate.
+func cleanupUploadedFile(ctx context.Context, s3Key string) {
+	if s3Client == nil || mediaBucket == "" {
+		return
+	}
+	_, err := s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(mediaBucket),
+		Key:    aws.String(s3Key),
+	})
+	if err != nil {
+		fmt.Printf("Warning: failed to cleanup duplicate upload %s: %v\n", s3Key, err)
+	}
 }
 
 func getOrDefault(meta *models.UploadMetadata, field, defaultVal string) string {
