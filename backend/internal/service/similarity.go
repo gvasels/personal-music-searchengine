@@ -286,21 +286,32 @@ func (s *SimilarityService) calculateSemanticSimilarity(track1, track2 *models.T
 
 	// Same artist is a strong signal
 	if track1.Artist != "" && track1.Artist == track2.Artist {
-		similarity += 0.4
+		similarity += 0.35
 		reasons = append(reasons, "same artist")
 	}
 
 	// Same genre
 	if track1.Genre != "" && track1.Genre == track2.Genre {
-		similarity += 0.3
+		similarity += 0.25
 		reasons = append(reasons, "same genre")
+	}
+
+	// Key compatibility
+	if track1.KeyCamelot != "" && track2.KeyCamelot != "" {
+		if track1.KeyCamelot == track2.KeyCamelot {
+			similarity += 0.2
+			reasons = append(reasons, "same key")
+		} else if IsKeyCompatible(track1.KeyCamelot, track2.KeyCamelot) {
+			similarity += 0.15
+			reasons = append(reasons, "harmonic key")
+		}
 	}
 
 	// Overlapping tags
 	tagOverlap := countOverlappingTags(track1.Tags, track2.Tags)
 	if tagOverlap > 0 {
 		tagScore := float64(tagOverlap) / float64(max(len(track1.Tags), len(track2.Tags)))
-		similarity += tagScore * 0.3
+		similarity += tagScore * 0.2
 		reasons = append(reasons, "shared tags")
 	}
 

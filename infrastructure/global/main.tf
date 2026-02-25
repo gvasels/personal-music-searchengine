@@ -63,10 +63,11 @@ output "lock_table_name" {
 
 output "ecr_repository_urls" {
   value = {
-    api         = aws_ecr_repository.api.repository_url
-    processor   = aws_ecr_repository.processor.repository_url
-    indexer     = aws_ecr_repository.indexer.repository_url
-    nixiesearch = aws_ecr_repository.nixiesearch.repository_url
+    api            = aws_ecr_repository.api.repository_url
+    processor      = aws_ecr_repository.processor.repository_url
+    indexer        = aws_ecr_repository.indexer.repository_url
+    nixiesearch    = aws_ecr_repository.nixiesearch.repository_url
+    audio_features = aws_ecr_repository.audio_features.repository_url
   }
 }
 

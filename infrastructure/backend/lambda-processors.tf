@@ -77,19 +77,19 @@ resource "aws_lambda_function" "audio_analyzer" {
   role          = local.lambda_role_arn
   handler       = "bootstrap"
   runtime       = "provided.al2023"
-  architectures = ["x86_64"]
+  architectures = ["arm64"]
 
-  filename         = "${path.module}/../../backend/cmd/processor/audio-analyzer/bootstrap.zip"
-  source_code_hash = filebase64sha256("${path.module}/../../backend/cmd/processor/audio-analyzer/bootstrap.zip")
+  filename         = data.archive_file.placeholder.output_path
+  source_code_hash = data.archive_file.placeholder.output_base64sha256
 
-  memory_size = 256
+  memory_size = 512
   timeout     = 60
 
   environment {
     variables = {
       DYNAMODB_TABLE_NAME = local.dynamodb_table_name
       MEDIA_BUCKET        = local.media_bucket_name
-      BEDROCK_MODEL_ID    = "anthropic.claude-3-haiku-20240307-v1:0"
+      BEDROCK_MODEL_ID    = "global.anthropic.claude-sonnet-4-6"
     }
   }
 
@@ -107,20 +107,21 @@ resource "aws_lambda_function" "embedding_generator" {
   role          = local.lambda_role_arn
   handler       = "bootstrap"
   runtime       = "provided.al2023"
-  architectures = ["x86_64"]
+  architectures = ["arm64"]
 
-  filename         = "${path.module}/../../backend/cmd/processor/embedding-generator/bootstrap.zip"
-  source_code_hash = filebase64sha256("${path.module}/../../backend/cmd/processor/embedding-generator/bootstrap.zip")
+  filename         = data.archive_file.placeholder.output_path
+  source_code_hash = data.archive_file.placeholder.output_base64sha256
 
-  memory_size = 256
+  memory_size = 512
   timeout     = 120
 
   environment {
     variables = {
-      MEDIA_BUCKET      = local.media_bucket_name
-      VECTOR_BUCKET     = local.vector_bucket_name
-      VECTOR_INDEX_NAME = "media-embeddings"
-      AWS_ACCOUNT_ID    = data.aws_caller_identity.current.account_id
+      MEDIA_BUCKET        = local.media_bucket_name
+      VECTOR_BUCKET_NAME  = local.vector_bucket_name
+      VECTOR_INDEX_NAME   = "media-embeddings"
+      AWS_ACCOUNT_ID      = data.aws_caller_identity.current.account_id
+      DYNAMODB_TABLE_NAME = local.dynamodb_table_name
     }
   }
 
@@ -138,10 +139,10 @@ resource "aws_lambda_function" "track_updater" {
   role          = local.lambda_role_arn
   handler       = "bootstrap"
   runtime       = "provided.al2023"
-  architectures = ["x86_64"]
+  architectures = ["arm64"]
 
-  filename         = "${path.module}/../../backend/cmd/processor/track-updater/bootstrap.zip"
-  source_code_hash = filebase64sha256("${path.module}/../../backend/cmd/processor/track-updater/bootstrap.zip")
+  filename         = data.archive_file.placeholder.output_path
+  source_code_hash = data.archive_file.placeholder.output_base64sha256
 
   memory_size = 256
   timeout     = 30
@@ -239,6 +240,8 @@ resource "aws_lambda_function" "search_indexer" {
       NIXIESEARCH_FUNCTION_NAME = aws_lambda_function.nixiesearch.function_name
       EMBEDDING_GATEWAY_URL     = aws_apigatewayv2_api.bedrock_gateway.api_endpoint
       EMBEDDING_API_KEY_SECRET  = aws_secretsmanager_secret.bedrock_gateway_api_key.name
+      VECTOR_BUCKET_NAME        = local.vector_bucket_name
+      SEARCH_VECTOR_INDEX_NAME  = "search-embeddings"
     }
   }
 
@@ -279,6 +282,31 @@ resource "aws_cloudwatch_log_group" "upload_status_updater" {
 }
 
 
+# Audio Features Lambda (Python/librosa for BPM and key detection - container image)
+resource "aws_lambda_function" "audio_features" {
+  function_name = "${local.name_prefix}-audio-features"
+  role          = local.lambda_role_arn
+  package_type  = "Image"
+  image_uri     = "${data.terraform_remote_state.global.outputs.ecr_repository_urls.audio_features}:latest"
+  architectures = ["arm64"]
+
+  memory_size = 1024
+  timeout     = 120
+
+  environment {
+    variables = {
+      MEDIA_BUCKET = local.media_bucket_name
+    }
+  }
+
+  depends_on = [aws_cloudwatch_log_group.audio_features]
+}
+
+resource "aws_cloudwatch_log_group" "audio_features" {
+  name              = "/aws/lambda/${local.name_prefix}-audio-features"
+  retention_in_days = 30
+}
+
 # Bedrock access policy for audio analyzer
 resource "aws_iam_role_policy" "audio_analyzer_bedrock" {
   name = "${local.name_prefix}-audio-analyzer-bedrock"
@@ -293,19 +321,27 @@ resource "aws_iam_role_policy" "audio_analyzer_bedrock" {
           "bedrock:InvokeModel"
         ]
         Resource = [
-          "arn:aws:bedrock:${var.aws_region}::foundation-model/anthropic.claude-3-haiku-*",
-          "arn:aws:bedrock:${var.aws_region}::foundation-model/anthropic.claude-3-5-haiku-*",
-          "arn:aws:bedrock:${var.aws_region}::foundation-model/twelvelabs.marengo-embed-3-0-v1:0"
+          "arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:inference-profile/global.anthropic.claude-sonnet-4-6",
+          "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6",
+          "arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:inference-profile/us.twelvelabs.marengo-embed-3-0-v1:0",
+          # Cross-region inference profile routes Marengo to us-east-2 — wildcard region required
+          "arn:aws:bedrock:*::foundation-model/us.twelvelabs.marengo-embed-3-0-v1:0",
+          "arn:aws:bedrock:*::foundation-model/twelvelabs.marengo-embed-3-0-v1:0"
         ]
       },
       {
         Effect = "Allow"
         Action = [
           "bedrock:InvokeModel",
+          "bedrock:StartAsyncInvoke",
           "bedrock:GetAsyncInvoke"
         ]
         Resource = [
-          "arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:async-invoke/*"
+          "arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:async-invoke/*",
+          "arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:inference-profile/us.twelvelabs.marengo-embed-3-0-v1:0",
+          # Cross-region inference profile routes Marengo to us-east-2 — wildcard region required
+          "arn:aws:bedrock:*::foundation-model/us.twelvelabs.marengo-embed-3-0-v1:0",
+          "arn:aws:bedrock:*::foundation-model/twelvelabs.marengo-embed-3-0-v1:0"
         ]
       },
       {
@@ -315,8 +351,16 @@ resource "aws_iam_role_policy" "audio_analyzer_bedrock" {
           "s3:PutObject"
         ]
         Resource = [
-          "arn:aws:s3:::${data.aws_caller_identity.current.account_id}-${local.name_prefix}-media/*"
+          "arn:aws:s3:::${local.media_bucket_name}/*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "aws-marketplace:ViewSubscriptions",
+          "aws-marketplace:Subscribe"
+        ]
+        Resource = "*"
       }
     ]
   })

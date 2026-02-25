@@ -25,6 +25,8 @@ API client functions for the Personal Music Search Engine frontend. Uses Axios w
 | `hotcues.ts` | Hot cue operations |
 | `stats.ts` | Library statistics |
 | `helloSearch.ts` | Hello World search feature |
+| `artistWatch.ts` | Artist watch/unwatch operations |
+| `events.ts` | Artist events and search operations |
 
 ## helloSearch.ts
 

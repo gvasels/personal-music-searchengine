@@ -76,9 +76,24 @@ func (s *EmbeddingService) ComposeEmbedText(track models.Track) string {
 		parts = append(parts, fmt.Sprintf("BPM: %d", track.BPM))
 	}
 
-	// Add KeyCamelot if present (labeled)
+	// Add musical key with Camelot wheel neighbors for harmonic mixing compatibility.
+	// By embedding compatible keys together, tracks in harmonically adjacent keys
+	// (e.g., 8A with 7A, 9A, 8B) will have higher cosine similarity.
 	if track.KeyCamelot != "" {
-		parts = append(parts, fmt.Sprintf("Key: %s", track.KeyCamelot))
+		keyPart := "Key: " + track.KeyCamelot
+		if track.MusicalKey != "" {
+			keyPart += " " + track.MusicalKey
+		}
+		if track.KeyMode != "" {
+			keyPart += " " + track.KeyMode
+		}
+		// Include Camelot wheel neighbors so compatible tracks share embedding tokens
+		if compatible := GetCompatibleKeys(track.KeyCamelot); len(compatible) > 0 {
+			keyPart += " compatible: " + strings.Join(compatible, " ")
+		}
+		parts = append(parts, keyPart)
+	} else if track.MusicalKey != "" {
+		parts = append(parts, "Key: "+track.MusicalKey)
 	}
 
 	// Join all parts with space

@@ -33,6 +33,23 @@ resource "aws_s3_bucket_public_access_block" "frontend" {
   restrict_public_buckets = true
 }
 
+# Transition all objects to Intelligent-Tiering
+resource "aws_s3_bucket_lifecycle_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  rule {
+    id     = "intelligent-tiering-transition"
+    status = "Enabled"
+
+    filter {}
+
+    transition {
+      days          = 0
+      storage_class = "INTELLIGENT_TIERING"
+    }
+  }
+}
+
 # Bucket policy allowing CloudFront OAC access
 resource "aws_s3_bucket_policy" "frontend_cloudfront" {
   bucket = aws_s3_bucket.frontend.id

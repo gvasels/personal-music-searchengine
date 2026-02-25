@@ -117,7 +117,7 @@ output "frontend_url" {
 output "frontend_env_config" {
   description = "Environment variables for frontend build"
   value = {
-    VITE_API_URL             = "${data.terraform_remote_state.backend.outputs.api_gateway_url}api/v1"
+    VITE_API_URL              = "${data.terraform_remote_state.backend.outputs.api_gateway_url}api/v1"
     VITE_COGNITO_USER_POOL_ID = data.terraform_remote_state.shared.outputs.cognito_user_pool_id
     VITE_COGNITO_CLIENT_ID    = data.terraform_remote_state.shared.outputs.cognito_client_id
     VITE_COGNITO_REGION       = var.aws_region

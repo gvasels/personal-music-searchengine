@@ -2,7 +2,7 @@
  * Tracks API Module - Wave 2
  */
 import { apiClient } from './client';
-import type { Track, PaginatedResponse, TrackVisibility } from '../../types';
+import type { Track, PaginatedResponse, TrackVisibility, ReprocessResult } from '../../types';
 
 export interface GetTracksParams {
   page?: number;
@@ -56,6 +56,7 @@ export async function updateTrackVisibility(
 export interface SimilarTrack {
   track: import('../../types').Track;
   score: number;
+  keyCompatible: boolean;
 }
 
 export interface SimilarTracksResponse {
@@ -64,5 +65,10 @@ export interface SimilarTracksResponse {
 
 export async function getSimilarTracks(id: string): Promise<SimilarTracksResponse> {
   const response = await apiClient.get<SimilarTracksResponse>(`/tracks/${id}/similar`);
+  return response.data;
+}
+
+export async function reprocessTrack(id: string): Promise<ReprocessResult> {
+  const response = await apiClient.post<ReprocessResult>(`/api/v1/tracks/${id}/reprocess`);
   return response.data;
 }

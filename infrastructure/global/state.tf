@@ -33,6 +33,23 @@ resource "aws_s3_bucket_public_access_block" "tofu_state" {
   restrict_public_buckets = true
 }
 
+# Transition state objects to Intelligent-Tiering
+resource "aws_s3_bucket_lifecycle_configuration" "tofu_state" {
+  bucket = aws_s3_bucket.tofu_state.id
+
+  rule {
+    id     = "intelligent-tiering-transition"
+    status = "Enabled"
+
+    filter {}
+
+    transition {
+      days          = 0
+      storage_class = "INTELLIGENT_TIERING"
+    }
+  }
+}
+
 # DynamoDB table for state locking
 resource "aws_dynamodb_table" "tofu_lock" {
   name         = "${local.name_prefix}-tofu-lock"

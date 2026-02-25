@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/sfn"
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/service"
 	"github.com/gvasels/personal-music-searchengine/internal/validation"
@@ -26,13 +28,26 @@ type Response struct {
 	Reason  string `json:"reason,omitempty"`
 }
 
+// Interfaces for testability
+type dynamoDBAPI interface {
+	GetItem(ctx context.Context, params *dynamodb.GetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
+	UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error)
+}
+
+type sfnAPI interface {
+	StartExecution(ctx context.Context, params *sfn.StartExecutionInput, optFns ...func(*sfn.Options)) (*sfn.StartExecutionOutput, error)
+}
+
 var (
-	dynamoClient *dynamodb.Client
-	tableName    string
+	dynamoClient     dynamoDBAPI
+	sfnClient        sfnAPI
+	tableName        string
+	audioPipelineARN string
 )
 
 func init() {
 	tableName = os.Getenv("DYNAMODB_TABLE_NAME")
+	audioPipelineARN = os.Getenv("AUDIO_PIPELINE_ARN")
 
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
@@ -41,6 +56,7 @@ func init() {
 	}
 
 	dynamoClient = dynamodb.NewFromConfig(cfg)
+	sfnClient = sfn.NewFromConfig(cfg)
 }
 
 func handleRequest(ctx context.Context, event Event) (*Response, error) {
@@ -55,6 +71,7 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 	userID := detail.UserMetadata["userId"]
 
 	if trackID == "" || userID == "" {
+		fmt.Printf("Missing metadata in event: trackId=%q, userId=%q, jobId=%q\n", trackID, userID, detail.JobID)
 		return &Response{
 			Status: "failed",
 			Reason: "missing_metadata",
@@ -101,6 +118,14 @@ func handleSuccess(ctx context.Context, userID, trackID string, detail service.M
 			Status:  "failed",
 			Reason:  fmt.Sprintf("db_update_failed: %v", err),
 		}, nil
+	}
+
+	// Start audio analysis pipeline
+	if audioPipelineARN != "" {
+		if err := startAudioPipeline(ctx, userID, trackID); err != nil {
+			fmt.Printf("Warning: failed to start audio pipeline for track %s: %v\n", trackID, err)
+			// Don't fail the response — HLS is ready, analysis is best-effort
+		}
 	}
 
 	return &Response{
@@ -169,6 +194,86 @@ func updateTrackHLSStatus(ctx context.Context, userID, trackID string, status mo
 
 	_, err := dynamoClient.UpdateItem(ctx, input)
 	return err
+}
+
+// readTrack fetches a track from DynamoDB and returns its s3Key, title, and artist.
+func readTrack(ctx context.Context, db dynamoDBAPI, table, userID, trackID string) (s3Key, title, artist string, err error) {
+	pk := fmt.Sprintf("USER#%s", userID)
+	sk := fmt.Sprintf("TRACK#%s", trackID)
+
+	result, err := db.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: &table,
+		Key: map[string]dynamodbtypes.AttributeValue{
+			"PK": &dynamodbtypes.AttributeValueMemberS{Value: pk},
+			"SK": &dynamodbtypes.AttributeValueMemberS{Value: sk},
+		},
+	})
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to get track: %w", err)
+	}
+	if result.Item == nil {
+		return "", "", "", fmt.Errorf("track not found: %s/%s", userID, trackID)
+	}
+
+	getStr := func(key string) string {
+		if v, ok := result.Item[key]; ok {
+			if sv, ok := v.(*dynamodbtypes.AttributeValueMemberS); ok {
+				return sv.Value
+			}
+		}
+		return ""
+	}
+
+	return getStr("s3Key"), getStr("title"), getStr("artist"), nil
+}
+
+// triggerAudioPipeline starts the audio analysis Step Functions execution.
+// It is a no-op if the ARN is empty or the client is nil.
+func triggerAudioPipeline(ctx context.Context, client sfnAPI, arn, trackID, userID, s3Key, title, artist string) {
+	if arn == "" || client == nil {
+		return
+	}
+
+	pipelineInput := map[string]string{
+		"trackId": trackID,
+		"userId":  userID,
+		"s3Key":   s3Key,
+		"title":   title,
+		"artist":  artist,
+	}
+
+	inputBytes, err := json.Marshal(pipelineInput)
+	if err != nil {
+		fmt.Printf("Warning: failed to marshal pipeline input: %v\n", err)
+		return
+	}
+
+	executionName := fmt.Sprintf("transcode-%s-%d", trackID, time.Now().Unix())
+	_, err = client.StartExecution(ctx, &sfn.StartExecutionInput{
+		StateMachineArn: &arn,
+		Name:            &executionName,
+		Input:           aws.String(string(inputBytes)),
+	})
+	if err != nil {
+		fmt.Printf("Warning: failed to start audio pipeline: %v\n", err)
+	} else {
+		fmt.Printf("Started audio pipeline for track %s: execution=%s\n", trackID, executionName)
+	}
+}
+
+// startAudioPipeline reads track metadata and triggers the audio analysis pipeline.
+func startAudioPipeline(ctx context.Context, userID, trackID string) error {
+	if sfnClient == nil {
+		return fmt.Errorf("Step Functions client not configured")
+	}
+
+	s3Key, title, artist, err := readTrack(ctx, dynamoClient, tableName, userID, trackID)
+	if err != nil {
+		return err
+	}
+
+	triggerAudioPipeline(ctx, sfnClient, audioPipelineARN, trackID, userID, s3Key, title, artist)
+	return nil
 }
 
 // extractS3Key extracts the S3 key from an S3 URI

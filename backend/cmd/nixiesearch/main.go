@@ -35,16 +35,20 @@ type SearchIndex struct {
 
 // Document represents a searchable track
 type Document struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"userId"`
-	Title     string    `json:"title"`
-	Artist    string    `json:"artist"`
-	Album     string    `json:"album"`
-	Genre     string    `json:"genre"`
-	Year      int       `json:"year"`
-	Duration  int       `json:"duration"`
-	Filename  string    `json:"filename"`
-	IndexedAt time.Time `json:"indexedAt"`
+	ID         string    `json:"id"`
+	UserID     string    `json:"userId"`
+	Title      string    `json:"title"`
+	Artist     string    `json:"artist"`
+	Album      string    `json:"album"`
+	Genre      string    `json:"genre"`
+	Year       int       `json:"year"`
+	Duration   int       `json:"duration"`
+	Filename   string    `json:"filename"`
+	KeyCamelot string    `json:"keyCamelot,omitempty"`
+	BPM        int       `json:"bpm,omitempty"`
+	Mood       string    `json:"mood,omitempty"`
+	SubGenre   string    `json:"subGenre,omitempty"`
+	IndexedAt  time.Time `json:"indexedAt"`
 }
 
 // Request represents the incoming Lambda request
@@ -94,14 +98,18 @@ type SearchResponse struct {
 
 // SearchResult represents a single search hit (flat structure matching client expectations)
 type SearchResult struct {
-	ID       string  `json:"id"`
-	Title    string  `json:"title"`
-	Artist   string  `json:"artist"`
-	Album    string  `json:"album"`
-	Genre    string  `json:"genre"`
-	Year     int     `json:"year,omitempty"`
-	Duration int     `json:"duration,omitempty"`
-	Score    float64 `json:"score"`
+	ID         string  `json:"id"`
+	Title      string  `json:"title"`
+	Artist     string  `json:"artist"`
+	Album      string  `json:"album"`
+	Genre      string  `json:"genre"`
+	Year       int     `json:"year,omitempty"`
+	Duration   int     `json:"duration,omitempty"`
+	KeyCamelot string  `json:"keyCamelot,omitempty"`
+	BPM        int     `json:"bpm,omitempty"`
+	Mood       string  `json:"mood,omitempty"`
+	SubGenre   string  `json:"subGenre,omitempty"`
+	Score      float64 `json:"score"`
 }
 
 // IndexRequest for adding a document
@@ -294,14 +302,18 @@ func handleSearch(ctx context.Context, payload interface{}) (Response, error) {
 		score := calculateScore(doc, queryLower)
 		if queryLower == "" || score > 0 {
 			results = append(results, SearchResult{
-				ID:       doc.ID,
-				Title:    doc.Title,
-				Artist:   doc.Artist,
-				Album:    doc.Album,
-				Genre:    doc.Genre,
-				Year:     doc.Year,
-				Duration: doc.Duration,
-				Score:    score,
+				ID:         doc.ID,
+				Title:      doc.Title,
+				Artist:     doc.Artist,
+				Album:      doc.Album,
+				Genre:      doc.Genre,
+				Year:       doc.Year,
+				Duration:   doc.Duration,
+				KeyCamelot: doc.KeyCamelot,
+				BPM:        doc.BPM,
+				Mood:       doc.Mood,
+				SubGenre:   doc.SubGenre,
+				Score:      score,
 			})
 		}
 	}
@@ -326,6 +338,29 @@ func handleSearch(ctx context.Context, payload interface{}) (Response, error) {
 	}, nil
 }
 
+// camelotWheel maps each Camelot key to its harmonically compatible keys.
+var camelotWheel = map[string][]string{
+	"1A": {"1A", "12A", "2A", "1B"}, "2A": {"2A", "1A", "3A", "2B"},
+	"3A": {"3A", "2A", "4A", "3B"}, "4A": {"4A", "3A", "5A", "4B"},
+	"5A": {"5A", "4A", "6A", "5B"}, "6A": {"6A", "5A", "7A", "6B"},
+	"7A": {"7A", "6A", "8A", "7B"}, "8A": {"8A", "7A", "9A", "8B"},
+	"9A": {"9A", "8A", "10A", "9B"}, "10A": {"10A", "9A", "11A", "10B"},
+	"11A": {"11A", "10A", "12A", "11B"}, "12A": {"12A", "11A", "1A", "12B"},
+	"1B": {"1B", "12B", "2B", "1A"}, "2B": {"2B", "1B", "3B", "2A"},
+	"3B": {"3B", "2B", "4B", "3A"}, "4B": {"4B", "3B", "5B", "4A"},
+	"5B": {"5B", "4B", "6B", "5A"}, "6B": {"6B", "5B", "7B", "6A"},
+	"7B": {"7B", "6B", "8B", "7A"}, "8B": {"8B", "7B", "9B", "8A"},
+	"9B": {"9B", "8B", "10B", "9A"}, "10B": {"10B", "9B", "11B", "10A"},
+	"11B": {"11B", "10B", "12B", "11A"}, "12B": {"12B", "11B", "1B", "12A"},
+}
+
+// isCamelotQuery checks if the query looks like a Camelot key (e.g., "6A", "11B").
+func isCamelotQuery(query string) bool {
+	q := strings.ToUpper(strings.TrimSpace(query))
+	_, ok := camelotWheel[q]
+	return ok
+}
+
 func calculateScore(doc Document, query string) float64 {
 	if query == "" {
 		return 1.0
@@ -333,10 +368,32 @@ func calculateScore(doc Document, query string) float64 {
 
 	var score float64
 
+	// Check if query is a Camelot key (e.g., "6A", "11B")
+	queryUpper := strings.ToUpper(strings.TrimSpace(query))
+	if isCamelotQuery(queryUpper) && doc.KeyCamelot != "" {
+		docKey := strings.ToUpper(doc.KeyCamelot)
+		if docKey == queryUpper {
+			// Exact Camelot key match — highest relevance
+			score += 15.0
+		} else if compatibles, ok := camelotWheel[queryUpper]; ok {
+			for _, ck := range compatibles {
+				if docKey == ck {
+					// Compatible key — still highly relevant for harmonic mixing
+					score += 10.0
+					break
+				}
+			}
+		}
+		// For Camelot queries, still check text fields (might match genre/title too)
+	}
+
 	// Score each field with different weights
 	score += scoreField(doc.Title, query, 3.0)    // Title: highest weight
 	score += scoreField(doc.Artist, query, 2.0)   // Artist: high weight
 	score += scoreField(doc.Album, query, 1.5)    // Album: medium weight
+	score += scoreField(doc.Genre, query, 1.0)    // Genre: medium weight
+	score += scoreField(doc.Mood, query, 0.8)     // Mood: lower weight
+	score += scoreField(doc.SubGenre, query, 0.8) // SubGenre: lower weight
 	score += scoreField(doc.Filename, query, 0.5) // Filename: low weight
 
 	return score

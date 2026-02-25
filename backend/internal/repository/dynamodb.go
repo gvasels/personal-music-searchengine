@@ -599,9 +599,15 @@ func (r *DynamoDBRepository) UpdateTrackAnalysis(ctx context.Context, userID, tr
 		exprValues[":profile"] = &types.AttributeValueMemberS{Value: analysis.EnergyProfile}
 	}
 	if analysis.EmbeddingID != "" {
-		updateExpr += ", #embed = :embed"
+		updateExpr += ", #embed = :embed, #embedStatus = :embedStatus"
 		exprNames["#embed"] = "embeddingId"
+		exprNames["#embedStatus"] = "embeddingStatus"
 		exprValues[":embed"] = &types.AttributeValueMemberS{Value: analysis.EmbeddingID}
+		exprValues[":embedStatus"] = &types.AttributeValueMemberS{Value: "COMPLETED"}
+	} else if analysis.EmbeddingStatus != "" {
+		updateExpr += ", #embedStatus = :embedStatus"
+		exprNames["#embedStatus"] = "embeddingStatus"
+		exprValues[":embedStatus"] = &types.AttributeValueMemberS{Value: analysis.EmbeddingStatus}
 	}
 
 	_, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
@@ -847,6 +853,20 @@ func (r *DynamoDBRepository) UpdateAlbumStats(ctx context.Context, userID, album
 		return fmt.Errorf("failed to update album stats: %w", err)
 	}
 
+	return nil
+}
+
+func (r *DynamoDBRepository) DeleteAlbum(ctx context.Context, userID, albumID string) error {
+	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+			"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("ALBUM#%s", albumID)},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete album: %w", err)
+	}
 	return nil
 }
 

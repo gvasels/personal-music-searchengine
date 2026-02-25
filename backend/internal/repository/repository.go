@@ -65,6 +65,7 @@ type Repository interface {
 	ListAlbums(ctx context.Context, userID string, filter models.AlbumFilter) (*PaginatedResult[models.Album], error)
 	ListAlbumsByArtist(ctx context.Context, userID, artist string) ([]models.Album, error)
 	UpdateAlbumStats(ctx context.Context, userID, albumID string, trackCount, totalDuration int) error
+	DeleteAlbum(ctx context.Context, userID, albumID string) error
 
 	// Artist operations
 	CreateArtist(ctx context.Context, artist models.Artist) error
@@ -138,6 +139,12 @@ type Repository interface {
 	RemoveTagFromTrack(ctx context.Context, userID, trackID, tagName string) error
 	GetTrackTags(ctx context.Context, userID, trackID string) ([]string, error)
 	GetTracksByTag(ctx context.Context, userID, tagName string) ([]models.Track, error)
+
+	// ArtistWatch operations
+	CreateArtistWatch(ctx context.Context, watch models.ArtistWatch) error
+	DeleteArtistWatch(ctx context.Context, userID, artistName string) error
+	GetArtistWatch(ctx context.Context, userID, artistName string) (*models.ArtistWatch, error)
+	ListWatchedArtists(ctx context.Context, userID string, limit int, cursor string) (*PaginatedResult[models.ArtistWatch], error)
 
 	// Upload operations
 	CreateUpload(ctx context.Context, upload models.Upload) error

@@ -112,8 +112,8 @@ resource "aws_cognito_user_pool_client" "web" {
   allowed_oauth_scopes                 = ["email", "openid", "profile"]
   supported_identity_providers         = ["COGNITO"]
 
-  callback_urls = var.cognito_callback_urls
-  logout_urls   = var.cognito_logout_urls
+  callback_urls = local.cognito_callback_urls
+  logout_urls   = local.cognito_logout_urls
 
   # Prevent user existence errors
   prevent_user_existence_errors = "ENABLED"

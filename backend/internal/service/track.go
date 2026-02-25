@@ -162,6 +162,13 @@ func (s *trackService) DeleteTrack(ctx context.Context, userID, trackID string, 
 		return models.NewNotFoundError("Track", trackID)
 	}
 
+	// Clean up track tags before deleting the track (best effort)
+	if tags, err := s.repo.GetTrackTags(ctx, ownerID, trackID); err == nil {
+		for _, tagName := range tags {
+			_ = s.repo.RemoveTagFromTrack(ctx, ownerID, trackID, tagName)
+		}
+	}
+
 	// Delete from repository using the actual owner's ID
 	if err := s.repo.DeleteTrack(ctx, ownerID, trackID); err != nil {
 		return err
@@ -180,6 +187,15 @@ func (s *trackService) DeleteTrack(ctx context.Context, userID, trackID string, 
 	if track.HLSPlaylistKey != "" {
 		hlsPrefix := "hls/" + ownerID + "/" + trackID + "/"
 		_ = s.s3Repo.DeleteByPrefix(ctx, hlsPrefix)
+	}
+
+	// Clean up empty album if this was the last track (best effort)
+	if track.AlbumID != "" {
+		if album, err := s.repo.GetAlbum(ctx, ownerID, track.AlbumID); err == nil {
+			if album.TrackCount <= 1 {
+				_ = s.repo.DeleteAlbum(ctx, ownerID, track.AlbumID)
+			}
+		}
 	}
 
 	return nil

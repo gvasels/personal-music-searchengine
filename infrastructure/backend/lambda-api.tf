@@ -26,9 +26,10 @@ resource "aws_lambda_function" "api" {
       CLOUDFRONT_SIGNING_KEY_SECRET = aws_secretsmanager_secret.cloudfront_signing_key.name
       COGNITO_USER_POOL_ID          = local.cognito_user_pool_id
       EMBEDDING_GATEWAY_URL         = aws_apigatewayv2_api.bedrock_gateway.api_endpoint
-      EMBEDDING_API_KEY_SECRET      = aws_secretsmanager_secret.bedrock_gateway_api_key.name
+      EMBEDDING_GATEWAY_SECRET      = aws_secretsmanager_secret.bedrock_gateway_api_key.name
       VECTOR_BUCKET_NAME            = local.vector_bucket_name
       VECTOR_INDEX_NAME             = "media-embeddings"
+      SEARCH_VECTOR_INDEX_NAME      = "search-embeddings"
       VECTOR_S3_BUCKET              = local.media_bucket_name
       VECTOR_S3_PREFIX              = "vectors"
     }

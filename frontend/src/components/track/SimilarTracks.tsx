@@ -28,14 +28,19 @@ export function SimilarTracks({ trackId }: SimilarTracksProps) {
               <div className="w-10 h-10 rounded bg-base-300 flex items-center justify-center text-base-content/40">♪</div>
             )}
             <div className="flex-1 min-w-0">
-              <Link to="/tracks/$trackId" params={{ trackId: item.track.id }} className="text-sm font-medium truncate block hover:underline">
+              <Link to="/music/tracks/$trackId" params={{ trackId: item.track.id }} className="text-sm font-medium truncate block hover:underline">
                 {item.track.title}
               </Link>
               <span className="text-xs text-base-content/60 truncate block">{item.track.artist}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-base-content/60 shrink-0">
               {item.track.bpm ? <span>{item.track.bpm} BPM</span> : null}
-              {item.track.keyCamelot ? <span>{item.track.keyCamelot}</span> : null}
+              {item.track.keyCamelot ? (
+                <span className={item.keyCompatible ? 'text-success font-medium' : ''}>
+                  {item.track.keyCamelot}
+                </span>
+              ) : null}
+              {item.keyCompatible && <span className="badge badge-sm badge-success badge-outline">harmonic</span>}
               <span className="badge badge-sm badge-ghost">{((1 - item.score) * 100).toFixed(0)}%</span>
             </div>
           </li>

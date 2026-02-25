@@ -2,6 +2,7 @@
  * useUpload Hook - Wave 4
  */
 import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { getPresignedUploadUrl, confirmUpload, getUploadStatus, UploadSteps } from '../lib/api/upload';
 
 export interface UploadItem {
@@ -12,6 +13,7 @@ export interface UploadItem {
   currentStep: string;
   trackId: string | null;
   error: string | null;
+  isDuplicate: boolean;
 }
 
 export interface UseUploadReturn {
@@ -94,6 +96,7 @@ function uploadToS3WithProgress(
 }
 
 export function useUpload(): UseUploadReturn {
+  const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -120,6 +123,7 @@ export function useUpload(): UseUploadReturn {
           currentStep: 'Uploading...',
           trackId: null,
           error: null,
+          isDuplicate: false,
         };
 
         setUploads((prev) => [...prev, uploadItem]);
@@ -169,6 +173,7 @@ export function useUpload(): UseUploadReturn {
 
         // Final status update
         const finalStatus = status.status === 'COMPLETED' ? 'completed' : 'failed';
+        const isDuplicate = status.isDuplicate ?? false;
         setUploads((prev) =>
           prev.map((u) =>
             u.id === presigned.uploadId
@@ -176,13 +181,23 @@ export function useUpload(): UseUploadReturn {
                   ...u,
                   status: finalStatus,
                   progress: finalStatus === 'completed' ? 100 : u.progress,
-                  currentStep: finalStatus === 'completed' ? 'Completed' : 'Failed',
+                  currentStep: finalStatus === 'completed'
+                    ? (isDuplicate ? 'Already in library' : 'Completed')
+                    : 'Failed',
                   trackId: status.trackId,
                   error: status.errorMsg,
+                  isDuplicate,
                 }
               : u
           )
         );
+
+        // Refresh track lists and library stats so UI shows new track
+        if (finalStatus === 'completed') {
+          void queryClient.invalidateQueries({ queryKey: ['tracks'] });
+          void queryClient.invalidateQueries({ queryKey: ['library', 'stats'] });
+          void queryClient.invalidateQueries({ queryKey: ['albums'] });
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Upload failed';
         setError(message);
@@ -198,7 +213,7 @@ export function useUpload(): UseUploadReturn {
 
     setIsUploading(false);
     setProgress(0);
-  }, []);
+  }, [queryClient]);
 
   const reset = useCallback(() => {
     setProgress(0);

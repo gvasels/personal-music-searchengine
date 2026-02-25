@@ -120,7 +120,8 @@ func (m *MockRepository) ListAlbumsByArtist(ctx context.Context, userID, artist 
 func (m *MockRepository) UpdateAlbumStats(ctx context.Context, userID, albumID string, trackCount, totalDuration int) error {
 	return nil
 }
-func (m *MockRepository) CreateUser(ctx context.Context, user models.User) error       { return nil }
+func (m *MockRepository) DeleteAlbum(ctx context.Context, userID, albumID string) error { return nil }
+func (m *MockRepository) CreateUser(ctx context.Context, user models.User) error        { return nil }
 func (m *MockRepository) GetUser(ctx context.Context, userID string) (*models.User, error) {
 	return nil, nil
 }
@@ -981,6 +982,9 @@ func (m *MockFilterTagsRepository) ListAlbumsByArtist(ctx context.Context, userI
 	return nil, nil
 }
 func (m *MockFilterTagsRepository) UpdateAlbumStats(ctx context.Context, userID, albumID string, trackCount, totalDuration int) error {
+	return nil
+}
+func (m *MockFilterTagsRepository) DeleteAlbum(ctx context.Context, userID, albumID string) error {
 	return nil
 }
 func (m *MockFilterTagsRepository) CreateUser(ctx context.Context, user models.User) error {

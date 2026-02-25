@@ -147,8 +147,9 @@ type Services struct {
 	Stream   StreamService
 	Search   SearchService
 	Admin    AdminService
-	Vector   VectorService
-	Hello    HelloServiceInterface
+	Vector     VectorService
+	Similarity *SimilarityService
+	Hello      HelloServiceInterface
 }
 
 // NewServices creates a new Services instance with all dependencies

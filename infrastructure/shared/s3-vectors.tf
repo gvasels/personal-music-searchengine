@@ -15,13 +15,24 @@ resource "aws_cloudformation_stack" "vectors" {
         }
       }
       MediaEmbeddingsIndex = {
-        Type       = "AWS::S3Vectors::Index"
-        DependsOn  = ["VectorBucket"]
+        Type      = "AWS::S3Vectors::Index"
+        DependsOn = ["VectorBucket"]
         Properties = {
           VectorBucketName = "${data.aws_caller_identity.current.account_id}-${local.name_prefix}-vectors"
           IndexName        = "media-embeddings"
           DataType         = "float32"
           Dimension        = 512
+          DistanceMetric   = "cosine"
+        }
+      }
+      SearchEmbeddingsIndex = {
+        Type      = "AWS::S3Vectors::Index"
+        DependsOn = ["VectorBucket"]
+        Properties = {
+          VectorBucketName = "${data.aws_caller_identity.current.account_id}-${local.name_prefix}-vectors"
+          IndexName        = "search-embeddings"
+          DataType         = "float32"
+          Dimension        = 1024
           DistanceMetric   = "cosine"
         }
       }
@@ -38,6 +49,10 @@ resource "aws_cloudformation_stack" "vectors" {
       IndexName = {
         Value       = "media-embeddings"
         Description = "Vector index name"
+      }
+      SearchIndexName = {
+        Value       = "search-embeddings"
+        Description = "Vector index name for search embeddings"
       }
     }
   })
@@ -60,4 +75,9 @@ output "vector_bucket_arn" {
 output "vector_index_name" {
   description = "Vector index name for media embeddings"
   value       = "media-embeddings"
+}
+
+output "search_vector_index_name" {
+  description = "Vector index name for search text embeddings"
+  value       = "search-embeddings"
 }

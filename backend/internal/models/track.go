@@ -46,7 +46,8 @@ type AudioAnalysis struct {
 	EnergyProfile   string    `json:"energyProfile,omitempty"`
 
 	// Embedding (from Marengo)
-	EmbeddingID string `json:"embeddingId,omitempty"`
+	EmbeddingID     string `json:"embeddingId,omitempty"`
+	EmbeddingStatus string `json:"embeddingStatus,omitempty"` // GENERATING, COMPLETED, FAILED
 }
 
 // Track represents a music track in the library
@@ -99,6 +100,7 @@ type Track struct {
 	VocalPresence   string    `json:"vocalPresence,omitempty" dynamodbav:"vocalPresence,omitempty"`     // none/male/female/mixed
 	EnergyProfile   string    `json:"energyProfile,omitempty" dynamodbav:"energyProfile,omitempty"`     // Energy arc description
 	EmbeddingID     string    `json:"embeddingId,omitempty" dynamodbav:"embeddingId,omitempty"`         // S3 Vectors embedding ID
+	EmbeddingStatus string    `json:"embeddingStatus,omitempty" dynamodbav:"embeddingStatus,omitempty"` // PENDING, GENERATING, COMPLETED, FAILED
 
 	// HLS streaming fields
 	HLSStatus        HLSStatus `json:"hlsStatus,omitempty" dynamodbav:"hlsStatus,omitempty"`
@@ -232,6 +234,7 @@ type TrackResponse struct {
 	VocalPresence   string    `json:"vocalPresence,omitempty"`
 	EnergyProfile   string    `json:"energyProfile,omitempty"`
 	EmbeddingID     string    `json:"embeddingId,omitempty"`
+	EmbeddingStatus string    `json:"embeddingStatus,omitempty"`
 	// HLS and waveform
 	HLSStatus      string     `json:"hlsStatus,omitempty"`
 	HLSReady       bool       `json:"hlsReady"`
@@ -298,6 +301,7 @@ func (t *Track) ToResponse(coverArtURL string) TrackResponse {
 		VocalPresence:   t.VocalPresence,
 		EnergyProfile:   t.EnergyProfile,
 		EmbeddingID:     t.EmbeddingID,
+		EmbeddingStatus: t.EmbeddingStatus,
 		HLSStatus:       string(t.HLSStatus),
 		HLSReady:        t.HLSStatus == HLSStatusReady,
 		WaveformURL:     t.WaveformURL,

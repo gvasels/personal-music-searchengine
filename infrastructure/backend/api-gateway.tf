@@ -6,7 +6,7 @@ resource "aws_apigatewayv2_api" "api" {
   description   = "Personal Music Search Engine API"
 
   cors_configuration {
-    allow_origins     = ["http://localhost:5173", "http://localhost:3000", "https://d1xxw2bv6ilv0c.cloudfront.net", "https://gvasels.people.aws.dev"]
+    allow_origins     = local.cors_origins
     allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers     = ["Authorization", "Content-Type", "X-User-ID"]
     expose_headers    = ["X-Request-Id"]

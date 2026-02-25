@@ -20,7 +20,7 @@ function formatDuration(seconds: number): string {
 
 export default function TrackDetailPage() {
   const navigate = useNavigate();
-  const { trackId } = useParams({ from: '/music/tracks/$trackId' });
+  const { trackId } = useParams({ strict: false }) as { trackId: string };
   const { data: track, isLoading, isError, error } = useTrackQuery(trackId);
   const updateTrack = useUpdateTrack();
   const deleteTrack = useDeleteTrack();
@@ -37,7 +37,7 @@ export default function TrackDetailPage() {
   const canEditVisibility = isArtist;
 
   const handleBack = () => {
-    void navigate({ to: '/tracks' });
+    void navigate({ to: '/music/tracks' });
   };
 
   const handleEdit = () => {
@@ -56,7 +56,7 @@ export default function TrackDetailPage() {
   const handleDelete = async () => {
     if (!track) return;
     await deleteTrack.mutateAsync(track.id);
-    void navigate({ to: '/tracks' });
+    void navigate({ to: '/music/tracks' });
   };
 
   const handleVisibilityChange = async (visibility: TrackVisibility) => {
@@ -195,6 +195,58 @@ export default function TrackDetailPage() {
                       {tag}
                     </span>
                   ))}
+                </div>
+              )}
+
+              {/* Processing Status */}
+              {(track.analysisStatus || track.embeddingStatus) && (
+                <div className="card bg-base-200 p-4 space-y-3">
+                  <h3 className="font-semibold text-sm text-base-content/60">Processing Status</h3>
+                  <div className="flex flex-wrap gap-3">
+                    {track.analysisStatus && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-base-content/60">Analysis:</span>
+                        <span className={`badge badge-sm ${
+                          track.analysisStatus === 'COMPLETED' ? 'badge-success' :
+                          track.analysisStatus === 'FAILED' ? 'badge-error' :
+                          track.analysisStatus === 'ANALYZING' ? 'badge-warning' :
+                          'badge-ghost'
+                        }`}>
+                          {track.analysisStatus === 'ANALYZING' && <span className="loading loading-spinner loading-xs mr-1" />}
+                          {track.analysisStatus}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-base-content/60">Embedding:</span>
+                      {track.embeddingStatus ? (
+                        <span className={`badge badge-sm ${
+                          track.embeddingStatus === 'COMPLETED' ? 'badge-success' :
+                          track.embeddingStatus === 'FAILED' ? 'badge-error' :
+                          track.embeddingStatus === 'GENERATING' ? 'badge-warning' :
+                          'badge-ghost'
+                        }`}>
+                          {track.embeddingStatus === 'GENERATING' && <span className="loading loading-spinner loading-xs mr-1" />}
+                          {track.embeddingStatus}
+                        </span>
+                      ) : track.embeddingId ? (
+                        <span className="badge badge-sm badge-success">COMPLETED</span>
+                      ) : (
+                        <span className="badge badge-sm badge-ghost">PENDING</span>
+                      )}
+                    </div>
+                    {track.embeddingId && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-base-content/60">Similarity:</span>
+                        <span className="badge badge-sm badge-info">Vector Ready</span>
+                      </div>
+                    )}
+                  </div>
+                  {track.analyzedAt && (
+                    <p className="text-xs text-base-content/40">
+                      Analyzed {new Date(track.analyzedAt).toLocaleDateString()} at {new Date(track.analyzedAt).toLocaleTimeString()}
+                    </p>
+                  )}
                 </div>
               )}
 

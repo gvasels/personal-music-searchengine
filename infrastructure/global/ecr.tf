@@ -118,8 +118,43 @@ resource "aws_ecr_lifecycle_policy" "indexer" {
   })
 }
 
+# ECR Repository for Audio Features Lambda (Python/librosa container)
+resource "aws_ecr_repository" "audio_features" {
+  name                 = "${local.name_prefix}-audio-features"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  encryption_configuration {
+    encryption_type = "AES256"
+  }
+}
+
 resource "aws_ecr_lifecycle_policy" "nixiesearch" {
   repository = aws_ecr_repository.nixiesearch.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 10 images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 10
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_ecr_lifecycle_policy" "audio_features" {
+  repository = aws_ecr_repository.audio_features.name
 
   policy = jsonencode({
     rules = [

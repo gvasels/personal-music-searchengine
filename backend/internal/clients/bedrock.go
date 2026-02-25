@@ -107,9 +107,9 @@ var modelMapping = map[string]string{
 	"claude-3-sonnet":           "anthropic.claude-3-5-sonnet-20241022-v2:0",
 	"claude-3-haiku":            "anthropic.claude-3-haiku-20240307-v1:0",
 	"claude-3-opus":             "anthropic.claude-3-opus-20240229-v1:0",
-	"text-embedding-ada-002":    "amazon.titan-embed-text-v2:0",
-	"text-embedding-3-small":    "amazon.titan-embed-text-v2:0",
-	"text-embedding-3-large":    "amazon.titan-embed-text-v2:0",
+	"text-embedding-ada-002":    "amazon.nova-2-multimodal-embeddings-v1:0",
+	"text-embedding-3-small":    "amazon.nova-2-multimodal-embeddings-v1:0",
+	"text-embedding-3-large":    "amazon.nova-2-multimodal-embeddings-v1:0",
 }
 
 // mapModel translates OpenAI model names to Bedrock model IDs
@@ -209,7 +209,7 @@ func (c *BedrockClient) CreateChatCompletion(ctx context.Context, req ChatComple
 	}, nil
 }
 
-// CreateEmbedding creates text embeddings using Bedrock Titan
+// CreateEmbedding creates text embeddings using Bedrock Nova Multimodal
 func (c *BedrockClient) CreateEmbedding(ctx context.Context, req EmbeddingRequest) (*EmbeddingResponse, error) {
 	bedrockModel := mapModel(req.Model)
 
@@ -231,14 +231,21 @@ func (c *BedrockClient) CreateEmbedding(ctx context.Context, req EmbeddingReques
 	}
 
 	embeddings := make([]EmbeddingData, 0, len(inputs))
-	var totalTokens int
 
 	for i, input := range inputs {
-		// Build Titan request
-		titanReq := map[string]interface{}{
-			"inputText": input,
+		// Build Nova Multimodal Embeddings request
+		novaReq := map[string]interface{}{
+			"taskType": "SINGLE_EMBEDDING",
+			"singleEmbeddingParams": map[string]interface{}{
+				"embeddingPurpose":  "GENERIC_INDEX",
+				"embeddingDimension": 1024,
+				"text": map[string]interface{}{
+					"truncationMode": "END",
+					"value":          input,
+				},
+			},
 		}
-		body, err := json.Marshal(titanReq)
+		body, err := json.Marshal(novaReq)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal request: %w", err)
 		}
@@ -253,31 +260,32 @@ func (c *BedrockClient) CreateEmbedding(ctx context.Context, req EmbeddingReques
 			return nil, fmt.Errorf("failed to invoke model: %w", err)
 		}
 
-		// Parse Titan response
-		var titanResp struct {
-			Embedding      []float32 `json:"embedding"`
-			InputTextTokenCount int  `json:"inputTextTokenCount"`
+		// Parse Nova Multimodal Embeddings response
+		var novaResp struct {
+			Embeddings []struct {
+				EmbeddingType string    `json:"embeddingType"`
+				Embedding     []float32 `json:"embedding"`
+			} `json:"embeddings"`
 		}
-		if err := json.Unmarshal(output.Body, &titanResp); err != nil {
+		if err := json.Unmarshal(output.Body, &novaResp); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+		}
+
+		if len(novaResp.Embeddings) == 0 {
+			return nil, fmt.Errorf("empty embedding response from Nova")
 		}
 
 		embeddings = append(embeddings, EmbeddingData{
 			Object:    "embedding",
 			Index:     i,
-			Embedding: titanResp.Embedding,
+			Embedding: novaResp.Embeddings[0].Embedding,
 		})
-		totalTokens += titanResp.InputTextTokenCount
 	}
 
 	return &EmbeddingResponse{
 		Object: "list",
 		Model:  req.Model,
 		Data:   embeddings,
-		Usage: &UsageInfo{
-			PromptTokens: totalTokens,
-			TotalTokens:  totalTokens,
-		},
 	}, nil
 }
 

@@ -247,6 +247,146 @@ func TestArtistContribution(t *testing.T) {
 	})
 }
 
+func TestParseArtists(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []ArtistContribution
+	}{
+		{
+			name:  "single artist",
+			input: "Skrillex",
+			expected: []ArtistContribution{
+				{ArtistName: "Skrillex", Role: RoleMain},
+			},
+		},
+		{
+			name:  "two artists with ampersand",
+			input: "Skrillex & Diplo",
+			expected: []ArtistContribution{
+				{ArtistName: "Skrillex", Role: RoleMain},
+				{ArtistName: "Diplo", Role: RoleMain},
+			},
+		},
+		{
+			name:  "featuring with feat.",
+			input: "Drake feat. Rihanna",
+			expected: []ArtistContribution{
+				{ArtistName: "Drake", Role: RoleMain},
+				{ArtistName: "Rihanna", Role: RoleFeaturing},
+			},
+		},
+		{
+			name:  "featuring with ft.",
+			input: "Drake ft. Rihanna",
+			expected: []ArtistContribution{
+				{ArtistName: "Drake", Role: RoleMain},
+				{ArtistName: "Rihanna", Role: RoleFeaturing},
+			},
+		},
+		{
+			name:  "featuring without dot",
+			input: "Drake feat Rihanna",
+			expected: []ArtistContribution{
+				{ArtistName: "Drake", Role: RoleMain},
+				{ArtistName: "Rihanna", Role: RoleFeaturing},
+			},
+		},
+		{
+			name:  "complex: ampersand and featuring",
+			input: "Skrillex & Diplo feat. Justin Bieber",
+			expected: []ArtistContribution{
+				{ArtistName: "Skrillex", Role: RoleMain},
+				{ArtistName: "Diplo", Role: RoleMain},
+				{ArtistName: "Justin Bieber", Role: RoleFeaturing},
+			},
+		},
+		{
+			name:  "multiple featuring artists",
+			input: "DJ Khaled feat. Drake & Lil Wayne",
+			expected: []ArtistContribution{
+				{ArtistName: "DJ Khaled", Role: RoleMain},
+				{ArtistName: "Drake", Role: RoleFeaturing},
+				{ArtistName: "Lil Wayne", Role: RoleFeaturing},
+			},
+		},
+		{
+			name:  "comma separated",
+			input: "Above, Beyond",
+			expected: []ArtistContribution{
+				{ArtistName: "Above", Role: RoleMain},
+				{ArtistName: "Beyond", Role: RoleMain},
+			},
+		},
+		{
+			name:  "vs separator",
+			input: "Armin van Buuren vs. Ferry Corsten",
+			expected: []ArtistContribution{
+				{ArtistName: "Armin van Buuren", Role: RoleMain},
+				{ArtistName: "Ferry Corsten", Role: RoleMain},
+			},
+		},
+		{
+			name:  "x separator",
+			input: "Marshmello x Bastille",
+			expected: []ArtistContribution{
+				{ArtistName: "Marshmello", Role: RoleMain},
+				{ArtistName: "Bastille", Role: RoleMain},
+			},
+		},
+		{
+			name:  "case insensitive FEAT",
+			input: "Drake FEAT. Rihanna",
+			expected: []ArtistContribution{
+				{ArtistName: "Drake", Role: RoleMain},
+				{ArtistName: "Rihanna", Role: RoleFeaturing},
+			},
+		},
+		{
+			name:  "case insensitive Ft",
+			input: "Drake Ft Rihanna",
+			expected: []ArtistContribution{
+				{ArtistName: "Drake", Role: RoleMain},
+				{ArtistName: "Rihanna", Role: RoleFeaturing},
+			},
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: nil,
+		},
+		{
+			name:     "whitespace only",
+			input:    "   ",
+			expected: nil,
+		},
+		{
+			name:  "trims whitespace",
+			input: "  Skrillex  &  Diplo  ",
+			expected: []ArtistContribution{
+				{ArtistName: "Skrillex", Role: RoleMain},
+				{ArtistName: "Diplo", Role: RoleMain},
+			},
+		},
+		{
+			name:  "complex real-world example",
+			input: "Major Lazer & DJ Snake feat. MØ",
+			expected: []ArtistContribution{
+				{ArtistName: "Major Lazer", Role: RoleMain},
+				{ArtistName: "DJ Snake", Role: RoleMain},
+				{ArtistName: "MØ", Role: RoleFeaturing},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseArtists(tc.input)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
 func TestCreateArtistRequest(t *testing.T) {
 	t.Run("accepts valid request", func(t *testing.T) {
 		req := CreateArtistRequest{

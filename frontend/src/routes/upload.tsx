@@ -54,7 +54,10 @@ export default function UploadPage() {
                   </div>
                 </div>
                 <div>
-                  {item.status === 'completed' && (
+                  {item.status === 'completed' && item.isDuplicate && (
+                    <span className="badge badge-info">Already in library</span>
+                  )}
+                  {item.status === 'completed' && !item.isDuplicate && (
                     <span className="badge badge-success">Completed</span>
                   )}
                   {item.status === 'failed' && (
@@ -71,6 +74,16 @@ export default function UploadPage() {
                   value={item.progress}
                   max={100}
                 />
+              )}
+              {item.status === 'completed' && item.isDuplicate && (
+                <div className="flex items-center gap-2 text-sm text-info">
+                  <span>This track already exists in your library.</span>
+                  {item.trackId && (
+                    <a href={`/tracks/${item.trackId}`} className="link link-info">
+                      View track
+                    </a>
+                  )}
+                </div>
               )}
               {item.error && (
                 <p className="text-sm text-error">{item.error}</p>

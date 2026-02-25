@@ -32,8 +32,9 @@ type Config struct {
 	CognitoUserPoolID string
 
 	// S3 Vectors
-	VectorBucketName string
-	VectorIndexName  string
+	VectorBucketName       string
+	VectorIndexName        string
+	SearchVectorIndexName  string
 
 	// S3 flat vector backup (for dual-write)
 	VectorS3Bucket string
@@ -62,6 +63,7 @@ func LoadConfig() (*Config, error) {
 		CognitoUserPoolID:       os.Getenv("COGNITO_USER_POOL_ID"),
 		VectorBucketName:        os.Getenv("VECTOR_BUCKET_NAME"),
 		VectorIndexName:         getEnvOrDefault("VECTOR_INDEX_NAME", "media-embeddings"),
+		SearchVectorIndexName:   getEnvOrDefault("SEARCH_VECTOR_INDEX_NAME", "search-embeddings"),
 		VectorS3Bucket:          os.Getenv("VECTOR_S3_BUCKET"),
 		VectorS3Prefix:          getEnvOrDefault("VECTOR_S3_PREFIX", "vectors"),
 		EmbeddingGatewayURL:    os.Getenv("EMBEDDING_GATEWAY_URL"),

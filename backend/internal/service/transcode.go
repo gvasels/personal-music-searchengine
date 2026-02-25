@@ -68,6 +68,10 @@ func (s *TranscodeService) StartTranscode(ctx context.Context, req TranscodeRequ
 			"trackId": req.TrackID,
 			"userId":  req.UserID,
 		},
+		UserMetadata: map[string]string{
+			"trackId": req.TrackID,
+			"userId":  req.UserID,
+		},
 	}
 
 	output, err := s.mcClient.CreateJob(ctx, input)

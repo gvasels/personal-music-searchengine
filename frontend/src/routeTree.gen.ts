@@ -9,9 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ShowsRouteImport } from './routes/shows'
 import { Route as HelloSearchRouteImport } from './routes/hello-search'
 import { Route as StudioIndexRouteImport } from './routes/studio/index'
 
+const ShowsRoute = ShowsRouteImport.update({
+  id: '/shows',
+  path: '/shows',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HelloSearchRoute = HelloSearchRouteImport.update({
   id: '/hello-search',
   path: '/hello-search',
@@ -25,32 +31,43 @@ const StudioIndexRoute = StudioIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/hello-search': typeof HelloSearchRoute
+  '/shows': typeof ShowsRoute
   '/studio/': typeof StudioIndexRoute
 }
 export interface FileRoutesByTo {
   '/hello-search': typeof HelloSearchRoute
+  '/shows': typeof ShowsRoute
   '/studio': typeof StudioIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/hello-search': typeof HelloSearchRoute
+  '/shows': typeof ShowsRoute
   '/studio/': typeof StudioIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/hello-search' | '/studio/'
+  fullPaths: '/hello-search' | '/shows' | '/studio/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/hello-search' | '/studio'
-  id: '__root__' | '/hello-search' | '/studio/'
+  to: '/hello-search' | '/shows' | '/studio'
+  id: '__root__' | '/hello-search' | '/shows' | '/studio/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   HelloSearchRoute: typeof HelloSearchRoute
+  ShowsRoute: typeof ShowsRoute
   StudioIndexRoute: typeof StudioIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/shows': {
+      id: '/shows'
+      path: '/shows'
+      fullPath: '/shows'
+      preLoaderRoute: typeof ShowsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/hello-search': {
       id: '/hello-search'
       path: '/hello-search'
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   HelloSearchRoute: HelloSearchRoute,
+  ShowsRoute: ShowsRoute,
   StudioIndexRoute: StudioIndexRoute,
 }
 export const routeTree = rootRouteImport

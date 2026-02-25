@@ -40,32 +40,15 @@ resource "aws_s3_bucket_cors_configuration" "media" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["PUT", "POST", "GET", "HEAD"]
-    allowed_origins = [
-      "http://localhost:5173",
-      "http://localhost:3000",
-      "https://d8wn3lkytn5qe.cloudfront.net",
-      "https://d1xxw2bv6ilv0c.cloudfront.net"
-    ]
+    allowed_origins = local.s3_cors_origins
     expose_headers  = ["ETag"]
     max_age_seconds = 3000
   }
 }
 
-# Intelligent-Tiering configuration for automatic cost optimization
-resource "aws_s3_bucket_intelligent_tiering_configuration" "media" {
-  bucket = aws_s3_bucket.media.id
-  name   = "EntireBucket"
-
-  tiering {
-    access_tier = "ARCHIVE_ACCESS"
-    days        = 90
-  }
-
-  tiering {
-    access_tier = "DEEP_ARCHIVE_ACCESS"
-    days        = 180
-  }
-}
+# Intelligent-Tiering: automatic tiers handle cost optimization
+# Frequent Access → Infrequent Access (30 days) → Archive Instant Access (90 days)
+# No opt-in Archive/Deep Archive tiers — Glacier Instant Retrieval is the lowest tier
 
 # Note: Bucket policy for media is managed in infrastructure/backend/cloudfront.tf
 # (combines CloudFront OAC + Bedrock access in a single policy)
@@ -100,14 +83,13 @@ resource "aws_s3_bucket_lifecycle_configuration" "media" {
     }
   }
 
-  # Transition all objects to Intelligent-Tiering after upload
+  # Transition all objects to Intelligent-Tiering immediately
+  # Covers media/, hls/, coverart/ and any other prefixes
   rule {
     id     = "intelligent-tiering-transition"
     status = "Enabled"
 
-    filter {
-      prefix = "media/"
-    }
+    filter {}
 
     transition {
       days          = 0
@@ -145,6 +127,23 @@ resource "aws_s3_bucket_public_access_block" "search_indexes" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+# Transition search index objects to Intelligent-Tiering
+resource "aws_s3_bucket_lifecycle_configuration" "search_indexes" {
+  bucket = aws_s3_bucket.search_indexes.id
+
+  rule {
+    id     = "intelligent-tiering-transition"
+    status = "Enabled"
+
+    filter {}
+
+    transition {
+      days          = 0
+      storage_class = "INTELLIGENT_TIERING"
+    }
+  }
 }
 
 # Search indexes bucket outputs defined in main.tf

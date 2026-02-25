@@ -117,6 +117,7 @@ resource "aws_lambda_function" "transcode_complete" {
     variables = {
       DYNAMODB_TABLE_NAME = local.dynamodb_table_name
       MEDIA_BUCKET        = local.media_bucket_name
+      AUDIO_PIPELINE_ARN  = aws_sfn_state_machine.audio_pipeline.arn
     }
   }
 
@@ -189,6 +190,13 @@ resource "aws_iam_role_policy" "transcode_lambda" {
           "iam:PassRole"
         ]
         Resource = aws_iam_role.mediaconvert.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "states:StartExecution"
+        ]
+        Resource = aws_sfn_state_machine.audio_pipeline.arn
       }
     ]
   })

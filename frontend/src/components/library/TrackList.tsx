@@ -5,6 +5,7 @@ import { getDownloadUrl } from '@/lib/api/client';
 import { AddToPlaylistDropdown } from './AddToPlaylistDropdown';
 import { useShowUploadedBy } from '@/lib/store/preferencesStore';
 import { useAuth } from '@/hooks/useAuth';
+import { ReprocessButton } from './ReprocessButton';
 
 interface TrackListProps {
   tracks: Track[];
@@ -141,7 +142,10 @@ export function TrackList({ tracks, isLoading, showDownload = false, showAddedDa
             <td className="tabular-nums">{formatDuration(track.duration)}</td>
             {showUploadedByColumn && (
               <td className="text-sm text-base-content/60">
-                {track.ownerDisplayName || 'You'}
+                <div className="flex items-center gap-1">
+                  <span>{track.ownerDisplayName || 'You'}</span>
+                  <ReprocessButton trackId={track.id} />
+                </div>
               </td>
             )}
             {showAddedDate && (

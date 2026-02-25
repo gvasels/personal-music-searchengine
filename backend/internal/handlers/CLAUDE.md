@@ -18,6 +18,8 @@ HTTP handlers using Echo framework for the Personal Music Search Engine API. All
 | `stream.go` | Streaming and download URL handlers |
 | `search.go` | Search handlers (simple and advanced) |
 | `hello.go` | Hello World handlers (search, featured, health) |
+| `artist_watch.go` | Artist watch handlers (watch, unwatch, status, list) + ArtistWatchServiceAdapter |
+| `events.go` | Events handlers (get artist events, search events) + EventsServiceAdapter |
 
 ## Route Registration
 
@@ -106,6 +108,22 @@ Registered via `RegisterHelloRoutes[T](e *echo.Echo, h *HelloHandler[T])`:
 | GET | `/hello/health` | Health | Service health check |
 | GET | `/hello/search` | Search | Search tracks by query param `q` |
 | GET | `/hello/featured` | Featured | Get featured tracks with optional `limit` |
+
+### Artist Watch Routes (Subscriber+ required)
+Registered via `RegisterArtistWatchRoutes(e *echo.Echo, h *ArtistWatchHandler)`:
+| Method | Path | Handler | Description |
+|--------|------|---------|-------------|
+| POST | `/artists/:name/watch` | WatchArtist | Watch an artist |
+| DELETE | `/artists/:name/watch` | UnwatchArtist | Unwatch an artist |
+| GET | `/artists/:name/watch` | GetWatchStatus | Check if watching |
+| GET | `/users/me/watched-artists` | ListWatchedArtists | List watched artists with pagination |
+
+### Events Routes (Subscriber+ required)
+Registered via `RegisterEventsRoutes(e *echo.Echo, h *EventsHandler)`:
+| Method | Path | Handler | Description |
+|--------|------|---------|-------------|
+| GET | `/artists/:name/events` | GetArtistEvents | Get events for an artist |
+| GET | `/events/search` | SearchArtistEvents | Search artists for events (`q`, `limit` params) |
 
 ### Admin Routes (Admin role required)
 | Method | Path | Handler | Description |

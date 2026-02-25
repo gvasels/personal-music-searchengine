@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	echoadapter "github.com/awslabs/aws-lambda-go-api-proxy/echo"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -85,10 +86,18 @@ func setupEcho() (*echo.Echo, error) {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
-	// API key authentication middleware (optional)
-	apiKey := os.Getenv("API_KEY")
-	if apiKey != "" {
-		e.Use(apiKeyAuth(apiKey))
+	// API key authentication middleware (reads secret name from env, fetches value from Secrets Manager)
+	apiKeySecretName := os.Getenv("API_KEY_SECRET")
+	if apiKeySecretName != "" {
+		smClient := secretsmanager.NewFromConfig(awsCfg)
+		result, err := smClient.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+			SecretId: &apiKeySecretName,
+		})
+		if err != nil {
+			log.Printf("Warning: failed to get API key from Secrets Manager: %v", err)
+		} else if result.SecretString != nil {
+			e.Use(apiKeyAuth(*result.SecretString))
+		}
 	}
 
 	// Register gateway routes

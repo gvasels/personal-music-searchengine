@@ -8,11 +8,13 @@ vi.mock('../client', () => ({
     get: vi.fn(),
     patch: vi.fn(),
     delete: vi.fn(),
+    post: vi.fn(),
   },
 }));
 
-import { getTracks, getTrack, updateTrack, deleteTrack } from '../tracks';
+import { getTracks, getTrack, updateTrack, deleteTrack, reprocessTrack } from '../tracks';
 import { apiClient } from '../client';
+import type { ReprocessResult } from '../../../types';
 
 describe('Tracks API (Wave 2)', () => {
   beforeEach(() => {
@@ -145,6 +147,65 @@ describe('Tracks API (Wave 2)', () => {
       await deleteTrack('track-1');
 
       expect(apiClient.delete).toHaveBeenCalledWith('/tracks/track-1');
+    });
+  });
+
+  /**
+   * Admin Track Reprocess API Tests - TDD Red Phase
+   *
+   * Tests for the reprocessTrack API function that triggers AI reanalysis.
+   */
+  describe('reprocessTrack', () => {
+    const mockReprocessResult: ReprocessResult = {
+      trackId: 'track-1',
+      status: 'processing',
+      processedAt: '2026-02-17T10:30:00Z',
+    };
+
+    it('sends POST request to /tracks/:id/reprocess', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: mockReprocessResult });
+
+      await reprocessTrack('track-1');
+
+      expect(apiClient.post).toHaveBeenCalledWith('/api/v1/tracks/track-1/reprocess');
+    });
+
+    it('returns ReprocessResult on success', async () => {
+      const completeResult: ReprocessResult = {
+        trackId: 'track-1',
+        status: 'complete',
+        bpm: 128.5,
+        bpmConfidence: 0.92,
+        musicalKey: 'G minor',
+        keyCamelot: '6A',
+        embeddingStatus: 'updated',
+        processedAt: '2026-02-17T10:30:05Z',
+      };
+      vi.mocked(apiClient.post).mockResolvedValue({ data: completeResult });
+
+      const result = await reprocessTrack('track-1');
+
+      expect(result).toEqual(completeResult);
+      expect(result.trackId).toBe('track-1');
+      expect(result.status).toBe('complete');
+      expect(result.bpm).toBe(128.5);
+    });
+
+    it('throws error on API failure', async () => {
+      const apiError = new Error('Forbidden');
+      vi.mocked(apiClient.post).mockRejectedValue(apiError);
+
+      await expect(reprocessTrack('track-1')).rejects.toThrow('Forbidden');
+    });
+
+    it('handles different track IDs correctly', async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: { ...mockReprocessResult, trackId: 'different-track-id' },
+      });
+
+      await reprocessTrack('different-track-id');
+
+      expect(apiClient.post).toHaveBeenCalledWith('/api/v1/tracks/different-track-id/reprocess');
     });
   });
 });

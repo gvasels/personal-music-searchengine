@@ -37,7 +37,7 @@ func TestEmbeddingGatewayClient_GenerateEmbedding_Success(t *testing.T) {
 			Object: "list",
 			Data:   []EmbeddingData{{Embedding: expectedEmbedding}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -51,7 +51,7 @@ func TestEmbeddingGatewayClient_GenerateEmbedding_Success(t *testing.T) {
 func TestEmbeddingGatewayClient_GenerateEmbedding_EmptyResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := EmbeddingResponse{Object: "list", Data: []EmbeddingData{}}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -108,7 +108,7 @@ func TestEmbeddingGatewayClient_CachesAPIKey(t *testing.T) {
 			Object: "list",
 			Data:   []EmbeddingData{{Embedding: []float32{0.1}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 

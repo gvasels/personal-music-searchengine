@@ -26,6 +26,9 @@ type Upload struct {
 	Indexed           bool `json:"indexed" dynamodbav:"indexed"`
 	FileMoved         bool `json:"fileMoved" dynamodbav:"fileMoved"`
 
+	// Duplicate detection
+	IsDuplicate bool `json:"isDuplicate" dynamodbav:"isDuplicate"`
+
 	// Multipart upload tracking
 	IsMultipart   bool   `json:"isMultipart,omitempty" dynamodbav:"isMultipart,omitempty"`
 	MultipartID   string `json:"multipartId,omitempty" dynamodbav:"multipartId,omitempty"`
@@ -104,6 +107,7 @@ type UploadResponse struct {
 	Status      UploadStatus `json:"status"`
 	ErrorMsg    string       `json:"errorMsg,omitempty"`
 	TrackID     string       `json:"trackId,omitempty"`
+	IsDuplicate bool         `json:"isDuplicate"`
 	CreatedAt   time.Time    `json:"createdAt"`
 	CompletedAt *time.Time   `json:"completedAt,omitempty"`
 
@@ -131,6 +135,7 @@ func (u *Upload) ToResponse() UploadResponse {
 		Status:      u.Status,
 		ErrorMsg:    u.ErrorMsg,
 		TrackID:     u.TrackID,
+		IsDuplicate: u.IsDuplicate,
 		CreatedAt:   u.CreatedAt,
 		CompletedAt: u.CompletedAt,
 		Steps: UploadSteps{

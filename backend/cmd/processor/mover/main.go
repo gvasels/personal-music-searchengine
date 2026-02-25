@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -77,7 +79,8 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 	destKey := fmt.Sprintf("media/%s/%s%s", event.UserID, event.TrackID, ext)
 
 	// Copy file to new location
-	copySource := fmt.Sprintf("%s/%s", event.BucketName, event.SourceKey)
+	// URL-encode each path segment of the source key to handle special characters (e.g., Ü, spaces)
+	copySource := fmt.Sprintf("%s/%s", event.BucketName, urlEncodeS3Key(event.SourceKey))
 	_, err := s3Client.CopyObject(ctx, &s3.CopyObjectInput{
 		Bucket:     &event.BucketName,
 		CopySource: aws.String(copySource),
@@ -114,6 +117,17 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 	}
 
 	return &Response{NewKey: destKey}, nil
+}
+
+// urlEncodeS3Key URL-encodes each path segment of an S3 key,
+// preserving the "/" separators. Required for CopySource header
+// when keys contain special characters (Unicode, spaces, etc.).
+func urlEncodeS3Key(key string) string {
+	parts := strings.Split(key, "/")
+	for i, part := range parts {
+		parts[i] = url.PathEscape(part)
+	}
+	return strings.Join(parts, "/")
 }
 
 func main() {

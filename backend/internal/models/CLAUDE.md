@@ -18,6 +18,9 @@ Domain models, DTOs (Data Transfer Objects), and constants for the Personal Musi
 | `search.go` | Search request/response, Nixiesearch types |
 | `streaming.go` | Stream/download URLs, playback queue |
 | `errors.go` | API error types and formatting |
+| `artist_watch.go` | ArtistWatch model with DynamoDB keys, ArtistWatchResponse |
+| `event.go` | Event, ArtistSearchResult, ArtistEventsResponse types |
+| `artist.go` | Artist name normalization utility (`NormalizeArtistName`) |
 
 ## Key Types
 
