@@ -209,7 +209,7 @@ describe('TrackDetailPage (Wave 2)', () => {
 
       await waitFor(() => {
         expect(mockDeleteTrack).toHaveBeenCalledWith('track-1');
-        expect(mockNavigate).toHaveBeenCalledWith({ to: '/tracks' });
+        expect(mockNavigate).toHaveBeenCalledWith({ to: '/music/tracks' });
       });
     });
   });
@@ -231,7 +231,7 @@ describe('TrackDetailPage (Wave 2)', () => {
       render(<TrackDetailPage />, { wrapper: createWrapper() });
       await user.click(screen.getByRole('button', { name: /back/i }));
 
-      expect(mockNavigate).toHaveBeenCalledWith({ to: '/tracks' });
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/music/tracks' });
     });
   });
 });

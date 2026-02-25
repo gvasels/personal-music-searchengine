@@ -56,6 +56,7 @@ export async function updateTrackVisibility(
 export interface SimilarTrack {
   track: import('../../types').Track;
   score: number;
+  keyCompatible: boolean;
 }
 
 export interface SimilarTracksResponse {

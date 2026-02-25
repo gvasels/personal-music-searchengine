@@ -117,6 +117,9 @@ func (m *MockTagRepository) ListAlbumsByArtist(ctx context.Context, userID, arti
 func (m *MockTagRepository) UpdateAlbumStats(ctx context.Context, userID, albumID string, trackCount, totalDuration int) error {
 	return nil
 }
+func (m *MockTagRepository) DeleteAlbum(ctx context.Context, userID, albumID string) error {
+	return nil
+}
 func (m *MockTagRepository) CreateUser(ctx context.Context, user models.User) error { return nil }
 func (m *MockTagRepository) GetUser(ctx context.Context, userID string) (*models.User, error) {
 	return nil, nil

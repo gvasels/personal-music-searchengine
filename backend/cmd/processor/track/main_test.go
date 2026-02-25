@@ -20,11 +20,13 @@ type mockRepo struct {
 
 	mu             sync.Mutex
 	createdTracks  []models.Track
-	tracksByArtist map[string][]models.Track // key = "userId|artist"
+	tracksByArtist map[string][]models.Track   // key = "userId|artist"
 	uploadSteps    []uploadStepCall
-	albums         map[string]*models.Album // key = "userId|albumName"
-	uploads        map[string]*models.Upload // key = "userId|uploadId"
+	albums         map[string]*models.Album    // key = "userId|albumName"
+	uploads        map[string]*models.Upload   // key = "userId|uploadId"
 	updatedUploads []models.Upload
+	createdArtists []models.Artist
+	artistsByName  map[string][]*models.Artist // key = "userId|artistName"
 }
 
 type uploadStepCall struct {
@@ -39,6 +41,7 @@ func newMockRepo() *mockRepo {
 		tracksByArtist: make(map[string][]models.Track),
 		albums:         make(map[string]*models.Album),
 		uploads:        make(map[string]*models.Upload),
+		artistsByName:  make(map[string][]*models.Artist),
 	}
 }
 
@@ -90,6 +93,27 @@ func (m *mockRepo) UpdateUpload(ctx context.Context, upload models.Upload) error
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.updatedUploads = append(m.updatedUploads, upload)
+	return nil
+}
+
+func (m *mockRepo) GetArtistByName(ctx context.Context, userID, name string) ([]*models.Artist, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := userID + "|" + name
+	if artists, ok := m.artistsByName[key]; ok {
+		return artists, nil
+	}
+	return nil, nil
+}
+
+func (m *mockRepo) CreateArtist(ctx context.Context, artist models.Artist) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.createdArtists = append(m.createdArtists, artist)
+	// Store for future lookups
+	key := artist.UserID + "|" + artist.Name
+	a := artist
+	m.artistsByName[key] = append(m.artistsByName[key], &a)
 	return nil
 }
 

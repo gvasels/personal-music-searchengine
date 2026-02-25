@@ -9,16 +9,16 @@ resource "aws_lambda_function" "bedrock_gateway" {
   runtime       = "provided.al2023"
   architectures = ["arm64"]
 
-  # Placeholder - actual code deployed via CI/CD
-  filename         = data.archive_file.placeholder.output_path
-  source_code_hash = data.archive_file.placeholder.output_base64sha256
+  # Gateway Lambda binary
+  filename         = "${path.module}/../../backend/cmd/gateway/gateway.zip"
+  source_code_hash = filebase64sha256("${path.module}/../../backend/cmd/gateway/gateway.zip")
 
   memory_size = 512
   timeout     = 60
 
   environment {
     variables = {
-      API_KEY = aws_secretsmanager_secret.bedrock_gateway_api_key.name
+      API_KEY_SECRET = aws_secretsmanager_secret.bedrock_gateway_api_key.name
     }
   }
 

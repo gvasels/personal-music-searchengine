@@ -90,6 +90,9 @@ func (m *MockStatsRepository) ListAlbumsByArtist(ctx context.Context, userID, ar
 func (m *MockStatsRepository) UpdateAlbumStats(ctx context.Context, userID, albumID string, trackCount, totalDuration int) error {
 	return nil
 }
+func (m *MockStatsRepository) DeleteAlbum(ctx context.Context, userID, albumID string) error {
+	return nil
+}
 func (m *MockStatsRepository) CreateArtist(ctx context.Context, artist models.Artist) error {
 	return nil
 }

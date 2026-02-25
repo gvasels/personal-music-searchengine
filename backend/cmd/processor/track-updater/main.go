@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -125,9 +126,12 @@ func handler(ctx context.Context, event Event) (Result, error) {
 		}
 	}
 
-	// Extract embedding ID from nested result
+	// Extract embedding ID and status from nested result
 	if event.EmbeddingResult != nil && event.EmbeddingResult.EmbeddingID != "" {
 		analysis.EmbeddingID = event.EmbeddingResult.EmbeddingID
+		analysis.EmbeddingStatus = "COMPLETED"
+	} else if event.EmbeddingError != nil || (event.EmbeddingResult != nil && event.EmbeddingResult.Error != "") {
+		analysis.EmbeddingStatus = "FAILED"
 	}
 
 	// Extract BPM/Key from features result
@@ -144,6 +148,11 @@ func handler(ctx context.Context, event Event) (Result, error) {
 		result.Status = "FAILED"
 		result.Error = fmt.Sprintf("failed to update track: %v", err)
 		return result, nil
+	}
+
+	// Auto-tag from analysis results (non-blocking — track update already succeeded)
+	if analysis.Genre != "" || analysis.SubGenre != "" || analysis.Mood != "" {
+		autoTagFromAnalysis(ctx, event.UserID, event.TrackID, analysis)
 	}
 
 	// Determine final status based on errors
@@ -163,6 +172,66 @@ func handler(ctx context.Context, event Event) (Result, error) {
 	}
 
 	return result, nil
+}
+
+// autoTagFromAnalysis creates tags from genre, sub-genre, and mood analysis
+// fields and associates them with the track. All errors are logged as warnings
+// since the core track update has already succeeded.
+func autoTagFromAnalysis(ctx context.Context, userID, trackID string, analysis models.AudioAnalysis) {
+	// Collect non-empty tag names, normalized to lowercase
+	var tagNames []string
+	for _, raw := range []string{analysis.Genre, analysis.SubGenre, analysis.Mood} {
+		name := strings.TrimSpace(strings.ToLower(raw))
+		if name != "" {
+			tagNames = append(tagNames, name)
+		}
+	}
+	if len(tagNames) == 0 {
+		return
+	}
+
+	// Ensure each tag entity exists
+	for _, name := range tagNames {
+		if _, err := repo.GetTag(ctx, userID, name); err != nil {
+			// Tag doesn't exist — create it
+			tag := models.Tag{
+				UserID: userID,
+				Name:   name,
+			}
+			if createErr := repo.CreateTag(ctx, tag); createErr != nil {
+				fmt.Printf("Warning: failed to create auto-tag %q: %v\n", name, createErr)
+			}
+		}
+	}
+
+	// Associate tags with the track
+	if err := repo.AddTagsToTrack(ctx, userID, trackID, tagNames); err != nil {
+		fmt.Printf("Warning: failed to add auto-tags to track %s: %v\n", trackID, err)
+		return
+	}
+
+	// Update the track's Tags field to include new auto-tags
+	track, err := repo.GetTrack(ctx, userID, trackID)
+	if err != nil {
+		fmt.Printf("Warning: failed to get track %s for tag update: %v\n", trackID, err)
+		return
+	}
+
+	// Merge new tags with existing, avoiding duplicates
+	existingSet := make(map[string]bool, len(track.Tags))
+	for _, t := range track.Tags {
+		existingSet[t] = true
+	}
+	for _, name := range tagNames {
+		if !existingSet[name] {
+			track.Tags = append(track.Tags, name)
+		}
+	}
+	if err := repo.UpdateTrack(ctx, *track); err != nil {
+		fmt.Printf("Warning: failed to update track tags for %s: %v\n", trackID, err)
+	}
+
+	fmt.Printf("Auto-tagged track %s with: %v\n", trackID, tagNames)
 }
 
 func main() {

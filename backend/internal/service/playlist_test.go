@@ -117,6 +117,9 @@ func (m *MockPlaylistRepository) ListAlbumsByArtist(ctx context.Context, userID,
 func (m *MockPlaylistRepository) UpdateAlbumStats(ctx context.Context, userID, albumID string, trackCount, totalDuration int) error {
 	return nil
 }
+func (m *MockPlaylistRepository) DeleteAlbum(ctx context.Context, userID, albumID string) error {
+	return nil
+}
 func (m *MockPlaylistRepository) CreateUser(ctx context.Context, user models.User) error { return nil }
 func (m *MockPlaylistRepository) GetUser(ctx context.Context, userID string) (*models.User, error) {
 	return nil, nil

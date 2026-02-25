@@ -17,6 +17,7 @@ import (
 	"github.com/gvasels/personal-music-searchengine/internal/search"
 	"github.com/gvasels/personal-music-searchengine/internal/service"
 	"github.com/gvasels/personal-music-searchengine/internal/validation"
+	"github.com/gvasels/personal-music-searchengine/internal/vectors"
 )
 
 // Event represents the input from Step Functions
@@ -38,6 +39,7 @@ type Response struct {
 var searchClient *search.Client
 var repo repository.Repository
 var embeddingGateway clients.EmbeddingGateway
+var searchVectorSvc vectors.VectorService
 
 func init() {
 	cfg, err := config.LoadDefaultConfig(context.Background())
@@ -68,6 +70,13 @@ func init() {
 	if gatewayURL != "" && secretName != "" {
 		smClient := clients.NewAWSSecretsManager(secretsmanager.NewFromConfig(cfg))
 		embeddingGateway = clients.NewEmbeddingGatewayClient(gatewayURL, secretName, smClient)
+	}
+
+	// Initialize S3 Vectors client for storing search text embeddings
+	vectorBucket := os.Getenv("VECTOR_BUCKET_NAME")
+	searchIndexName := os.Getenv("SEARCH_VECTOR_INDEX_NAME")
+	if vectorBucket != "" && searchIndexName != "" {
+		searchVectorSvc = vectors.NewS3VectorsService(vectorBucket, searchIndexName)
 	}
 }
 
@@ -118,6 +127,17 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 				fmt.Printf("Warning: embedding generation failed for track %s: %v\n", event.TrackID, err)
 			} else {
 				doc.Embedding = embedding
+
+				// Store text embedding in S3 Vectors for hybrid search
+				if searchVectorSvc != nil {
+					metadata := map[string]string{
+						"userId":  event.UserID,
+						"trackId": event.TrackID,
+					}
+					if err := searchVectorSvc.PutVector(ctx, event.TrackID, embedding, metadata); err != nil {
+						fmt.Printf("Warning: failed to store search embedding for track %s: %v\n", event.TrackID, err)
+					}
+				}
 			}
 		}
 	}

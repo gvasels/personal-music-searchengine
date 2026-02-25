@@ -2,6 +2,7 @@
  * useUpload Hook - Wave 4
  */
 import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { getPresignedUploadUrl, confirmUpload, getUploadStatus, UploadSteps } from '../lib/api/upload';
 
 export interface UploadItem {
@@ -95,6 +96,7 @@ function uploadToS3WithProgress(
 }
 
 export function useUpload(): UseUploadReturn {
+  const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -189,6 +191,13 @@ export function useUpload(): UseUploadReturn {
               : u
           )
         );
+
+        // Refresh track lists and library stats so UI shows new track
+        if (finalStatus === 'completed') {
+          void queryClient.invalidateQueries({ queryKey: ['tracks'] });
+          void queryClient.invalidateQueries({ queryKey: ['library', 'stats'] });
+          void queryClient.invalidateQueries({ queryKey: ['albums'] });
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Upload failed';
         setError(message);

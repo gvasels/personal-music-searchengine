@@ -3,7 +3,7 @@
  *
  * Tests for the admin-only button that triggers AI reprocessing of track metadata.
  */
-import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@/test/test-utils';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -269,7 +269,7 @@ describe('ReprocessButton Component', () => {
   });
 
   it('calls reprocessTrack API with correct trackId', async () => {
-    const { reprocessTrack } = await import('@/lib/api/tracks');
+    await import('@/lib/api/tracks');
     const mutateMock = vi.fn();
 
     vi.mocked(useMutation).mockImplementation(() => ({

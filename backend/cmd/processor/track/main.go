@@ -176,6 +176,24 @@ func handleRequest(ctx context.Context, event Event) (*Response, error) {
 		track.Bitrate = event.Metadata.Bitrate
 	}
 
+	// Parse multi-artist metadata and create Artist entities
+	contributions := models.ParseArtists(artist)
+	if len(contributions) > 0 {
+		for i, c := range contributions {
+			artistEntity, err := getOrCreateArtist(ctx, event.UserID, c.ArtistName)
+			if err != nil {
+				fmt.Printf("Warning: failed to get/create artist %q: %v\n", c.ArtistName, err)
+				continue
+			}
+			contributions[i].ArtistID = artistEntity.ID
+			// Set primary ArtistID on track to first main artist
+			if i == 0 {
+				track.ArtistID = artistEntity.ID
+			}
+		}
+		track.Artists = contributions
+	}
+
 	// Create the track
 	if err := repo.CreateTrack(ctx, track); err != nil {
 		return nil, fmt.Errorf("failed to create track: %w", err)
@@ -322,6 +340,36 @@ func isAudioFile(key string) bool {
 	return strings.HasSuffix(lower, ".mp3") || strings.HasSuffix(lower, ".flac") ||
 		strings.HasSuffix(lower, ".wav") || strings.HasSuffix(lower, ".m4a") ||
 		strings.HasSuffix(lower, ".aac") || strings.HasSuffix(lower, ".ogg")
+}
+
+// getOrCreateArtist looks up an Artist entity by name for the user. If none
+// exists, it creates one and returns it.
+func getOrCreateArtist(ctx context.Context, userID, name string) (*models.Artist, error) {
+	existing, err := repo.GetArtistByName(ctx, userID, name)
+	if err != nil {
+		return nil, fmt.Errorf("lookup failed: %w", err)
+	}
+	if len(existing) > 0 {
+		return existing[0], nil
+	}
+
+	artist := models.Artist{
+		ID:       uuid.New().String(),
+		UserID:   userID,
+		Name:     name,
+		SortName: models.GenerateSortName(name),
+		IsActive: true,
+	}
+	if err := repo.CreateArtist(ctx, artist); err != nil {
+		// Handle race condition — another Lambda may have just created it
+		// (condition expression failure means the PK already exists)
+		existing, lookupErr := repo.GetArtistByName(ctx, userID, name)
+		if lookupErr == nil && len(existing) > 0 {
+			return existing[0], nil
+		}
+		return nil, fmt.Errorf("create failed: %w", err)
+	}
+	return &artist, nil
 }
 
 func main() {

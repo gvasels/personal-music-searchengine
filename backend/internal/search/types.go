@@ -5,17 +5,21 @@ import "time"
 
 // Document represents a searchable document in the index.
 type Document struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"userId"`
-	Title     string    `json:"title"`
-	Artist    string    `json:"artist"`
-	Album     string    `json:"album"`
-	Genre     string    `json:"genre"`
-	Year      int       `json:"year,omitempty"`
-	Duration  int       `json:"duration,omitempty"`
-	Filename  string    `json:"filename"`
-	Embedding []float32 `json:"embedding,omitempty"`
-	IndexedAt time.Time `json:"indexedAt"`
+	ID         string    `json:"id"`
+	UserID     string    `json:"userId"`
+	Title      string    `json:"title"`
+	Artist     string    `json:"artist"`
+	Album      string    `json:"album"`
+	Genre      string    `json:"genre"`
+	Year       int       `json:"year,omitempty"`
+	Duration   int       `json:"duration,omitempty"`
+	Filename   string    `json:"filename"`
+	KeyCamelot string    `json:"keyCamelot,omitempty"`
+	BPM        int       `json:"bpm,omitempty"`
+	Mood       string    `json:"mood,omitempty"`
+	SubGenre   string    `json:"subGenre,omitempty"`
+	Embedding  []float32 `json:"embedding,omitempty"`
+	IndexedAt  time.Time `json:"indexedAt"`
 }
 
 // SearchQuery represents a search request.
@@ -54,6 +58,10 @@ type SearchResult struct {
 	Genre       string  `json:"genre"`
 	Year        int     `json:"year,omitempty"`
 	Duration    int     `json:"duration,omitempty"`
+	KeyCamelot  string  `json:"keyCamelot,omitempty"`
+	BPM         int     `json:"bpm,omitempty"`
+	Mood        string  `json:"mood,omitempty"`
+	SubGenre    string  `json:"subGenre,omitempty"`
 	CoverArtURL string  `json:"coverArtUrl,omitempty"`
 	Score       float64 `json:"score"`
 }

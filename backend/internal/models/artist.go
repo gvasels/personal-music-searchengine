@@ -2,6 +2,8 @@ package models
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -128,6 +130,59 @@ func (a *ArtistWithStats) ToResponseWithStats() ArtistWithStatsResponse {
 		AlbumCount:     a.AlbumCount,
 		TotalPlays:     a.TotalPlays,
 	}
+}
+
+// featuringSepRegexp matches featuring-type separators (case-insensitive).
+// These separators indicate the following artist is a featured contributor.
+var featuringSepRegexp = regexp.MustCompile(`(?i)\s+(?:feat\.?|ft\.?)\s+`)
+
+// mainSepRegexp matches separators between main/equal artists.
+var mainSepRegexp = regexp.MustCompile(`\s*[,&]\s*|\s+(?i:vs\.?)\s+|\s+(?i:x)\s+`)
+
+// ParseArtists parses a combined artist string into individual ArtistContribution entries.
+// It splits on separators: "feat."/"ft." (→ featuring role), "&"/","/"vs."/" x " (→ main role).
+// The first segment's artists are always "main"; artists after feat./ft. are "featuring".
+//
+// Example: "Skrillex & Diplo feat. Justin Bieber" →
+//
+//	[{Name:"Skrillex", Role:main}, {Name:"Diplo", Role:main}, {Name:"Justin Bieber", Role:featuring}]
+func ParseArtists(artistString string) []ArtistContribution {
+	artistString = strings.TrimSpace(artistString)
+	if artistString == "" {
+		return nil
+	}
+
+	// Split by featuring separators first to get [main part, feat part1, feat part2, ...]
+	parts := featuringSepRegexp.Split(artistString, -1)
+
+	var contributions []ArtistContribution
+
+	for i, part := range parts {
+		role := RoleMain
+		if i > 0 {
+			role = RoleFeaturing
+		}
+
+		// Within each part, split by main separators (&, ",", "vs.", " x ")
+		subParts := mainSepRegexp.Split(part, -1)
+		for _, name := range subParts {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			contributions = append(contributions, ArtistContribution{
+				ArtistName: name,
+				Role:       role,
+			})
+		}
+	}
+
+	// If we end up with nothing (shouldn't happen since we checked empty), return the whole string
+	if len(contributions) == 0 {
+		return []ArtistContribution{{ArtistName: artistString, Role: RoleMain}}
+	}
+
+	return contributions
 }
 
 // GenerateSortName generates a sort name from the artist name

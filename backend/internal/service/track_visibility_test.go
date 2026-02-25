@@ -401,6 +401,9 @@ func (m *MockTrackServiceRepository) ListAlbumsByArtist(ctx context.Context, use
 func (m *MockTrackServiceRepository) UpdateAlbumStats(ctx context.Context, userID, albumID string, trackCount, totalDuration int) error {
 	return nil
 }
+func (m *MockTrackServiceRepository) DeleteAlbum(ctx context.Context, userID, albumID string) error {
+	return nil
+}
 
 // User stubs
 func (m *MockTrackServiceRepository) CreateUser(ctx context.Context, user models.User) error { return nil }

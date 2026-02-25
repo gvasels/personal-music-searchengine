@@ -80,18 +80,22 @@ func (m *MockSimilarityTrackService) GetLibraryStats(ctx context.Context, userID
 func TestGetSimilarTracks(t *testing.T) {
 	e := echo.New()
 
-	t.Run("returns similar tracks", func(t *testing.T) {
+	t.Run("returns similar tracks with key compatibility boost", func(t *testing.T) {
 		mockVector := &MockVectorService{}
 		mockTrack := &MockSimilarityTrackService{}
 
 		embedding := make([]float32, 1024)
 		mockVector.On("GetVector", mock.Anything, "track-1").Return(embedding, nil)
-		mockVector.On("QuerySimilar", mock.Anything, embedding, 10).Return([]service.VectorResult{
+		mockVector.On("QuerySimilar", mock.Anything, embedding, 40).Return([]service.VectorResult{
 			{ID: "track-2", Score: 0.95},
 			{ID: "track-3", Score: 0.85},
 		}, nil)
-		mockTrack.On("GetTrack", mock.Anything, mock.Anything, "track-2", false).Return(&models.TrackResponse{ID: "track-2", Title: "Similar 1"}, nil)
-		mockTrack.On("GetTrack", mock.Anything, mock.Anything, "track-3", false).Return(&models.TrackResponse{ID: "track-3", Title: "Similar 2"}, nil)
+		// Source track has key 8A
+		mockTrack.On("GetTrack", mock.Anything, mock.Anything, "track-1", false).Return(&models.TrackResponse{ID: "track-1", Title: "Source", KeyCamelot: "8A"}, nil)
+		// track-2: compatible key (7A is neighbor of 8A)
+		mockTrack.On("GetTrack", mock.Anything, mock.Anything, "track-2", false).Return(&models.TrackResponse{ID: "track-2", Title: "Similar 1", KeyCamelot: "7A"}, nil)
+		// track-3: incompatible key
+		mockTrack.On("GetTrack", mock.Anything, mock.Anything, "track-3", false).Return(&models.TrackResponse{ID: "track-3", Title: "Similar 2", KeyCamelot: "5B"}, nil)
 
 		h := &Handlers{services: &service.Services{Vector: mockVector, Track: mockTrack}}
 
@@ -105,9 +109,12 @@ func TestGetSimilarTracks(t *testing.T) {
 		err := h.GetSimilarTracks(c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
+		// track-2 should be boosted (compatible key), track-3 not
+		assert.Contains(t, rec.Body.String(), `"keyCompatible":true`)
+		assert.Contains(t, rec.Body.String(), `"keyCompatible":false`)
 	})
 
-	t.Run("returns 404 when track has no embedding", func(t *testing.T) {
+	t.Run("returns empty array when track has no embedding", func(t *testing.T) {
 		mockVector := &MockVectorService{}
 		mockVector.On("GetVector", mock.Anything, "track-no-embed").Return(nil, nil)
 
@@ -122,6 +129,23 @@ func TestGetSimilarTracks(t *testing.T) {
 
 		err := h.GetSimilarTracks(c)
 		assert.NoError(t, err)
-		assert.Equal(t, http.StatusNotFound, rec.Code)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), `"similar":[]`)
+	})
+
+	t.Run("returns empty array when vector service is nil", func(t *testing.T) {
+		h := &Handlers{services: &service.Services{Vector: nil}}
+
+		req := httptest.NewRequest(http.MethodGet, "/tracks/track-1/similar", nil)
+		req.Header.Set("X-User-ID", "user-1")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues("track-1")
+
+		err := h.GetSimilarTracks(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), `"similar":[]`)
 	})
 }

@@ -6,12 +6,12 @@ resource "aws_sfn_state_machine" "audio_pipeline" {
   role_arn = aws_iam_role.audio_pipeline_sfn.arn
 
   definition = jsonencode({
-    Comment = "Audio Understanding Pipeline - analyzes audio and generates embeddings"
+    Comment = "Audio Understanding Pipeline - extracts features, analyzes audio, and generates embeddings"
     StartAt = "AudioFeatures"
     States = {
       AudioFeatures = {
-        Type     = "Task"
-        Resource = "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${local.name_prefix}-audio-features"
+        Type       = "Task"
+        Resource   = aws_lambda_function.audio_features.arn
         ResultPath = "$.featuresResult"
         Catch = [
           {
@@ -24,8 +24,8 @@ resource "aws_sfn_state_machine" "audio_pipeline" {
       }
 
       AudioAnalyzer = {
-        Type     = "Task"
-        Resource = aws_lambda_function.audio_analyzer.arn
+        Type       = "Task"
+        Resource   = aws_lambda_function.audio_analyzer.arn
         ResultPath = "$.analyzerResult"
         Catch = [
           {
@@ -38,8 +38,8 @@ resource "aws_sfn_state_machine" "audio_pipeline" {
       }
 
       EmbeddingGenerator = {
-        Type     = "Task"
-        Resource = aws_lambda_function.embedding_generator.arn
+        Type       = "Task"
+        Resource   = aws_lambda_function.embedding_generator.arn
         ResultPath = "$.embeddingResult"
         Catch = [
           {
@@ -52,8 +52,8 @@ resource "aws_sfn_state_machine" "audio_pipeline" {
       }
 
       TrackUpdater = {
-        Type     = "Task"
-        Resource = aws_lambda_function.track_updater.arn
+        Type      = "Task"
+        Resource  = aws_lambda_function.track_updater.arn
         InputPath = "$"
         End       = true
       }
@@ -108,7 +108,7 @@ resource "aws_iam_role_policy" "audio_pipeline_sfn" {
           "lambda:InvokeFunction"
         ]
         Resource = [
-          "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${local.name_prefix}-audio-features",
+          aws_lambda_function.audio_features.arn,
           aws_lambda_function.audio_analyzer.arn,
           aws_lambda_function.embedding_generator.arn,
           aws_lambda_function.track_updater.arn

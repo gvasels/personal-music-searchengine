@@ -271,16 +271,20 @@ func (s *searchServiceImpl) Autocomplete(ctx context.Context, userID, query stri
 // IndexTrack indexes a track in the search engine.
 func (s *searchServiceImpl) IndexTrack(ctx context.Context, track models.Track) error {
 	doc := search.Document{
-		ID:        track.ID,
-		UserID:    track.UserID,
-		Title:     track.Title,
-		Artist:    track.Artist,
-		Album:     track.Album,
-		Genre:     track.Genre,
-		Year:      track.Year,
-		Duration:  track.Duration,
-		Filename:  track.S3Key,
-		IndexedAt: time.Now(),
+		ID:         track.ID,
+		UserID:     track.UserID,
+		Title:      track.Title,
+		Artist:     track.Artist,
+		Album:      track.Album,
+		Genre:      track.Genre,
+		Year:       track.Year,
+		Duration:   track.Duration,
+		Filename:   track.S3Key,
+		KeyCamelot: track.KeyCamelot,
+		BPM:        track.BPM,
+		Mood:       track.Mood,
+		SubGenre:   track.SubGenre,
+		IndexedAt:  time.Now(),
 	}
 
 	resp, err := s.client.Index(ctx, doc)
@@ -343,16 +347,20 @@ func (s *searchServiceImpl) RebuildIndex(ctx context.Context, userID string) err
 	docs := make([]search.Document, len(allTracks))
 	for i, track := range allTracks {
 		docs[i] = search.Document{
-			ID:        track.ID,
-			UserID:    track.UserID,
-			Title:     track.Title,
-			Artist:    track.Artist,
-			Album:     track.Album,
-			Genre:     track.Genre,
-			Year:      track.Year,
-			Duration:  track.Duration,
-			Filename:  track.S3Key,
-			IndexedAt: time.Now(),
+			ID:         track.ID,
+			UserID:     track.UserID,
+			Title:      track.Title,
+			Artist:     track.Artist,
+			Album:      track.Album,
+			Genre:      track.Genre,
+			Year:       track.Year,
+			Duration:   track.Duration,
+			Filename:   track.S3Key,
+			KeyCamelot: track.KeyCamelot,
+			BPM:        track.BPM,
+			Mood:       track.Mood,
+			SubGenre:   track.SubGenre,
+			IndexedAt:  time.Now(),
 		}
 	}
 
@@ -504,6 +512,10 @@ func (s *searchServiceImpl) searchResultToTrackResponse(result search.SearchResu
 		Year:        result.Year,
 		Duration:    result.Duration,
 		DurationStr: formatDuration(result.Duration),
+		KeyCamelot:  result.KeyCamelot,
+		BPM:         result.BPM,
+		Mood:        result.Mood,
+		SubGenre:    result.SubGenre,
 	}
 }
 

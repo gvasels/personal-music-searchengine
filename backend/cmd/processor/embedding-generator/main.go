@@ -15,12 +15,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/document"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3vectors"
 	s3vtypes "github.com/aws/aws-sdk-go-v2/service/s3vectors/types"
 	"github.com/google/uuid"
 )
 
+// Use base model ID for async invoke — cross-region prefix (us.) doesn't support StartAsyncInvoke
 const MarengoModelID = "twelvelabs.marengo-embed-3-0-v1:0"
 
 type Event struct {
@@ -39,23 +42,29 @@ type Result struct {
 }
 
 var (
-	bedrockClient  *bedrockruntime.Client
-	s3Client       *s3.Client
+	bedrockClient   *bedrockruntime.Client
+	s3Client        *s3.Client
 	s3VectorsClient *s3vectors.Client
-	mediaBucket    string
-	vectorBucket   string
-	vectorIndex    string
-	accountID      string
+	dynamoClient    *dynamodb.Client
+	mediaBucket     string
+	vectorBucket    string
+	vectorIndex     string
+	accountID       string
+	tableName       string
 )
 
 func init() {
 	mediaBucket = os.Getenv("MEDIA_BUCKET")
 	accountID = os.Getenv("AWS_ACCOUNT_ID")
-	vectorBucket = os.Getenv("VECTOR_BUCKET_NAME")
+	vectorBucket = os.Getenv("VECTOR_BUCKET")
+	if vectorBucket == "" {
+		vectorBucket = os.Getenv("VECTOR_BUCKET_NAME")
+	}
 	vectorIndex = os.Getenv("VECTOR_INDEX_NAME")
 	if vectorIndex == "" {
 		vectorIndex = "media-embeddings"
 	}
+	tableName = os.Getenv("DYNAMODB_TABLE_NAME")
 
 	if mediaBucket == "" || accountID == "" {
 		return
@@ -71,6 +80,51 @@ func init() {
 	if vectorBucket != "" {
 		s3VectorsClient = s3vectors.NewFromConfig(cfg)
 	}
+	if tableName != "" {
+		dynamoClient = dynamodb.NewFromConfig(cfg)
+	}
+}
+
+// updateEmbeddingStatus writes embeddingStatus (and optionally embeddingId) to DynamoDB.
+// This makes DynamoDB the source of truth for embedding progress.
+func updateEmbeddingStatus(ctx context.Context, userID, trackID, status, embeddingID string) {
+	if dynamoClient == nil || tableName == "" {
+		return
+	}
+
+	pk := fmt.Sprintf("USER#%s", userID)
+	sk := fmt.Sprintf("TRACK#%s", trackID)
+	now := time.Now().Format(time.RFC3339)
+
+	updateExpr := "SET #embedStatus = :status, #upd = :upd"
+	exprNames := map[string]string{
+		"#embedStatus": "embeddingStatus",
+		"#upd":         "updatedAt",
+	}
+	exprValues := map[string]dbtypes.AttributeValue{
+		":status": &dbtypes.AttributeValueMemberS{Value: status},
+		":upd":    &dbtypes.AttributeValueMemberS{Value: now},
+	}
+
+	if embeddingID != "" {
+		updateExpr += ", #embedId = :embedId"
+		exprNames["#embedId"] = "embeddingId"
+		exprValues[":embedId"] = &dbtypes.AttributeValueMemberS{Value: embeddingID}
+	}
+
+	_, err := dynamoClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]dbtypes.AttributeValue{
+			"PK": &dbtypes.AttributeValueMemberS{Value: pk},
+			"SK": &dbtypes.AttributeValueMemberS{Value: sk},
+		},
+		UpdateExpression:          aws.String(updateExpr),
+		ExpressionAttributeNames:  exprNames,
+		ExpressionAttributeValues: exprValues,
+	})
+	if err != nil {
+		fmt.Printf("Warning: failed to update embedding status: %v\n", err)
+	}
 }
 
 func handler(ctx context.Context, event Event) (Result, error) {
@@ -78,8 +132,12 @@ func handler(ctx context.Context, event Event) (Result, error) {
 
 	if bedrockClient == nil {
 		result.Error = "bedrock client not configured"
+		updateEmbeddingStatus(ctx, event.UserID, event.TrackID, "FAILED", "")
 		return result, nil
 	}
+
+	// Mark as GENERATING in DynamoDB before starting async invoke
+	updateEmbeddingStatus(ctx, event.UserID, event.TrackID, "GENERATING", "")
 
 	s3URI := fmt.Sprintf("s3://%s/%s", mediaBucket, event.S3Key)
 	inferenceID := uuid.New().String()
@@ -112,6 +170,7 @@ func handler(ctx context.Context, event Event) (Result, error) {
 	})
 	if err != nil {
 		result.Error = fmt.Sprintf("failed to start async invoke: %v", err)
+		updateEmbeddingStatus(ctx, event.UserID, event.TrackID, "FAILED", "")
 		return result, nil
 	}
 
@@ -139,10 +198,12 @@ func handler(ctx context.Context, event Event) (Result, error) {
 
 	if status == "Failed" {
 		result.Error = fmt.Sprintf("async invoke failed: %s", failureMsg)
+		updateEmbeddingStatus(ctx, event.UserID, event.TrackID, "FAILED", "")
 		return result, nil
 	}
 	if status != "Completed" {
 		result.Error = fmt.Sprintf("async invoke did not complete: status=%s", status)
+		updateEmbeddingStatus(ctx, event.UserID, event.TrackID, "FAILED", "")
 		return result, nil
 	}
 
@@ -155,13 +216,18 @@ func handler(ctx context.Context, event Event) (Result, error) {
 		embedding, err := readMarengoEmbedding(ctx, outputURI, invocationID)
 		if err != nil {
 			result.Error = fmt.Sprintf("failed to read embedding: %v", err)
+			updateEmbeddingStatus(ctx, event.UserID, event.TrackID, "FAILED", "")
 			return result, nil
 		}
 		if err := storeInS3Vectors(ctx, event.TrackID, embedding); err != nil {
 			result.Error = fmt.Sprintf("failed to store in S3 Vectors: %v", err)
+			updateEmbeddingStatus(ctx, event.UserID, event.TrackID, "FAILED", "")
 			return result, nil
 		}
 	}
+
+	// Mark as COMPLETED with embeddingId in DynamoDB
+	updateEmbeddingStatus(ctx, event.UserID, event.TrackID, "COMPLETED", invocationID)
 
 	result.EmbeddingID = invocationID
 	return result, nil
