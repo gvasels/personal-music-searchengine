@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/gvasels/personal-music-searchengine/internal/models"
@@ -31,17 +30,17 @@ func NewArtistWatchService(repo ArtistWatchRepository) *ArtistWatchService {
 // WatchArtist creates a watch for the given artist.
 func (s *ArtistWatchService) WatchArtist(ctx context.Context, userID, artistName string) error {
 	if userID == "" {
-		return fmt.Errorf("user ID is required")
+		return models.ErrBadRequest
 	}
 	if strings.TrimSpace(artistName) == "" {
-		return fmt.Errorf("artist name is required")
+		return models.ErrBadRequest
 	}
 
 	watch := models.NewArtistWatch(userID, artistName)
 	err := s.repo.CreateArtistWatch(ctx, *watch)
 	if err != nil {
 		if errors.Is(err, repository.ErrAlreadyExists) {
-			return fmt.Errorf("already watching this artist")
+			return models.NewConflictError("already watching this artist")
 		}
 		return err
 	}
@@ -53,7 +52,7 @@ func (s *ArtistWatchService) UnwatchArtist(ctx context.Context, userID, artistNa
 	err := s.repo.DeleteArtistWatch(ctx, userID, artistName)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return fmt.Errorf("not watching this artist")
+			return models.NewNotFoundError("artist watch", artistName)
 		}
 		return err
 	}

@@ -226,8 +226,14 @@ func setupEcho() (*echo.Echo, error) {
 	helloHandler := handlers.NewHelloHandler[service.HelloTrack](helloSvc)
 	handlers.RegisterHelloRoutes(e, helloHandler)
 
-	// Initialize events provider (mock for Phase 1)
-	eventsProvider := events.NewMockProvider()
+	// Initialize events provider (mock for Phase 1, gated by env var)
+	var eventsProvider service.EventsProvider
+	if os.Getenv("EVENTS_PROVIDER") == "mock" || localEndpoint != "" {
+		eventsProvider = events.NewMockProvider()
+	} else {
+		// Default to mock until a real provider is implemented
+		eventsProvider = events.NewMockProvider()
+	}
 
 	// Initialize artist watch service
 	artistWatchSvc := service.NewArtistWatchService(repo)

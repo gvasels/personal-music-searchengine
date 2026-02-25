@@ -55,7 +55,7 @@ describe('Artist Watch API', () => {
 
       await watchArtist('Daft Punk');
 
-      expect(apiClient.post).toHaveBeenCalledWith('/v1/artists/Daft Punk/watch');
+      expect(apiClient.post).toHaveBeenCalledWith('/v1/artists/Daft%20Punk/watch');
     });
 
     it('should return watch confirmation with artistName, watching, and watchedAt', async () => {
@@ -91,7 +91,7 @@ describe('Artist Watch API', () => {
 
       await unwatchArtist('Daft Punk');
 
-      expect(apiClient.delete).toHaveBeenCalledWith('/v1/artists/Daft Punk/watch');
+      expect(apiClient.delete).toHaveBeenCalledWith('/v1/artists/Daft%20Punk/watch');
     });
 
     it('should throw error on API failure', async () => {
@@ -107,7 +107,7 @@ describe('Artist Watch API', () => {
 
       await getWatchStatus('Daft Punk');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/v1/artists/Daft Punk/watch');
+      expect(apiClient.get).toHaveBeenCalledWith('/v1/artists/Daft%20Punk/watch');
     });
 
     it('should return watching boolean and artistName', async () => {

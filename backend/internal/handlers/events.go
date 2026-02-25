@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gvasels/personal-music-searchengine/internal/handlers/middleware"
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/service"
 	"github.com/labstack/echo/v4"
@@ -29,13 +30,13 @@ func NewEventsHandler(svc eventsService) *EventsHandler {
 
 // GetArtistEvents handles GET /api/v1/artists/:name/events
 func (h *EventsHandler) GetArtistEvents(c echo.Context) error {
-	userID := getUserID(c)
+	userID := middleware.GetUserID(c)
 	if userID == "" {
 		return c.JSON(http.StatusUnauthorized, models.NewErrorResponse(models.ErrUnauthorized))
 	}
 
 	artistName := c.Param("name")
-	if artistName == "" {
+	if artistName == "" || len(artistName) > maxArtistNameLength {
 		return c.JSON(http.StatusBadRequest, models.NewErrorResponse(models.ErrBadRequest))
 	}
 
@@ -53,21 +54,23 @@ func (h *EventsHandler) GetArtistEvents(c echo.Context) error {
 
 // SearchArtistEvents handles GET /api/v1/events/search
 func (h *EventsHandler) SearchArtistEvents(c echo.Context) error {
-	userID := getUserID(c)
+	userID := middleware.GetUserID(c)
 	if userID == "" {
 		return c.JSON(http.StatusUnauthorized, models.NewErrorResponse(models.ErrUnauthorized))
 	}
 
 	query := c.QueryParam("q")
-	if query == "" {
+	if query == "" || len(query) > maxArtistNameLength {
 		return c.JSON(http.StatusBadRequest, models.NewErrorResponse(models.ErrBadRequest))
 	}
 
 	limit := 10
 	if limitStr := c.QueryParam("limit"); limitStr != "" {
 		parsed, err := strconv.Atoi(limitStr)
-		if err == nil && parsed > 0 {
+		if err == nil && parsed > 0 && parsed <= maxLimit {
 			limit = parsed
+		} else if err == nil && parsed > maxLimit {
+			limit = maxLimit
 		}
 	}
 
@@ -88,7 +91,7 @@ func (h *EventsHandler) SearchArtistEvents(c echo.Context) error {
 
 // RegisterEventsRoutes registers event routes on the Echo instance.
 func RegisterEventsRoutes(e *echo.Echo, h *EventsHandler) {
-	api := e.Group("/api/v1")
+	api := e.Group("/api/v1", middleware.RequireAuth())
 	api.GET("/artists/:name/events", h.GetArtistEvents)
 	api.GET("/events/search", h.SearchArtistEvents)
 }

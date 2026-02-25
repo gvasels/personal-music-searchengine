@@ -5,7 +5,7 @@
  * They MUST FAIL because shows.tsx does not exist yet.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -44,8 +44,6 @@ function createWrapper() {
 }
 
 describe('ShowsPage', () => {
-  const user = userEvent.setup();
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseSearchArtistEvents.mockReturnValue({
@@ -114,6 +112,7 @@ describe('ShowsPage', () => {
     });
 
     it('should show search results when query entered', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
       mockUseWatchedArtists.mockReturnValue({
         isLoading: false,
         data: { items: [], hasMore: false },
@@ -129,12 +128,20 @@ describe('ShowsPage', () => {
         isError: false,
       });
 
+      const realUser = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(<ShowsPage />, { wrapper: createWrapper() });
 
       const searchInput = screen.getByRole('searchbox');
-      await user.type(searchInput, 'Daft');
+      await realUser.type(searchInput, 'Daft');
 
-      expect(mockUseSearchArtistEvents).toHaveBeenCalledWith('Daft');
+      // Advance timers past the 300ms debounce
+      await vi.advanceTimersByTimeAsync(350);
+
+      await waitFor(() => {
+        expect(mockUseSearchArtistEvents).toHaveBeenCalledWith('Daft');
+      });
+
+      vi.useRealTimers();
     });
   });
 

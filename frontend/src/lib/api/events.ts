@@ -2,7 +2,7 @@ import { apiClient } from './client';
 import type { ArtistEventsResponse, ArtistSearchResponse } from '../../types';
 
 export async function getArtistEvents(artistName: string): Promise<ArtistEventsResponse> {
-  const response = await apiClient.get(`/v1/artists/${artistName}/events`);
+  const response = await apiClient.get(`/v1/artists/${encodeURIComponent(artistName)}/events`);
   return response.data;
 }
 

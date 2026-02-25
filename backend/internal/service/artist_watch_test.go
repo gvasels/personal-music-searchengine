@@ -79,7 +79,7 @@ func TestArtistWatchService_WatchArtist(t *testing.T) {
 		assert.Contains(t, err.Error(), "dynamo error")
 	})
 
-	t.Run("returns already exists error when already watching", func(t *testing.T) {
+	t.Run("returns conflict error when already watching", func(t *testing.T) {
 		ctx := context.Background()
 		mockRepo := new(MockArtistWatchRepository)
 
@@ -89,6 +89,9 @@ func TestArtistWatchService_WatchArtist(t *testing.T) {
 		err := svc.WatchArtist(ctx, "user-123", "Daft Punk")
 
 		require.Error(t, err)
+		var apiErr *models.APIError
+		assert.True(t, errors.As(err, &apiErr))
+		assert.Equal(t, 409, apiErr.StatusCode)
 		assert.Contains(t, err.Error(), "already watching")
 	})
 }
@@ -104,7 +107,9 @@ func TestArtistWatchService_WatchArtist_EmptyName(t *testing.T) {
 		err := svc.WatchArtist(ctx, "user-123", "")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "artist name")
+		var apiErr *models.APIError
+		assert.True(t, errors.As(err, &apiErr))
+		assert.Equal(t, 400, apiErr.StatusCode)
 	})
 
 	t.Run("returns error for whitespace-only artist name", func(t *testing.T) {
@@ -115,7 +120,9 @@ func TestArtistWatchService_WatchArtist_EmptyName(t *testing.T) {
 		err := svc.WatchArtist(ctx, "user-123", "   ")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "artist name")
+		var apiErr *models.APIError
+		assert.True(t, errors.As(err, &apiErr))
+		assert.Equal(t, 400, apiErr.StatusCode)
 	})
 
 	t.Run("returns error for empty user ID", func(t *testing.T) {
@@ -126,7 +133,9 @@ func TestArtistWatchService_WatchArtist_EmptyName(t *testing.T) {
 		err := svc.WatchArtist(ctx, "", "Daft Punk")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "user ID")
+		var apiErr *models.APIError
+		assert.True(t, errors.As(err, &apiErr))
+		assert.Equal(t, 400, apiErr.StatusCode)
 	})
 }
 
@@ -146,7 +155,7 @@ func TestArtistWatchService_UnwatchArtist(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("returns error when not watching", func(t *testing.T) {
+	t.Run("returns not found error when not watching", func(t *testing.T) {
 		ctx := context.Background()
 		mockRepo := new(MockArtistWatchRepository)
 
@@ -156,7 +165,9 @@ func TestArtistWatchService_UnwatchArtist(t *testing.T) {
 		err := svc.UnwatchArtist(ctx, "user-123", "Daft Punk")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "not watching")
+		var apiErr *models.APIError
+		assert.True(t, errors.As(err, &apiErr))
+		assert.Equal(t, 404, apiErr.StatusCode)
 	})
 
 	t.Run("returns error from repository", func(t *testing.T) {

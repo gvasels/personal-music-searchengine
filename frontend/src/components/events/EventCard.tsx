@@ -33,7 +33,8 @@ export function EventCard({ event }: EventCardProps) {
               {event.status === 'cancelled' ? 'Cancelled' : 'Postponed'}
             </span>
           )}
-          {event.ticketUrl && (
+          {event.ticketUrl &&
+            (event.ticketUrl.startsWith('https://') || event.ticketUrl.startsWith('http://')) && (
             <a
               href={event.ticketUrl}
               target="_blank"

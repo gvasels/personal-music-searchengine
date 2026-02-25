@@ -8,6 +8,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Artist Events & Shows (Phase 1 — Mock)**
+  - `EventsProvider` interface with `MockProvider` for development/testing (`internal/events/`)
+  - `ArtistWatch` model and DynamoDB CRUD for watch/unwatch (`internal/models/`, `internal/repository/`)
+  - `ArtistWatchService` for watch operations (`internal/service/artist_watch.go`)
+  - `EventsService` for event retrieval and search (`internal/service/events.go`)
+  - `ArtistWatchHandler` with 4 endpoints: watch, unwatch, status, list (`internal/handlers/artist_watch.go`)
+  - `EventsHandler` with 2 endpoints: get artist events, search events (`internal/handlers/events.go`)
+  - 85+ new backend tests covering handlers, services, and mock provider
+- **Audio Pipeline Improvements**
+  - Transcode-complete wiring to audio analysis Lambda
+  - Lambda architecture fix (x86_64 → arm64)
+  - MediaConvert UserMetadata for pipeline reliability
+- **Embedding Enhancements**
+  - Musical key incorporated into track embeddings
+  - Camelot wheel neighbors encoded for harmonic mixing similarity
+- **Duplicate Upload Guard**
+  - "Already in library" check with edge case handling
+
+### Changed
+- Events provider gated behind `EVENTS_PROVIDER=mock` env var for production safety
+
+### Fixed
+- **Auth middleware on events routes**: Applied `RequireAuth()` middleware to events route group (was missing)
+- **XSS in EventCard**: Validated `ticketUrl` to only allow `http://`/`https://` protocols
+- **URL encoding**: Applied `encodeURIComponent()` to artist name URL paths in frontend API clients
+- **Limit cap**: Capped `limit` query parameter at 100 in artist watch and events handlers
+- **Input validation**: Added max length (256 chars) on `artistName` and `q` parameters
+- **Typed error wrapping**: `ArtistWatchService` now returns proper `*models.APIError` types (409 Conflict, 404 Not Found) instead of plain `fmt.Errorf`
+- **Dead code removal**: Removed unreachable `errors.Is` branch in `UnwatchArtist` handler
+- **Search debounce**: Added 300ms debounce to shows page search input
+- **Auth guard**: Added `enabled: isAuthenticated` guard to `useWatchedArtists` hook
+- **Error feedback**: Added `onError` toast handlers to watch/unwatch mutations
+
+### Added (continued)
 - **Admin Panel & Track Visibility Feature**
   - Admin handlers for user management (`internal/handlers/admin.go`)
   - Admin service with Cognito integration (`internal/service/admin.go`)

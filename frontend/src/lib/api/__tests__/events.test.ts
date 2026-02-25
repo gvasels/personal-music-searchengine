@@ -60,7 +60,7 @@ describe('Events API', () => {
 
       await getArtistEvents('Daft Punk');
 
-      expect(apiClient.get).toHaveBeenCalledWith('/v1/artists/Daft Punk/events');
+      expect(apiClient.get).toHaveBeenCalledWith('/v1/artists/Daft%20Punk/events');
     });
 
     it('should return events data with artistName, events array, totalCount, and source', async () => {

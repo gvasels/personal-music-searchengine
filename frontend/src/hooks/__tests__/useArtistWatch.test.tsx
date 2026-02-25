@@ -22,6 +22,14 @@ vi.mock('../../lib/api/artistWatch', () => ({
   getWatchedArtists: vi.fn(),
 }));
 
+vi.mock('../useAuth', () => ({
+  useAuth: () => ({ isAuthenticated: true }),
+}));
+
+vi.mock('react-hot-toast', () => ({
+  default: { error: vi.fn(), success: vi.fn() },
+}));
+
 // These imports will fail - useArtistWatch.ts does not exist yet
 import { useWatchStatus, useWatchToggle, useWatchedArtists, watchKeys } from '../useArtistWatch';
 import * as artistWatchApi from '../../lib/api/artistWatch';

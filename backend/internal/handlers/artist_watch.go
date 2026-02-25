@@ -6,10 +6,16 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gvasels/personal-music-searchengine/internal/handlers/middleware"
 	"github.com/gvasels/personal-music-searchengine/internal/models"
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
 	"github.com/gvasels/personal-music-searchengine/internal/service"
 	"github.com/labstack/echo/v4"
+)
+
+const (
+	maxArtistNameLength = 256
+	maxLimit            = 100
 )
 
 // artistWatchService defines the service interface expected by ArtistWatchHandler.
@@ -30,24 +36,15 @@ func NewArtistWatchHandler(svc artistWatchService) *ArtistWatchHandler {
 	return &ArtistWatchHandler{service: svc}
 }
 
-// getUserID extracts user ID from context or header, returns empty string if not found.
-func getUserID(c echo.Context) string {
-	userID, _ := c.Get("user_id").(string)
-	if userID == "" {
-		userID = c.Request().Header.Get("X-User-ID")
-	}
-	return userID
-}
-
 // WatchArtist handles POST /api/v1/artists/:name/watch
 func (h *ArtistWatchHandler) WatchArtist(c echo.Context) error {
-	userID := getUserID(c)
+	userID := middleware.GetUserID(c)
 	if userID == "" {
 		return c.JSON(http.StatusUnauthorized, models.NewErrorResponse(models.ErrUnauthorized))
 	}
 
 	artistName := c.Param("name")
-	if artistName == "" {
+	if artistName == "" || len(artistName) > maxArtistNameLength {
 		return c.JSON(http.StatusBadRequest, models.NewErrorResponse(models.ErrBadRequest))
 	}
 
@@ -69,7 +66,7 @@ func (h *ArtistWatchHandler) WatchArtist(c echo.Context) error {
 
 // UnwatchArtist handles DELETE /api/v1/artists/:name/watch
 func (h *ArtistWatchHandler) UnwatchArtist(c echo.Context) error {
-	userID := getUserID(c)
+	userID := middleware.GetUserID(c)
 	if userID == "" {
 		return c.JSON(http.StatusUnauthorized, models.NewErrorResponse(models.ErrUnauthorized))
 	}
@@ -82,9 +79,6 @@ func (h *ArtistWatchHandler) UnwatchArtist(c echo.Context) error {
 		if errors.As(err, &apiErr) {
 			return c.JSON(apiErr.StatusCode, models.NewErrorResponse(apiErr))
 		}
-		if errors.Is(err, models.ErrNotFound) {
-			return c.JSON(http.StatusNotFound, models.NewErrorResponse(models.ErrNotFound))
-		}
 		return c.JSON(http.StatusInternalServerError, models.NewErrorResponse(models.ErrInternalServer))
 	}
 
@@ -93,7 +87,7 @@ func (h *ArtistWatchHandler) UnwatchArtist(c echo.Context) error {
 
 // GetWatchStatus handles GET /api/v1/artists/:name/watch
 func (h *ArtistWatchHandler) GetWatchStatus(c echo.Context) error {
-	userID := getUserID(c)
+	userID := middleware.GetUserID(c)
 	if userID == "" {
 		return c.JSON(http.StatusUnauthorized, models.NewErrorResponse(models.ErrUnauthorized))
 	}
@@ -117,7 +111,7 @@ func (h *ArtistWatchHandler) GetWatchStatus(c echo.Context) error {
 
 // ListWatchedArtists handles GET /api/v1/users/me/watched-artists
 func (h *ArtistWatchHandler) ListWatchedArtists(c echo.Context) error {
-	userID := getUserID(c)
+	userID := middleware.GetUserID(c)
 	if userID == "" {
 		return c.JSON(http.StatusUnauthorized, models.NewErrorResponse(models.ErrUnauthorized))
 	}
@@ -125,8 +119,10 @@ func (h *ArtistWatchHandler) ListWatchedArtists(c echo.Context) error {
 	limit := 20
 	if limitStr := c.QueryParam("limit"); limitStr != "" {
 		parsed, err := strconv.Atoi(limitStr)
-		if err == nil && parsed > 0 {
+		if err == nil && parsed > 0 && parsed <= maxLimit {
 			limit = parsed
+		} else if err == nil && parsed > maxLimit {
+			limit = maxLimit
 		}
 	}
 
@@ -146,7 +142,7 @@ func (h *ArtistWatchHandler) ListWatchedArtists(c echo.Context) error {
 
 // RegisterArtistWatchRoutes registers artist watch routes on the Echo instance.
 func RegisterArtistWatchRoutes(e *echo.Echo, h *ArtistWatchHandler) {
-	api := e.Group("/api/v1")
+	api := e.Group("/api/v1", middleware.RequireAuth())
 	api.POST("/artists/:name/watch", h.WatchArtist)
 	api.DELETE("/artists/:name/watch", h.UnwatchArtist)
 	api.GET("/artists/:name/watch", h.GetWatchStatus)

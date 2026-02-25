@@ -1,10 +1,19 @@
 /**
  * My Shows Page - Watched artist events and event search
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useWatchedArtists } from '../hooks/useArtistWatch';
 import { useSearchArtistEvents } from '../hooks/useArtistEvents';
+
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 export const Route = createFileRoute('/shows')({
   component: ShowsPage,
@@ -12,8 +21,9 @@ export const Route = createFileRoute('/shows')({
 
 export default function ShowsPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedQuery = useDebouncedValue(searchQuery, 300);
   const { data, isLoading, isError } = useWatchedArtists();
-  const searchResult = useSearchArtistEvents(searchQuery);
+  const searchResult = useSearchArtistEvents(debouncedQuery);
 
   if (isLoading) {
     return (
@@ -50,7 +60,7 @@ export default function ShowsPage() {
         />
       </div>
 
-      {searchQuery && searchResult.data?.items && (
+      {debouncedQuery && searchResult.data?.items && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold mb-3">Search Results</h2>
           <div className="space-y-2">
