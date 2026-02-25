@@ -36,7 +36,7 @@ func TestEmbeddingGatewayClient_Integration_FullFlow(t *testing.T) {
 			Data:   []EmbeddingData{{Object: "embedding", Index: 0, Embedding: expectedEmbedding}},
 			Usage:  &UsageInfo{PromptTokens: 10, TotalTokens: 10},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -74,7 +74,7 @@ func TestEmbeddingGatewayClient_Integration_Timeout(t *testing.T) {
 			Object: "list",
 			Data:   []EmbeddingData{{Embedding: []float32{0.1}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 

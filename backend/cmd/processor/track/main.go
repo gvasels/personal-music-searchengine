@@ -335,12 +335,7 @@ func getIntOrDefault(meta *models.UploadMetadata, field string, defaultVal int) 
 	return defaultVal
 }
 
-func isAudioFile(key string) bool {
-	lower := strings.ToLower(key)
-	return strings.HasSuffix(lower, ".mp3") || strings.HasSuffix(lower, ".flac") ||
-		strings.HasSuffix(lower, ".wav") || strings.HasSuffix(lower, ".m4a") ||
-		strings.HasSuffix(lower, ".aac") || strings.HasSuffix(lower, ".ogg")
-}
+
 
 // getOrCreateArtist looks up an Artist entity by name for the user. If none
 // exists, it creates one and returns it.
