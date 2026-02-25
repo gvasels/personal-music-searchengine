@@ -11,18 +11,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awslambda "github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
 	echoadapter "github.com/awslabs/aws-lambda-go-api-proxy/echo"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"github.com/gvasels/personal-music-searchengine/internal/handlers"
 	"github.com/gvasels/personal-music-searchengine/internal/clients"
+	cfSigner "github.com/gvasels/personal-music-searchengine/internal/cloudfront"
+	"github.com/gvasels/personal-music-searchengine/internal/events"
+	"github.com/gvasels/personal-music-searchengine/internal/handlers"
 	"github.com/gvasels/personal-music-searchengine/internal/repository"
 	"github.com/gvasels/personal-music-searchengine/internal/search"
 	"github.com/gvasels/personal-music-searchengine/internal/service"
 	"github.com/gvasels/personal-music-searchengine/internal/vectors"
-	cfSigner "github.com/gvasels/personal-music-searchengine/internal/cloudfront"
 )
 
 var echoLambda *echoadapter.EchoLambdaV2
@@ -147,16 +149,23 @@ func setupEcho() (*echo.Echo, error) {
 		services.Search = service.NewSearchService(searchClient, repo, s3Repo, cloudfront)
 	}
 
+	// Initialize similarity service (metadata-based fallback for when vectors aren't available)
+	services.Similarity = service.NewSimilarityService(nil, repo, nil)
+
 	// Initialize admin service if Cognito User Pool ID is configured
 	if appCfg.CognitoUserPoolID != "" {
 		cognitoSvc := service.NewCognitoClient(cognitoClient, appCfg.CognitoUserPoolID)
 		services.Admin = service.NewAdminService(repo, cognitoSvc)
 	}
 
-	// Initialize vector service if Vector Bucket is configured
+	// Initialize Secrets Manager client (shared by embedding gateway and other services)
+	smClient := clients.NewAWSSecretsManager(secretsmanager.NewFromConfig(awsCfg))
+
+	// Initialize vector services if Vector Bucket is configured
+	// Two separate indices: media-embeddings (Marengo audio) for /similar, search-embeddings (Nova text) for hybrid search
 	if appCfg.VectorBucketName != "" {
 		if appCfg.VectorS3Bucket != "" {
-			// Dual-write: S3 Vectors (kNN) + S3 flat (backup/testing)
+			// Dual-write: S3 Vectors (kNN) + S3 flat (backup/testing) for similarity
 			services.Vector = vectors.NewDualWriteAdapter(
 				appCfg.VectorBucketName, appCfg.VectorIndexName,
 				appCfg.VectorS3Bucket, appCfg.VectorS3Prefix,
@@ -166,16 +175,22 @@ func setupEcho() (*echo.Echo, error) {
 		}
 	}
 
-	// Initialize embedding gateway if configured
-	var embGateway clients.EmbeddingGateway
-	if appCfg.EmbeddingGatewayURL != "" {
-		embGateway = clients.NewEmbeddingGatewayClient(appCfg.EmbeddingGatewayURL, appCfg.EmbeddingGatewaySecret, nil)
+	// Create search vector service pointing to search-embeddings index (Nova text embeddings)
+	var searchVectorSvc service.VectorService
+	if appCfg.VectorBucketName != "" && appCfg.SearchVectorIndexName != "" {
+		searchVectorSvc = vectors.NewServiceAdapter(appCfg.VectorBucketName, appCfg.SearchVectorIndexName)
 	}
 
-	// Upgrade search service with semantic search if both embedding gateway and vectors are available
-	if appCfg.NixiesearchFunctionName != "" && embGateway != nil && services.Vector != nil {
+	// Initialize embedding gateway if configured
+	var embGateway clients.EmbeddingGateway
+	if appCfg.EmbeddingGatewayURL != "" && appCfg.EmbeddingGatewaySecret != "" {
+		embGateway = clients.NewEmbeddingGatewayClient(appCfg.EmbeddingGatewayURL, appCfg.EmbeddingGatewaySecret, smClient)
+	}
+
+	// Upgrade search service with semantic search if both embedding gateway and search vectors are available
+	if appCfg.NixiesearchFunctionName != "" && embGateway != nil && searchVectorSvc != nil {
 		searchClient := search.NewClient(lambdaClient, appCfg.NixiesearchFunctionName)
-		services.Search = service.NewSearchServiceWithEmbeddings(searchClient, repo, s3Repo, cloudfront, embGateway, services.Vector)
+		services.Search = service.NewSearchServiceWithEmbeddings(searchClient, repo, s3Repo, cloudfront, embGateway, searchVectorSvc)
 	}
 
 	// Create handlers
@@ -210,6 +225,24 @@ func setupEcho() (*echo.Echo, error) {
 	// Create and register hello handler using the generic handler
 	helloHandler := handlers.NewHelloHandler[service.HelloTrack](helloSvc)
 	handlers.RegisterHelloRoutes(e, helloHandler)
+
+	// Initialize events provider (mock for Phase 1)
+	eventsProvider := events.NewMockProvider()
+
+	// Initialize artist watch service
+	artistWatchSvc := service.NewArtistWatchService(repo)
+
+	// Initialize events service
+	eventsSvc := service.NewEventsService(eventsProvider, artistWatchSvc)
+
+	// Create handlers with adapters
+	artistWatchAdapter := handlers.NewArtistWatchServiceAdapter(artistWatchSvc)
+	artistWatchHandler := handlers.NewArtistWatchHandler(artistWatchAdapter)
+	handlers.RegisterArtistWatchRoutes(e, artistWatchHandler)
+
+	eventsAdapter := handlers.NewEventsServiceAdapter(eventsSvc)
+	eventsHandler := handlers.NewEventsHandler(eventsAdapter)
+	handlers.RegisterEventsRoutes(e, eventsHandler)
 
 	// Health check endpoint
 	e.GET("/health", func(c echo.Context) error {
