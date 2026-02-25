@@ -100,8 +100,9 @@ export interface Track {
   instrumentation?: string; // Detected instruments
   vocalPresence?: string;   // none/male/female/mixed
   energyProfile?: string;   // Energy arc description
-  embeddingId?: string;     // S3 Vectors embedding ID
-  analysisStatus?: string;  // PENDING/ANALYZING/COMPLETED/FAILED
+  embeddingId?: string;      // S3 Vectors embedding ID
+  embeddingStatus?: string;  // PENDING/GENERATING/COMPLETED/FAILED
+  analysisStatus?: string;   // PENDING/ANALYZING/COMPLETED/FAILED
   analyzedAt?: string;      // Analysis timestamp
   // Visibility fields
   visibility?: TrackVisibility;         // Track visibility level (default: private)
@@ -365,4 +366,61 @@ export interface ReprocessResult {
   embeddingStatus?: string;
   error?: string;
   processedAt?: string;
+}
+
+// Artist Events & Shows types
+export type EventStatus = 'scheduled' | 'cancelled' | 'postponed';
+
+export interface ArtistEvent {
+  id: string;
+  artistName: string;
+  title: string;
+  date: string;
+  venue: string;
+  city: string;
+  region: string;
+  country: string;
+  ticketUrl?: string;
+  status: EventStatus;
+  source: string;
+}
+
+export interface ArtistSearchResult {
+  name: string;
+  imageUrl?: string;
+  upcomingEvents: number;
+  source: string;
+}
+
+export interface WatchedArtist {
+  artistName: string;
+  watchedAt: string;
+}
+
+export interface ArtistEventsResponse {
+  artistName: string;
+  events: ArtistEvent[];
+  totalCount: number;
+  source: string;
+}
+
+export interface WatchResponse {
+  artistName: string;
+  watching: boolean;
+  watchedAt: string;
+}
+
+export interface WatchStatusResponse {
+  watching: boolean;
+  artistName: string;
+}
+
+export interface WatchedArtistsResponse {
+  items: WatchedArtist[];
+  nextCursor?: string;
+  hasMore: boolean;
+}
+
+export interface ArtistSearchResponse {
+  items: ArtistSearchResult[];
 }
