@@ -23,6 +23,8 @@ Custom React hooks wrapping TanStack Query for API data fetching and state manag
 - `useTracks.ts` — Track CRUD operations
 - `useUpload.ts` — File upload with progress
 - `useWaveform.ts` — Waveform data fetching
+- `useArtistWatch.ts` — Artist watch toggle and list (`watchKeys` factory, `useWatchStatus`, `useWatchToggle`, `useWatchedArtists`)
+- `useArtistEvents.ts` — Artist events and search (`eventKeys` factory, `useArtistEvents`, `useSearchArtistEvents`)
 
 ## Tests
 - `__tests__/` — Unit tests for most hooks (12 test files)

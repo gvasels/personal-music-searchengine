@@ -11,6 +11,7 @@ Data access layer implementing DynamoDB single-table design and S3 media storage
 | `repository.go` | Interface definitions for Repository, S3Repository, CloudFrontSigner |
 | `dynamodb.go` | DynamoDB implementation of Repository interface |
 | `s3.go` | S3 implementation of S3Repository interface |
+| `artist_watch.go` | ArtistWatch DynamoDB operations (Create, Delete, Get, ListWatched) |
 
 ## Key Interfaces
 
@@ -42,6 +43,7 @@ Signed URL generation for streaming via CloudFront.
 | Playlist | `USER#{userId}` | `PLAYLIST#{playlistId}` | - | - |
 | PlaylistTrack | `PLAYLIST#{playlistId}` | `POSITION#{pos:08d}` | - | - |
 | Upload | `USER#{userId}` | `UPLOAD#{uploadId}` | `UPLOAD#STATUS#{status}` | `{timestamp}` |
+| ArtistWatch | `USER#{userId}` | `ARTIST_WATCH#{normalizedName}` | `ARTIST_WATCH#{normalizedName}` | `USER#{userId}` |
 | Tag | `USER#{userId}` | `TAG#{tagName}` | - | - |
 | TrackTag | `USER#{userId}#TRACK#{trackId}` | `TAG#{tagName}` | `USER#{userId}#TAG#{tagName}` | `TRACK#{trackId}` |
 
@@ -62,6 +64,10 @@ Signed URL generation for streaming via CloudFront.
 | `CreateTag`, `AddTagsToTrack`, `GetTracksByTag` | Tag operations |
 | `CreateUpload`, `UpdateUploadStatus`, `UpdateUploadStep` | Upload tracking |
 | `ListUploadsByStatus` | Query uploads by status using GSI1 |
+| `CreateArtistWatch` | PutItem with condition (no overwrite) |
+| `DeleteArtistWatch` | Delete artist watch |
+| `GetArtistWatch` | Get artist watch by user and artist name |
+| `ListWatchedArtists` | Query PK=USER#{userId} with SK prefix ARTIST_WATCH#, paginated |
 
 ### S3 Repository
 | Function | Description |

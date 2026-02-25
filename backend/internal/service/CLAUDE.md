@@ -30,6 +30,8 @@ Business logic layer implementing domain operations for the Personal Music Searc
 | `camelot_test.go` | Unit tests for Camelot utilities |
 | `similarity.go` | SimilarityService - similar/mixable tracks for DJs |
 | `hello.go` | HelloService - Hello World search feature for local development |
+| `artist_watch.go` | ArtistWatchService - watch/unwatch artists, list watched artists |
+| `events.go` | EventsService - get artist events, search artists via EventsProvider |
 
 ## Service Interfaces
 
@@ -172,6 +174,17 @@ type HelloRepository interface {
 - `NewHelloService(repo HelloRepository) *HelloService` - Constructor
 - `Search(ctx, query string) ([]HelloTrack, error)` - Case-insensitive search across title, artist, album, genre. Empty query returns empty slice.
 - `Featured(ctx, limit int) ([]HelloTrack, error)` - Returns up to `limit` tracks. `limit <= 0` returns all tracks.
+
+### ArtistWatchService
+- `WatchArtist(ctx, userID, artistName)` - Create watch (idempotent)
+- `UnwatchArtist(ctx, userID, artistName)` - Remove watch
+- `IsWatching(ctx, userID, artistName)` - Check if user watches artist
+- `ListWatchedArtists(ctx, userID, limit, cursor)` - Paginated list of watched artists
+
+### EventsService
+- `GetArtistEvents(ctx, artistName)` - Get events via EventsProvider
+- `SearchArtists(ctx, query, limit)` - Search artists via EventsProvider
+- `GetWatchedArtistEvents(ctx, userID)` - Get events for all watched artists
 
 ### Camelot Key Utilities
 - `IsKeyCompatible` - Check if two keys can be mixed harmonically

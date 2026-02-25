@@ -14,6 +14,7 @@ TanStack Router file-based routes for the Personal Music Search Engine. Routes a
 | `permission-denied.tsx` | `/permission-denied` | Access denied page |
 | `hello.tsx` | `/hello` | Hello World validation page |
 | `hello-search.tsx` | `/hello-search` | Hello World full-stack search demo |
+| `shows.tsx` | `/shows` | My Shows page - watched artist events and artist search |
 | `search.tsx` | `/search` | Search results page |
 | `upload.tsx` | `/upload` | File upload page |
 
