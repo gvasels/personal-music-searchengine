@@ -19,6 +19,7 @@ const (
 	EntityUpload        EntityType = "UPLOAD"
 	EntityTag           EntityType = "TAG"
 	EntityTrackTag      EntityType = "TRACK_TAG"
+	EntityArtistWatch   EntityType = "ARTIST_WATCH"
 )
 
 // UploadStatus represents the status of a file upload
