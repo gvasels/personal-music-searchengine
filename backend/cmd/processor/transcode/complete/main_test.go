@@ -13,20 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// --- Interfaces for testability ---
-// These define the subset of AWS SDK operations used by the transcode-complete handler.
-// The production code will need to use these (or compatible) interfaces.
-
-type dynamoDBAPI interface {
-	GetItem(ctx context.Context, params *dynamodb.GetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
-	UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error)
-}
-
-type sfnAPI interface {
-	StartExecution(ctx context.Context, params *sfn.StartExecutionInput, optFns ...func(*sfn.Options)) (*sfn.StartExecutionOutput, error)
-}
-
 // --- Mock implementations ---
+// Interfaces (dynamoDBAPI, sfnAPI) are defined in main.go.
 
 type mockDynamoDB struct {
 	getItemOutput *dynamodb.GetItemOutput
@@ -249,17 +237,20 @@ func TestHandleSuccess_TriggersAudioPipeline(t *testing.T) {
 
 	// Save and restore package-level state
 	origDynamoClient := dynamoClient
+	origSfnClient := sfnClient
 	origTableName := tableName
+	origARN := audioPipelineARN
 	defer func() {
 		dynamoClient = origDynamoClient
+		sfnClient = origSfnClient
 		tableName = origTableName
+		audioPipelineARN = origARN
 	}()
 
-	// Set package-level vars -- these exist in main.go
-	tableName = "test-table"
-
-	// These package-level vars do NOT exist yet in this file (compile error):
+	// Set package-level vars
+	dynamoClient = mockDB
 	sfnClient = mockSfn
+	tableName = "test-table"
 	audioPipelineARN = "arn:aws:states:us-east-1:123456789:stateMachine:audio-pipeline"
 
 	event := makeCompleteEvent("user1", "track1")
@@ -300,31 +291,26 @@ func TestHandleSuccess_NoTriggerWithoutARN(t *testing.T) {
 	}
 
 	origDynamoClient := dynamoClient
+	origSfnClient := sfnClient
 	origTableName := tableName
+	origARN := audioPipelineARN
 	defer func() {
 		dynamoClient = origDynamoClient
+		sfnClient = origSfnClient
 		tableName = origTableName
+		audioPipelineARN = origARN
 	}()
 
-	tableName = "test-table"
-
-	// These package-level vars do NOT exist yet (compile error):
+	dynamoClient = mockDB
 	sfnClient = mockSfn
+	tableName = "test-table"
 	audioPipelineARN = "" // Empty ARN -- should not trigger
-
-	// We need dynamoClient to be a real *dynamodb.Client for the existing updateTrackHLSStatus.
-	// But for this test, since we can't easily mock the concrete type, we'll set it nil
-	// and accept a db_update_failed response. The key assertion is that SFN is NOT called.
-	dynamoClient = nil
-	_ = mockDB // Mock would be used once readTrack/triggerAudioPipeline use interfaces
 
 	event := makeCompleteEvent("user1", "track1")
 	resp, err := handleSuccess(ctx, "user1", "track1", event.Detail)
 
-	// The response may be "failed" due to nil dynamoClient, but that's OK --
-	// the important thing is SFN was NOT called.
 	require.NoError(t, err)
-	_ = resp
+	assert.Equal(t, "completed", resp.Status)
 
 	assert.Empty(t, mockSfn.startExecCalls, "SFN should NOT be called when audioPipelineARN is empty")
 }
@@ -333,29 +319,34 @@ func TestHandleSuccess_NoTriggerWithoutARN(t *testing.T) {
 func TestHandleFailure_NoTrigger(t *testing.T) {
 	ctx := context.Background()
 
+	mockDB := &mockDynamoDB{
+		updateItemOut: &dynamodb.UpdateItemOutput{},
+	}
 	mockSfn := &mockSFN{
 		startExecOutput: &sfn.StartExecutionOutput{},
 	}
 
 	origDynamoClient := dynamoClient
+	origSfnClient := sfnClient
 	origTableName := tableName
+	origARN := audioPipelineARN
 	defer func() {
 		dynamoClient = origDynamoClient
+		sfnClient = origSfnClient
 		tableName = origTableName
+		audioPipelineARN = origARN
 	}()
 
-	tableName = "test-table"
-	dynamoClient = nil // Will cause db_update_failed, but that's fine for this test
-
-	// These package-level vars do NOT exist yet (compile error):
+	dynamoClient = mockDB
 	sfnClient = mockSfn
+	tableName = "test-table"
 	audioPipelineARN = "arn:aws:states:us-east-1:123456789:stateMachine:audio-pipeline"
 
 	event := makeErrorEvent("user1", "track1")
 	resp, err := handleFailure(ctx, "user1", "track1", event.Detail)
 
 	require.NoError(t, err)
-	_ = resp
+	assert.Equal(t, "transcode_failed", resp.Status)
 
 	assert.Empty(t, mockSfn.startExecCalls, "SFN should NOT be called on transcode failure")
 }
@@ -384,19 +375,20 @@ func TestHandleSuccess_SFNError_DoesNotFailHandler(t *testing.T) {
 	}
 
 	origDynamoClient := dynamoClient
+	origSfnClient := sfnClient
 	origTableName := tableName
+	origARN := audioPipelineARN
 	defer func() {
 		dynamoClient = origDynamoClient
+		sfnClient = origSfnClient
 		tableName = origTableName
+		audioPipelineARN = origARN
 	}()
 
-	tableName = "test-table"
-
-	// These do NOT exist yet (compile error):
+	dynamoClient = mockDB
 	sfnClient = mockSfn
+	tableName = "test-table"
 	audioPipelineARN = "arn:aws:states:us-east-1:123456789:stateMachine:audio-pipeline"
-
-	_ = mockDB // Will be used when readTrack is implemented with interface
 
 	event := makeCompleteEvent("user1", "track1")
 	resp, err := handleSuccess(ctx, "user1", "track1", event.Detail)

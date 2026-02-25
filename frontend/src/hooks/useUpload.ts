@@ -213,7 +213,7 @@ export function useUpload(): UseUploadReturn {
 
     setIsUploading(false);
     setProgress(0);
-  }, []);
+  }, [queryClient]);
 
   const reset = useCallback(() => {
     setProgress(0);

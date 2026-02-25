@@ -9,9 +9,8 @@ resource "aws_lambda_function" "bedrock_gateway" {
   runtime       = "provided.al2023"
   architectures = ["arm64"]
 
-  # Gateway Lambda binary
-  filename         = "${path.module}/../../backend/cmd/gateway/gateway.zip"
-  source_code_hash = filebase64sha256("${path.module}/../../backend/cmd/gateway/gateway.zip")
+  filename         = data.archive_file.placeholder.output_path
+  source_code_hash = data.archive_file.placeholder.output_base64sha256
 
   memory_size = 512
   timeout     = 60
